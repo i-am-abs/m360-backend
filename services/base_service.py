@@ -1,5 +1,4 @@
 from hashlib import md5
-
 from constants.cache_config import CacheConfig
 from db.factory.cache_factory import CacheFactory
 from utils.logger import Logger

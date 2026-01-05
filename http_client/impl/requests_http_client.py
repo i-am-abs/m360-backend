@@ -32,8 +32,6 @@ class RequestsHttpClient:
                 if e.response
                 else HTTPStatus.GATEWAY_TIMEOUT.value
             )
-            # body = e.response.text if e.response else "no-response-body"
-
             raise ApiException(
                 message=f"Upstream HTTP error [{status_code}] for {url}",
                 status_code=status_code,
