@@ -6,7 +6,6 @@ class ApiEndpoints(Enum):
     DEVICES = "/devices"
     DEVICE_REGISTER = "/device/register"
     DEVICE_BY_UUID = "/device/{device_uuid}"
-    DEVICE_BY_MAC = "/device/mac/{mac_address}"
     AUDIO_CHAPTER = "/audio/chapter"
     SEARCH = "/search"
     CHAPTERS = "/chapters"

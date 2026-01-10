@@ -30,9 +30,7 @@ class RedisCacheProvider(CacheProvider):
                 socket_timeout=timeout,
             )
             self.client.ping()
-            logger.info(
-                f"RedisCacheProvider initialized - connected to {redis_host}:{redis_port}"
-            )
+            logger.info(f"Connected to Redis: {redis_host}:{redis_port}")
         except redis.ConnectionError as e:
             logger.error(f"Redis connection failed: {e}")
             raise ConnectionError(
@@ -41,66 +39,58 @@ class RedisCacheProvider(CacheProvider):
 
     def get(self, key: str) -> Optional[Any]:
         try:
-            if self.client.get(key):
-                logger.debug(f"[REDIS CACHE] HIT: {key}")
-                return json.loads(self.client.get(key))
-            logger.debug(f"[REDIS CACHE] MISS: {key}")
+            value = self.client.get(key)
+            if value:
+                return json.loads(value)
             return None
         except Exception as e:
-            logger.error(f"[REDIS CACHE] GET error for key {key}: {e}")
+            logger.error(f"Redis get error: {key}, {e}")
             return None
 
     def set(self, key: str, value: Any, ttl: int) -> bool:
         try:
             serialized = json.dumps(value)
             self.client.setex(key, ttl, serialized)
-            logger.debug(f"[REDIS CACHE] SET: {key} (TTL: {ttl}s)")
             return True
         except Exception as e:
-            logger.error(f"[REDIS CACHE] SET error for key {key}: {e}")
+            logger.error(f"Redis set error: {key}, {e}")
             return False
 
     def delete(self, key: str) -> bool:
         try:
             result = self.client.delete(key)
-            logger.debug(f"[REDIS CACHE] DELETE: {key} (deleted: {result})")
             return result > 0
         except Exception as e:
-            logger.error(f"[REDIS CACHE] DELETE error for key {key}: {e}")
+            logger.error(f"Redis delete error: {key}, {e}")
             return False
 
     def clear_pattern(self, pattern: str) -> int:
         try:
-            if self.client.keys(pattern):
-                deleted = self.client.delete(*self.client.keys(pattern))
-                logger.info(
-                    f"[REDIS CACHE] Cleared {deleted} keys matching pattern: {pattern}"
-                )
-                return deleted
+            keys = self.client.keys(pattern)
+            if keys:
+                return self.client.delete(*keys)
             return 0
         except Exception as e:
-            logger.error(
-                f"[REDIS CACHE] CLEAR_PATTERN error for pattern {pattern}: {e}"
-            )
+            logger.error(f"Redis clear_pattern error: {pattern}, {e}")
             return 0
 
     def exists(self, key: str) -> bool:
         try:
             return self.client.exists(key) > 0
         except Exception as e:
-            logger.error(f"[REDIS CACHE] EXISTS error for key {key}: {e}")
+            logger.error(f"Redis exists error: {key}, {e}")
             return False
 
     def ttl(self, key: str) -> int:
         try:
             return self.client.ttl(key)
         except Exception as e:
-            logger.error(f"[REDIS CACHE] TTL error for key {key}: {e}")
+            logger.error(f"Redis ttl error: {key}, {e}")
             return -1
 
     def ping(self) -> bool:
         try:
             return self.client.ping()
         except Exception as e:
-            logger.error(f"[REDIS CACHE] PING failed: {e}")
+            logger.error(f"Redis ping failed: {e}")
             return False

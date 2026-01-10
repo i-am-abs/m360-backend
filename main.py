@@ -30,9 +30,9 @@ app.add_exception_handler(ApiException, api_exception_handler)
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Quran Foundation API Wrapper Starting...")
+    logger.info("API Starting...")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info("Quran Foundation API Wrapper Shutting Down...")
+    logger.info("API Shutting Down...")

@@ -1,4 +1,3 @@
-import uuid
 import os
 from typing import Optional, Dict
 from pymongo import MongoClient
@@ -28,114 +27,70 @@ class MongoDeviceRepository(DeviceRepository):
             self.db = self.client[mongo_db]
             self.devices_collection = self.db["devices"]
 
-            self.devices_collection.create_index("mac_address", unique=True)
             self.devices_collection.create_index("uuid", unique=True)
-
-            logger.info(f"MongoDeviceRepository initialized - connected to {mongo_db}")
+            logger.info(f"Connected to MongoDB: {mongo_db}")
 
         except ConnectionFailure as e:
             logger.error(f"MongoDB connection failed: {e}")
             raise ConnectionError(f"Failed to connect to MongoDB at {mongo_uri}")
 
-    def save_device(self, mac_address: str) -> Optional[str]:
+    def save_device(self, device_uuid: str) -> Optional[Dict]:
         try:
-            existing = self.devices_collection.find_one({"mac_address": mac_address})
+            existing = self.devices_collection.find_one({"uuid": device_uuid})
             if existing:
-                logger.info(
-                    f"[MONGO REPOSITORY] Device already exists: UUID={existing['uuid']}, MAC={mac_address}"
-                )
-                return existing["uuid"]
+                return {"uuid": existing["uuid"], "_id": str(existing["_id"])}
 
-            device_uuid = str(uuid.uuid4())
-            document = {"uuid": device_uuid, "mac_address": mac_address}
-
-            self.devices_collection.insert_one(document)
-            logger.info(
-                f"[MONGO REPOSITORY] New device saved: UUID={device_uuid}, MAC={mac_address}"
-            )
-            return device_uuid
+            document = {"uuid": device_uuid}
+            result = self.devices_collection.insert_one(document)
+            logger.info(f"Device saved: uuid={device_uuid}")
+            return {"uuid": device_uuid, "_id": str(result.inserted_id)}
 
         except DuplicateKeyError:
-            existing = self.devices_collection.find_one({"mac_address": mac_address})
+            existing = self.devices_collection.find_one({"uuid": device_uuid})
             if existing:
-                logger.info(
-                    f"[MONGO REPOSITORY] Device found after race condition: UUID={existing['uuid']}"
-                )
-                return existing["uuid"]
+                return {"uuid": existing["uuid"], "_id": str(existing["_id"])}
             return None
 
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error saving device: {e}")
+            logger.error(f"Error saving device: {e}")
             return None
 
     def get_device_by_uuid(self, device_uuid: str) -> Optional[Dict]:
         try:
-            device = self.devices_collection.find_one({"uuid": device_uuid}, {"_id": 0})
-
+            device = self.devices_collection.find_one({"uuid": device_uuid})
             if device:
-                logger.info(f"[MONGO REPOSITORY] Device found by UUID: {device}")
-            else:
-                logger.info(
-                    f"[MONGO REPOSITORY] Device not found for UUID: {device_uuid}"
-                )
-
-            return device
-
-        except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error getting device by UUID: {e}")
+                return {"uuid": device["uuid"], "_id": str(device["_id"])}
             return None
 
-    def get_device_by_mac(self, mac_address: str) -> Optional[Dict]:
-        try:
-            device = self.devices_collection.find_one(
-                {"mac_address": mac_address}, {"_id": 0}
-            )
-
-            if device:
-                logger.info(f"[MONGO REPOSITORY] Device found by MAC: {device}")
-            else:
-                logger.info(
-                    f"[MONGO REPOSITORY] Device not found for MAC: {mac_address}"
-                )
-
-            return device
-
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error getting device by MAC: {e}")
+            logger.error(f"Error getting device by UUID: {e}")
             return None
 
     def get_all_devices(self) -> list:
         try:
-            devices = list(self.devices_collection.find({}, {"_id": 0}))
-            logger.info(f"[MONGO REPOSITORY] Retrieved {len(devices)} devices")
+            devices = []
+            for doc in self.devices_collection.find({}):
+                devices.append({"uuid": doc["uuid"], "_id": str(doc["_id"])})
             return devices
 
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error getting all devices: {e}")
+            logger.error(f"Error getting all devices: {e}")
             return []
 
     def delete_device(self, device_uuid: str) -> bool:
         try:
             result = self.devices_collection.delete_one({"uuid": device_uuid})
-
-            if result.deleted_count > 0:
-                logger.info(f"[MONGO REPOSITORY] Device deleted: UUID={device_uuid}")
-                return True
-
-            logger.info(
-                f"[MONGO REPOSITORY] Device not found for deletion: UUID={device_uuid}"
-            )
-            return False
+            return result.deleted_count > 0
 
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error deleting device: {e}")
+            logger.error(f"Error deleting device: {e}")
             return False
 
     def count_devices(self) -> int:
         try:
             return self.devices_collection.count_documents({})
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] Error counting devices: {e}")
+            logger.error(f"Error counting devices: {e}")
             return 0
 
     def ping(self) -> bool:
@@ -143,5 +98,5 @@ class MongoDeviceRepository(DeviceRepository):
             self.client.admin.command("ping")
             return True
         except Exception as e:
-            logger.error(f"[MONGO REPOSITORY] PING failed: {e}")
+            logger.error(f"MongoDB ping failed: {e}")
             return False

@@ -18,11 +18,9 @@ class OAuthTokenProvider(TokenProvider):
 
     def get_access_token(self) -> str:
         if self.access_token and datetime.now() < self.expiry:
-            logger.debug("Using cached access token")
             return self.access_token
 
         try:
-            logger.info("Fetching new OAuth token")
             response = requests.post(
                 f"{self.config.oauth_url}/oauth2/token",
                 data={
@@ -42,12 +40,11 @@ class OAuthTokenProvider(TokenProvider):
             buffer = TokenConfig.TIME_DELTA.value
             self.expiry = datetime.now() + timedelta(seconds=expires_in - buffer)
 
-            logger.info(f"OAuth token fetched successfully (expires in {expires_in}s)")
             return self.access_token
 
         except requests.exceptions.RequestException as e:
             logger.error(f"OAuth token fetch failed: {e}")
             raise ApiException(f"OAuth token fetch failed: {str(e)}")
         except Exception as e:
-            logger.error(f"Unexpected error during token fetch: {e}")
+            logger.error(f"Token fetch error: {e}")
             raise ApiException(f"OAuth token fetch failed: {str(e)}")

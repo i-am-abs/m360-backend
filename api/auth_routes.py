@@ -22,12 +22,9 @@ logger = Logger.get_logger(__name__)
 )
 def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
     try:
-        logger.info("POST /auth/token - Generating OAuth2 access token")
-
         config = QuranConfigFactory.create()
         token_provider = OAuthTokenProvider(config)
         if request and request.force_refresh:
-            logger.info("Force refresh requested - invalidating cached token")
             token_provider.access_token = None
             token_provider.expiry = None
 
@@ -37,8 +34,6 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
             remaining_seconds = int(
                 (token_provider.expiry - datetime.now()).total_seconds()
             )
-
-        logger.info("Token generated successfully")
 
         return TokenResponse(
             access_token=access_token,
@@ -92,7 +87,7 @@ def check_token_status():
         }
 
     except Exception as e:
-        logger.error(f"Failed to check token status: {e}")
+        logger.error(f"Token status check failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check token status: {str(e)}",

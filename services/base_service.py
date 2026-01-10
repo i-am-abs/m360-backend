@@ -25,10 +25,8 @@ class BaseService:
         cached_data = self.cache.get(cache_key)
 
         if cached_data is not None:
-            logger.info(f"Returning cached data for {endpoint}")
             return cached_data
 
-        logger.info(f"Fetching from API: {endpoint}")
         token = self.token_provider.get_access_token()
         headers = {"x-auth-token": token, "x-client-id": self.config.client_id}
 
@@ -38,8 +36,6 @@ class BaseService:
             )
 
             self.cache.set(cache_key, data, ttl=CacheConfig.TTL_EXPIRATION.value)
-            logger.info(f"Data cached for {endpoint}")
-
             return data
         except Exception as e:
             logger.error(f"Error fetching {endpoint}: {e}")

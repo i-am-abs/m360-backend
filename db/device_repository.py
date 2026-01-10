@@ -4,15 +4,12 @@ from typing import Optional, Dict
 
 class DeviceRepository(ABC):
     @abstractmethod
-    def save_device(self, mac_address: str) -> Optional[str]:
+    def save_device(self, device_uuid: str) -> Optional[Dict]:
+        """Save a device with UUID. Returns dict with uuid and _id if successful."""
         pass
 
     @abstractmethod
     def get_device_by_uuid(self, device_uuid: str) -> Optional[Dict]:
-        pass
-
-    @abstractmethod
-    def get_device_by_mac(self, mac_address: str) -> Optional[Dict]:
         pass
 
     @abstractmethod

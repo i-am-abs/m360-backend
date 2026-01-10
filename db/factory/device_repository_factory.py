@@ -24,19 +24,15 @@ class DeviceRepositoryFactory:
             Environment.DEV.value,
             Environment.LOCAL.value,
         ]:
-            logger.info(f"Creating LogDeviceRepository for {env} environment")
             DeviceRepositoryFactory._repository_instance = LogDeviceRepository()
         elif env == Environment.PROD.value:
-            logger.info("Creating MongoDeviceRepository for prod environment")
             try:
                 DeviceRepositoryFactory._repository_instance = MongoDeviceRepository()
             except ConnectionError as e:
-                logger.error(f"Failed to create MongoDeviceRepository: {e}")
+                logger.error(f"MongoDB connection failed: {e}")
                 DeviceRepositoryFactory._repository_instance = LogDeviceRepository()
         else:
-            logger.warning(
-                f"Unknown environment '{env}', defaulting to LogDeviceRepository"
-            )
+            logger.warning(f"Unknown environment '{env}', using LogDeviceRepository")
             DeviceRepositoryFactory._repository_instance = LogDeviceRepository()
 
         return DeviceRepositoryFactory._repository_instance
