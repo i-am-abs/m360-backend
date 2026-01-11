@@ -7,6 +7,7 @@ from config.factory.quran_config_factory import QuranConfigFactory
 from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import TokenResponse, TokenRequest
+from utils.http_response import success_response
 from utils.logger import Logger
 
 auth_router = APIRouter(tags=["Authentication"])
@@ -15,11 +16,13 @@ logger = Logger.get_logger(__name__)
 
 @auth_router.post(
     ApiEndpoints.AUTH_TOKEN.value,
-    response_model=TokenResponse,
     summary="Generate OAuth2 Access Token",
     description="Generate a new OAuth2 bearer token for API authentication. "
     "Tokens are cached and reused until expiration (1 hour) unless force_refresh is True.",
 )
+# NOTE: This endpoint generates OAuth2 tokens for authenticating with Quran Foundation API
+# This is NOT for client authentication - it's for the backend to authenticate external API calls
+# If you need client authentication (JWT/Bearer tokens for API users), add Security dependencies
 def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
     try:
         config = QuranConfigFactory.create()
@@ -35,12 +38,13 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
                 (token_provider.expiry - datetime.now()).total_seconds()
             )
 
-        return TokenResponse(
+        token = TokenResponse(
             access_token=access_token,
             token_type="bearer",
             expires_in=remaining_seconds,
             scope=TokenConfig.SCOPE.value,
         )
+        return success_response(token.dict(), message="Token generated")
 
     except Exception as e:
         logger.error(f"Failed to generate token: {e}")
@@ -61,30 +65,34 @@ def check_token_status():
         token_provider = OAuthTokenProvider(config)
 
         if not token_provider.access_token or not token_provider.expiry:
-            return {
-                "cached": False,
-                "expired": None,
-                "expires_in": None,
-                "message": "No token currently cached",
-            }
+            return success_response(
+                {
+                    "cached": False,
+                    "expired": None,
+                    "expires_in": None,
+                },
+                message="No token currently cached",
+            )
         expires_in = (
             int((token_provider.expiry - datetime.now()).total_seconds())
             if not datetime.now() >= token_provider.expiry
             else 0
         )
 
-        return {
-            "cached": True,
-            "expired": datetime.now() >= token_provider.expiry,
-            "expires_in": (
-                expires_in if not datetime.now() >= token_provider.expiry else None
-            ),
-            "message": (
+        return success_response(
+            {
+                "cached": True,
+                "expired": datetime.now() >= token_provider.expiry,
+                "expires_in": (
+                    expires_in if not datetime.now() >= token_provider.expiry else None
+                ),
+            },
+            message=(
                 "Token expired"
                 if datetime.now() >= token_provider.expiry
                 else "Token is valid"
             ),
-        }
+        )
 
     except Exception as e:
         logger.error(f"Token status check failed: {e}")

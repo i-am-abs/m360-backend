@@ -5,3 +5,4 @@ uvicorn[standard]~=0.32.0
 redis~=7.1.0
 pymongo~=4.15.5
 pydantic~=2.12.5
+deep-translator==1.11.4
