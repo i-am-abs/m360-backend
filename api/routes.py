@@ -118,10 +118,12 @@ def get_verses_by_juz(
     language: str = "en",
     translations: Optional[str] = None,
     words: bool = False,
+    page: Optional[int] = None,
+    per_page: Optional[int] = None,
 ):
     translation_ids = list(map(int, translations.split(","))) if translations else None
     data = client.verses.by_juz(
-        juz_id=juz_id, language=language, translations=translation_ids, words=words
+        juz_id=juz_id, language=language, translations=translation_ids, words=words, page=page, per_page=per_page
     )
     return success_response(data)
 
