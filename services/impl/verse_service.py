@@ -10,8 +10,9 @@ class VerseService(BaseService):
         language: str = "en",
         translations: Optional[List[int]] = None,
         words: bool = False,
+        audio:int = 7,
     ):
-        params = {"language": language}
+        params = {"language": language, "audio": audio}
         if translations:
             params["translations"] = ",".join(map(str, translations))
         if words:
