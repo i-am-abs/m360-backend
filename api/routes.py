@@ -1,12 +1,13 @@
 import uuid
-from typing import Optional, List
-from fastapi import APIRouter, Body, Query, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Body, HTTPException
 
 from client.quran_api_client import QuranApiClient
 from config.factory.quran_config_factory import QuranConfigFactory
 from constants.api_endpoints import ApiEndpoints
 from db.factory.device_repository_factory import DeviceRepositoryFactory
 from dto.models import DeviceRegisterRequest
+from exceptions.api_exception import ApiException
 from utils.logger import Logger
 from utils.http_response import success_response
 
@@ -319,7 +320,14 @@ def get_resource_chapter_reciters():
     return success_response(client.resources.chapter_reciters())
 
 @router.get(ApiEndpoints.SEARCH.value)
-def search(
-    q: str, size: int = 10, page: Optional[int] = None, language: str = "en"
-):
+def search(q: str, size: int = 10, page: Optional[int] = None, language: str = "en"):
     return success_response(client.search.search(q, size=size, page=page, language=language))
+
+@router.get("/list-juz-recitation/{recitation_id}/{juz_number}")
+def list_juz_recitation(recitation_id: int, juz_number: int,  page: int = 1):
+    data = client.audio.get_juz_recitation_audio(
+        juz_number=juz_number,
+        recitation_id=recitation_id,
+        page=page,
+    )
+    return success_response(data)

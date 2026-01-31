@@ -1,48 +1,34 @@
-from http import HTTPStatus
-
-import requests
+from datetime import time
+from httpx import HTTPStatusError, Client, TimeoutException
 
 from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
-from utils.logger import Logger
-
-logger = Logger.get_logger(__name__)
 
 
 class RequestsHttpClient:
 
-    def get(self, url, headers=None, params=None):
+    def get(self, url, headers=None, params=None, retries: int = 2):
         try:
-            response = requests.get(
-                url=url,
-                headers=headers,
-                params=params,
-                timeout=SystemConfig.REQUEST_TIMEOUT.value,
-            )
-            response.raise_for_status()
-            return response.json()
+            with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
+                response = client.get(url, headers=headers, params=params)
 
-        except requests.exceptions.HTTPError as e:
-            status_code = (
-                e.response.status_code
-                if e.response
-                else HTTPStatus.GATEWAY_TIMEOUT.value
-            )
-            raise ApiException(
-                message=f"Upstream HTTP error [{status_code}] for {url}",
-                status_code=status_code,
-            )
+                if response.status_code == 401:
+                    raise ApiException("Unauthorized", status_code=401)
 
-        except requests.exceptions.Timeout:
-            logger.error(f"Request timeout: {url}")
-            raise ApiException(
-                message=f"Upstream timeout for {url}",
-                status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
-            )
+                response.raise_for_status()
+                return response.json()
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request error: {url}, {e}")
+        except TimeoutException:
+            if retries > 0:
+                time.sleep(1)
+                return self.get(url, headers, params, retries - 1)
+            raise ApiException("Upstream timeout", status_code=504)
+
+        except HTTPStatusError as e:
+            if e.response.status_code in (502, 503) and retries > 0:
+                time.sleep(1)
+                return self.get(url, headers, params, retries - 1)
             raise ApiException(
-                message=f"Upstream connection error for {url}",
-                status_code=HTTPStatus.BAD_GATEWAY.value,
+                f"Upstream error for {url}",
+                status_code=e.response.status_code,
             )

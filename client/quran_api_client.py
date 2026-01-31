@@ -1,4 +1,3 @@
-from auth.impl.oauth_token_provider import OAuthTokenProvider
 from http_client.impl.requests_http_client import RequestsHttpClient
 from services.impl.audio_service import AudioService
 from services.impl.chapter_service import ChapterService
@@ -14,10 +13,12 @@ from services.impl.translation_service import TranslationService
 from services.impl.verse_service import VerseService
 
 
+from auth.token_singleton import get_token_provider
+
 class QuranApiClient:
 
     def __init__(self, config):
-        token_provider = OAuthTokenProvider(config)
+        token_provider = get_token_provider(config)
         http_client = RequestsHttpClient()
 
         self.chapters = ChapterService(config, token_provider, http_client)

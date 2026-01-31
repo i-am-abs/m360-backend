@@ -23,20 +23,25 @@ class BaseService:
 
         cache_key = self._generate_cache_key(endpoint, params)
         cached_data = self.cache.get(cache_key)
-
         if cached_data is not None:
             return cached_data
 
-        token = self.token_provider.get_access_token()
-        headers = {"x-auth-token": token, "x-client-id": self.config.client_id}
-
         try:
+            token = self.token_provider.get_access_token()
+            headers = {
+                "x-auth-token": token,
+                "x-client-id": self.config.client_id,
+            }
+
             data = self.http_client.get(
-                f"{self.config.base_url}{endpoint}", headers=headers, params=params
+                f"{self.config.base_url}{endpoint}",
+                headers=headers,
+                params=params,
             )
 
             self.cache.set(cache_key, data, ttl=CacheConfig.TTL_EXPIRATION.value)
             return data
+
         except Exception as e:
             logger.error(f"Error fetching {endpoint}: {e}")
             raise
