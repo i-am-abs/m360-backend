@@ -9,10 +9,12 @@ class AudioService(BaseService):
             f"/content/api/v4/chapter_recitations/{recitation_id}/{chapter_id}"
         )
 
-    def get_verse_recitation_audio(self, verse_key: str, recitation_id: int):
-        params = {
-            "verse_key": verse_key
-        }
+    def get_verse_recitation_audio(self,  recitation_id: int, verse_key: Optional[str] = None):
+        params = {}
+
+        if verse_key:
+            params["verse_key"] = verse_key
+
         return self._get(
             f"/content/api/v4/quran/recitations/{recitation_id}", params
         )
