@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class TokenConfig(Enum):
-    EXPIRY_TIME = 60 * 60
-    TIME_DELTA = 3 * 100
     GRANT_TYPE = "client_credentials"
-    SCOPE = "content"
+    SCOPE = "content:read"
+    EXPIRY_TIME = 3600
+    TIME_DELTA = 60

@@ -1,54 +1,28 @@
-from typing import Optional
+from typing import Any
+
 from services.base_service import BaseService
 
 
 class AudioService(BaseService):
-
-    def get_chapter_recitation_audio(self, chapter_id: int, recitation_id: int):
+    def get_chapter_recitation_audio(
+        self,
+        chapter_id: int,
+        recitation_id: int,
+        segments: bool = False,
+    ) -> Any:
+        params: dict = {}
+        if segments:
+            params["segments"] = "true"
         return self._get(
-            f"/content/api/v4/chapter_recitations/{recitation_id}/{chapter_id}"
+            f"/v4/recitations/{recitation_id}/by-chapter/{chapter_id}",
+            params=params if params else None,
         )
 
-    def get_verse_recitation_audio(self, verse_key: str, recitation_id: int):
+    def get_verse_recitation_audio(
+        self,
+        verse_key: str,
+        recitation_id: int,
+    ) -> Any:
         return self._get(
-            f"/content/api/v4/verse_recitations/{recitation_id}/{verse_key}"
+            f"/v4/recitations/{recitation_id}/by-ayah/{verse_key}",
         )
-
-    def get_juz_recitation_audio(
-        self, juz_number: int, recitation_id: int, page: int = 1
-    ):
-        # Get juz info to find chapters in this juz
-        juz_data = self._get(f"/content/api/v4/juzs/{juz_number}")
-
-        # Extract chapter IDs from verse_mapping
-        chapter_ids = list(juz_data["juz"]["verse_mapping"].keys())
-
-        # Get chapter recitation audio for each chapter
-        audio_files = []
-        for chapter_id in chapter_ids:
-            try:
-                chapter_audio = self._get(
-                    f"/content/api/v4/chapter_recitations/{recitation_id}/{chapter_id}"
-                )
-                audio_files.append(
-                    {
-                        "chapter_id": int(chapter_id),
-                        "audio_file": chapter_audio["audio_file"],
-                    }
-                )
-            except Exception as e:
-                # If a chapter audio is not available, skip it
-                continue
-
-        return {
-            "juz_number": juz_number,
-            "recitation_id": recitation_id,
-            "audio_files": audio_files,
-        }
-
-    def get_recitations(self, language: Optional[str] = None):
-        params = {"language": language} if language else {}
-        return self._get("/content/api/v4/resources/recitations", params)
-
-    def get_recitation(self, recitation_id: int):
-        return self._get(f"/content/api/v4/resources/recitations/{recitation_id}")

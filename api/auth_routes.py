@@ -1,99 +1,92 @@
-from fastapi import APIRouter, HTTPException, status
-from datetime import datetime
+
 from typing import Optional
 
-from auth.impl.oauth_token_provider import OAuthTokenProvider
-from config.factory.quran_config_factory import QuranConfigFactory
-from constants.api_endpoints import ApiEndpoints
-from constants.token_config import TokenConfig
-from dto.models import TokenResponse, TokenRequest
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
+
+from core.auth.jwt_service import JwtService
+from core.di.container import get_jwt_service, get_user_repository
 from utils.http_response import success_response
 from utils.logger import Logger
 
-auth_router = APIRouter(tags=["Authentication"])
+security = HTTPBearer(auto_error=False)
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
 logger = Logger.get_logger(__name__)
 
 
-@auth_router.post(
-    ApiEndpoints.AUTH_TOKEN.value,
-    summary="Generate OAuth2 Access Token",
-    description="Generate a new OAuth2 bearer token for API authentication. "
-    "Tokens are cached and reused until expiration (1 hour) unless force_refresh is True.",
-)
-def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
-    try:
-        config = QuranConfigFactory.create()
-        token_provider = OAuthTokenProvider(config)
-        if request and request.force_refresh:
-            token_provider.access_token = None
-            token_provider.expiry = None
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
-        access_token = token_provider.get_access_token()
-        remaining_seconds = TokenConfig.EXPIRY_TIME.value
-        if token_provider.expiry:
-            remaining_seconds = int(
-                (token_provider.expiry - datetime.now()).total_seconds()
-            )
 
-        token = TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
-            expires_in=remaining_seconds,
-            scope=TokenConfig.SCOPE.value,
-        )
-        return success_response(token.dict(), message="Token generated")
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
 
-    except Exception as e:
-        logger.error(f"Failed to generate token: {e}")
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> dict:
+    """Dependency to validate JWT and return current user payload."""
+    if not credentials or not credentials.credentials:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to generate authentication token: {str(e)}",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-
-
-@auth_router.get(
-    "/auth/token/status",
-    summary="Check Token Status",
-    description="Check if there's a cached token and its expiry status",
-)
-def check_token_status():
-    try:
-        config = QuranConfigFactory.create()
-        token_provider = OAuthTokenProvider(config)
-
-        if not token_provider.access_token or not token_provider.expiry:
-            return success_response(
-                {
-                    "cached": False,
-                    "expired": None,
-                    "expires_in": None,
-                },
-                message="No token currently cached",
-            )
-        expires_in = (
-            int((token_provider.expiry - datetime.now()).total_seconds())
-            if not datetime.now() >= token_provider.expiry
-            else 0
-        )
-
-        return success_response(
-            {
-                "cached": True,
-                "expired": datetime.now() >= token_provider.expiry,
-                "expires_in": (
-                    expires_in if not datetime.now() >= token_provider.expiry else None
-                ),
-            },
-            message=(
-                "Token expired"
-                if datetime.now() >= token_provider.expiry
-                else "Token is valid"
-            ),
-        )
-
-    except Exception as e:
-        logger.error(f"Token status check failed: {e}")
+    jwt_service = get_jwt_service()
+    payload = jwt_service.decode_token(credentials.credentials)
+    if not payload:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to check token status: {str(e)}",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+    return payload
+
+
+@auth_router.post("/login")
+def login(request: LoginRequest):
+    user_repo = get_user_repository()
+    user = user_repo.find_by_username(request.username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    if not pwd_context.verify(request.password, user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    jwt_service = get_jwt_service()
+    token = jwt_service.create_access_token(subject=request.username)
+    return success_response({
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": jwt_service.get_expiration_seconds(),
+    })
+
+
+@auth_router.post("/register")
+def register(request: RegisterRequest):
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed = pwd_context.hash(request.password)
+    user_repo = get_user_repository()
+    try:
+        created = user_repo.create_user(
+            username=request.username,
+            hashed_password=hashed,
+            email=request.email,
+        )
+        jwt_service = get_jwt_service()
+        token = jwt_service.create_access_token(subject=request.username)
+        return success_response({
+            "user": created,
+            "access_token": token,
+            "token_type": "bearer",
+            "expires_in": jwt_service.get_expiration_seconds(),
+        })
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

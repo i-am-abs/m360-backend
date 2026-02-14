@@ -1,17 +1,14 @@
-from typing import Any
+from __future__ import annotations
 
-from fastapi.responses import JSONResponse
+from typing import Any, Dict
 
 
-def success_response(
-    data: Any, message: str = "OK", status_code: int = 200
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": "SUCCESS",
-            "message": message,
-            "status_code": status_code,
-            "data": data,
-        },
-    )
+def success_response(data: Any) -> Dict[str, Any]:
+    return {"success": True, "data": data}
+
+
+def error_response(message: str, code: str | None = None) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"success": False, "message": message}
+    if code is not None:
+        out["code"] = code
+    return out

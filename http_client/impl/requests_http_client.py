@@ -1,13 +1,21 @@
-from datetime import time
+import time
+from typing import Any, Dict, Optional
+
 from httpx import HTTPStatusError, Client, TimeoutException
 
 from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
+from http_client.http_client import HttpClient
 
 
-class RequestsHttpClient:
-
-    def get(self, url, headers=None, params=None, retries: int = 2):
+class RequestsHttpClient(HttpClient):
+    def get(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        retries: int = 2,
+    ) -> Any:
         try:
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
                 response = client.get(url, headers=headers, params=params)

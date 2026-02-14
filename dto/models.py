@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 
 class TokenResponse(BaseModel):
@@ -11,7 +10,3 @@ class TokenResponse(BaseModel):
 
 class TokenRequest(BaseModel):
     force_refresh: bool = False
-
-
-class DeviceRegisterRequest(BaseModel):
-    uuid: Optional[str] = None

@@ -1,0 +1,2 @@
+class FeatureKeys:
+    MASJID_LOCATION = "MASJID_LOCATION"

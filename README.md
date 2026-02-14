@@ -1,68 +1,90 @@
 # m360-backend
 
-FastAPI wrapper over Quran Foundation APIs with OAuth2 authentication.
+FastAPI wrapper over Quran Foundation APIs with JWT authentication, Masjid nearby search, and feature flags.
 
 ## Prerequisites
 
-- Python 3.11 or higher
+- Python 3.9 or higher
 - pip (Python package manager)
+- MongoDB
 
 ## Setup
 
-1. **Install dependencies** (if not already installed):
+1. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Set up environment variables**:
-   
-   Create a `.env` file (or `.env.local`, `.env.dev`, `.env.preprod`, `.env.prod`) in the root directory with the following required variables:
+
+   Create a `.env` file in the root directory:
+
+   **Quran API:**
    ```
    QURAN_CLIENT_ID=your_client_id
    QURAN_CLIENT_SECRET=your_client_secret
    QURAN_BASE_URL=your_base_url
    QURAN_OAUTH_URL=your_oauth_url
    ```
-   
-   You can also set the `APP_ENV` environment variable to explicitly specify which environment file to use:
-   - `local` → `.env.local`
-   - `dev` → `.env.dev`
-   - `preprod` → `.env.preprod`
-   - `prod` → `.env.prod`
+
+   **MongoDB:**
+   ```
+   MONGO_URI=mongodb://localhost:27017
+   MONGO_DB_NAME=m360
+   ```
+
+   **JWT Authentication:**
+   ```
+   JWT_SECRET_KEY=your-secret-key-change-in-production
+   JWT_ALGORITHM=HS256
+   JWT_EXPIRATION_MINUTES=60
+   ```
+
+   **Masjid nearby search (configurable radius from env):**
+   ```
+   MASJID_SEARCH_RADIUS_KM=10
+   MASJID_LOCATION_ENABLED=true
+   ```
+
+   `MASJID_LOCATION_ENABLED` is a feature flag for pilot testing. Set to `true` to enable location-based masjid search; `false` to disable.
+
+## API Overview
+
+### Public
+- `GET /health` - Health check
+
+### Auth (no JWT required)
+- `POST /auth/register` - Register user (username, password, optional email)
+- `POST /auth/login` - Login (returns JWT)
+
+### Protected (JWT required)
+- `GET /chapters` - List chapters
+- `GET /chapters/{chapter_id}` - Chapter by ID
+- `GET /verses/by-chapter/{chapter_id}` - Verses by chapter
+- `GET /verses/by-juz/{juz_id}` - Verses by juz
+- `GET /juzs` - List juzs
+- `GET /juzs/{juz_id}` - Juz by ID
+- `GET /audio/chapter?chapter_id=&recitation_id=` - Chapter audio
+- `GET /audio/verse?verse_key=&recitation_id=` - Verse audio
+- `GET /masjid/nearby?latitude=&longitude=` - Nearby masjids (feature-flagged)
+
+## Feature Flags
+
+The `feature_flag` module provides reusable feature flag support. Use `FeatureFlagProvider` interface and `EnvFeatureFlagProvider` implementation. Add keys in `feature_flag/feature_keys.py` and check with `feature_flag_provider.is_enabled(FeatureKeys.KEY)`.
 
 ## Starting the Service
-
-### Option 1: Using uvicorn directly
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The `--reload` flag enables auto-reload on code changes (useful for development).
-
-### Option 2: Using Python module
-
+Or with Python:
 ```bash
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Option 3: Using Docker
-
-```bash
-docker build -t m360-backend .
-docker run -p 8000:8000 m360-backend
-```
-
-## Accessing the Service
-
-Once started, the service will be available at:
-- **API**: http://localhost:8000
-- **Interactive API Documentation (Swagger UI)**: http://localhost:8000/docs
-- **Alternative API Documentation (ReDoc)**: http://localhost:8000/redoc
-
 ## Health Check
 
-Check if the service is running:
 ```bash
 curl http://localhost:8000/health
 ```

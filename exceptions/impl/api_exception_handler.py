@@ -1,54 +1,26 @@
 from fastapi import Request
-from fastapi import HTTPException
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from exceptions.api_exception import ApiException
 
 
-async def api_exception_handler(request: Request, exc: ApiException):
+def api_exception_handler(request: Request, exc: ApiException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "status": "UPSTREAM_ERROR",
-            "message": str(exc),
-            "status_code": exc.status_code,
-            "error": exc.__class__.__name__,
-            "path": request.url.path,
-        },
+        content={"success": False, "message": exc.message},
     )
 
 
-async def generic_exception_handler(request: Request, exc: Exception):
+def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(
         status_code=500,
-        content={
-            "status": "ERROR",
-            "message": str(exc),
-            "status_code": 500,
-            "error": exc.__class__.__name__,
-            "path": request.url.path,
-        },
+        content={"success": False, "message": "Internal server error"},
     )
 
 
-async def http_exception_handler(request: Request, exc: HTTPException):
-    status_code = exc.status_code if hasattr(exc, "status_code") else 500
-    detail = exc.detail if hasattr(exc, "detail") else None
-    message = (
-        detail
-        if isinstance(detail, str)
-        else (
-            detail.get("message")
-            if isinstance(detail, dict) and "message" in detail
-            else str(detail)
-        )
-    )
+def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": "ERROR",
-            "message": message or "HTTP error",
-            "status_code": status_code,
-            "error": exc.__class__.__name__,
-            "path": request.url.path,
-        },
+        status_code=exc.status_code,
+        content={"success": False, "detail": exc.detail},
     )
