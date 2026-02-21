@@ -1,11 +1,9 @@
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from core.auth.jwt_service import JwtService
 from core.di.container import get_jwt_service, get_user_repository
 from utils.http_response import success_response
 from utils.logger import Logger
@@ -29,7 +27,6 @@ class RegisterRequest(BaseModel):
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
-    """Dependency to validate JWT and return current user payload."""
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from core.config.app_config import AppConfig
 from feature_flag.feature_flag_provider import FeatureFlagProvider
@@ -26,7 +26,7 @@ class MasjidService:
         self,
         longitude: float,
         latitude: float,
-        radius_km: float | None = None,
+        radius_km: Optional[float] = None,
         limit: int = 50,
     ) -> Dict[str, Any]:
         if not self._feature_flags.is_enabled(FeatureKeys.MASJID_LOCATION):

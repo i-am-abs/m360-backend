@@ -9,6 +9,7 @@ from feature_flag.env_feature_flag_provider import EnvFeatureFlagProvider
 from feature_flag.feature_flag_provider import FeatureFlagProvider
 from masjid.masjid_repository import MasjidRepository
 from masjid.masjid_service import MasjidService
+from masjid.impl.google_places_masjid_repository import GooglePlacesMasjidRepository
 from masjid.impl.mongo_masjid_repository import MongoMasjidRepository
 from utils.logger import Logger
 
@@ -56,10 +57,14 @@ def get_masjid_repository() -> MasjidRepository:
     global _masjid_repository
     if _masjid_repository is None:
         config = get_app_config()
-        _masjid_repository = MongoMasjidRepository(
-            mongo_uri=config.get_mongo_uri(),
-            db_name=config.get_mongo_db_name(),
-        )
+        api_key = config.get_google_places_api_key()
+        if api_key:
+            _masjid_repository = GooglePlacesMasjidRepository(api_key=api_key)
+        else:
+            _masjid_repository = MongoMasjidRepository(
+                mongo_uri=config.get_mongo_uri(),
+                db_name=config.get_mongo_db_name(),
+            )
     return _masjid_repository
 
 

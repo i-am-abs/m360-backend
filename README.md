@@ -40,11 +40,14 @@ FastAPI wrapper over Quran Foundation APIs with JWT authentication, Masjid nearb
    JWT_EXPIRATION_MINUTES=60
    ```
 
-   **Masjid nearby search (configurable radius from env):**
+   **Masjid nearby search (Google Places API):**
    ```
+   GOOGLE_PLACES_API_KEY=your_google_places_api_key
    MASJID_SEARCH_RADIUS_KM=10
    MASJID_LOCATION_ENABLED=true
    ```
+
+   When `GOOGLE_PLACES_API_KEY` is set, nearby masjids are fetched from **Google Places API (Nearby Search)**. Enable "Places API" in [Google Cloud Console](https://console.cloud.google.com/) for the project that owns the key (APIs & Services → Enable APIs → Places API). If the key is not set, the app falls back to MongoDB for masjid data.
 
    `MASJID_LOCATION_ENABLED` is a feature flag for pilot testing. Set to `true` to enable location-based masjid search; `false` to disable.
 

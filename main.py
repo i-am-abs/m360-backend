@@ -1,5 +1,9 @@
 from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+
+load_dotenv()
 from fastapi.middleware.cors import CORSMiddleware
 from utils.logger import Logger
 from api.routes import router

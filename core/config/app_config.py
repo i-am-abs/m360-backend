@@ -25,3 +25,8 @@ class AppConfig(ABC):
     @abstractmethod
     def get_masjid_search_radius_km(self) -> float:
         pass
+
+    @abstractmethod
+    def get_google_places_api_key(self) -> str:
+        """Return Google Places API key (empty if not configured)."""
+        pass
