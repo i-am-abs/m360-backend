@@ -10,11 +10,11 @@ from http_client.http_client import HttpClient
 
 class RequestsHttpClient(HttpClient):
     def get(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        retries: int = 2,
+            self,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            params: Optional[Dict[str, Any]] = None,
+            retries: int = 2,
     ) -> Any:
         try:
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:

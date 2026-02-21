@@ -25,11 +25,11 @@ class GooglePlacesMasjidRepository(MasjidRepository):
         self._api_key = api_key
 
     def find_nearby(
-        self,
-        longitude: float,
-        latitude: float,
-        radius_km: float,
-        limit: int = 50,
+            self,
+            longitude: float,
+            latitude: float,
+            radius_km: float,
+            limit: int = 50,
     ) -> List[Dict[str, Any]]:
         radius_m = min(int(radius_km * 1000), MAX_RADIUS_METERS)
         params = {

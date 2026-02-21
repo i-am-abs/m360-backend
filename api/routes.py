@@ -1,4 +1,6 @@
-
+"""
+API routes - chapters, verses, juzs, audio (JWT-protected).
+"""
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -36,34 +38,15 @@ def get_chapter(chapter_id: int, language: str = "en", _: dict = Depends(get_cur
     return success_response(data)
 
 
-@router.get(ApiEndpoints.VERSE_BY_KEY.value)
-def get_verse_by_key(
-    verse_key: str,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    audio:int = 7,
-):
-    translation_ids = list(map(int, translations.split(","))) if translations else None
-    data = client.verses.by_key(
-        verse_key=verse_key,
-        language=language,
-        translations=translation_ids,
-        words=words,
-        audio=audio
-    )
-    return success_response(data)
-
-
 @router.get(ApiEndpoints.VERSES_BY_CHAPTER.value)
 def get_verses_by_chapter(
-    chapter_id: int,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
-    _: dict = Depends(get_current_user),
+        chapter_id: int,
+        language: str = "en",
+        translations: Optional[str] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
+        _: dict = Depends(get_current_user),
 ):
     translation_ids = list(map(int, translations.split(","))) if translations else None
     data = client.verses.by_chapter(
@@ -79,13 +62,13 @@ def get_verses_by_chapter(
 
 @router.get(ApiEndpoints.VERSES_BY_JUZ.value)
 def get_verses_by_juz(
-    juz_id: int,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
-    _: dict = Depends(get_current_user),
+        juz_id: int,
+        language: str = "en",
+        translations: Optional[str] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
+        _: dict = Depends(get_current_user),
 ):
     translation_ids = list(map(int, translations.split(","))) if translations else None
     data = client.verses.by_juz(
@@ -121,12 +104,11 @@ def get_chapter_audio(chapter_id: int, recitation_id: int, _: dict = Depends(get
 
 @router.get(ApiEndpoints.AUDIO_VERSE.value)
 def get_verse_audio(
-    verse_key: str, recitation_id: int, _: dict = Depends(get_current_user)
+        verse_key: str, recitation_id: int, _: dict = Depends(get_current_user)
 ):
-def get_verse_audio(recitation_id: int, verse_key: Optional[str] = None, chapter_number: Optional[int] = None, juz_number: Optional[int] = None):
     try:
         data = client.audio.get_verse_recitation_audio(
-            recitation_id=recitation_id, verse_key=verse_key, chapter_number=chapter_number, juz_number=juz_number
+            verse_key=verse_key, recitation_id=recitation_id
         )
         return success_response(data)
     except ApiException as e:

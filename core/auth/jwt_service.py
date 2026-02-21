@@ -6,10 +6,10 @@ import jwt
 
 class JwtService:
     def __init__(
-        self,
-        secret_key: str,
-        algorithm: str = "HS256",
-        expiration_minutes: int = 60,
+            self,
+            secret_key: str,
+            algorithm: str = "HS256",
+            expiration_minutes: int = 60,
     ) -> None:
         self._secret = secret_key
         self._algorithm = algorithm

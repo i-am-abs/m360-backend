@@ -9,12 +9,12 @@ from services.base_service import BaseService
 class VerseService(BaseService):
 
     def by_key(
-        self,
-        verse_key: str,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-        audio:int = 7,
+            self,
+            verse_key: str,
+            language: str = "en",
+            translations: Optional[List[int]] = None,
+            words: bool = False,
+            audio: int = 7,
     ):
         params = {"language": language, "audio": audio}
         if translations:
@@ -24,13 +24,13 @@ class VerseService(BaseService):
         return self._get(f"/content/api/v4/verses/by_key/{verse_key}", params)
 
     def by_chapter(
-        self,
-        chapter_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-        page: Optional[int] = None,
-        per_page: Optional[int] = None,
+            self,
+            chapter_id: int,
+            language: str = "en",
+            translations: Optional[List[int]] = None,
+            words: bool = False,
+            page: Optional[int] = None,
+            per_page: Optional[int] = None,
     ) -> Any:
         params: dict = {"language": language, "words": words}
         if translations:
@@ -42,13 +42,13 @@ class VerseService(BaseService):
         return self._get(f"/v4/verses/by-chapter/{chapter_id}", params=params)
 
     def by_juz(
-        self,
-        juz_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-        page: Optional[int] = None,
-        per_page: Optional[int] = None,
+            self,
+            juz_id: int,
+            language: str = "en",
+            translations: Optional[List[int]] = None,
+            words: bool = False,
+            page: Optional[int] = None,
+            per_page: Optional[int] = None,
     ) -> Any:
         params: dict = {"language": language, "words": words}
         if translations:

@@ -17,11 +17,11 @@ class MongoMasjidRepository(MasjidRepository):
         self._coll.create_index([("location", "2dsphere")])
 
     def find_nearby(
-        self,
-        longitude: float,
-        latitude: float,
-        radius_km: float,
-        limit: int = 50,
+            self,
+            longitude: float,
+            latitude: float,
+            radius_km: float,
+            limit: int = 50,
     ) -> List[Dict[str, Any]]:
         radius_m = radius_km * 1000
         query = {

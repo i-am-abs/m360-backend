@@ -1,7 +1,8 @@
 import os
 
-from config.quran_api_config import QuranApiConfig
 from dotenv import load_dotenv
+
+from config.quran_api_config import QuranApiConfig
 
 load_dotenv()
 

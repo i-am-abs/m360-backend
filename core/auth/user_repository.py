@@ -9,9 +9,9 @@ class UserRepository(ABC):
 
     @abstractmethod
     def create_user(
-        self,
-        username: str,
-        hashed_password: str,
-        email: Optional[str] = None,
+            self,
+            username: str,
+            hashed_password: str,
+            email: Optional[str] = None,
     ) -> Dict[str, Any]:
         pass

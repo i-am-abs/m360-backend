@@ -7,10 +7,10 @@ from core.config.app_config import AppConfig
 from core.config.env_app_config import EnvAppConfig
 from feature_flag.env_feature_flag_provider import EnvFeatureFlagProvider
 from feature_flag.feature_flag_provider import FeatureFlagProvider
-from masjid.masjid_repository import MasjidRepository
-from masjid.masjid_service import MasjidService
 from masjid.impl.google_places_masjid_repository import GooglePlacesMasjidRepository
 from masjid.impl.mongo_masjid_repository import MongoMasjidRepository
+from masjid.masjid_repository import MasjidRepository
+from masjid.masjid_service import MasjidService
 from utils.logger import Logger
 
 logger = Logger.get_logger(__name__)

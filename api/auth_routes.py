@@ -25,7 +25,7 @@ class RegisterRequest(BaseModel):
 
 
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
     if not credentials or not credentials.credentials:
         raise HTTPException(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from core.config.app_config import AppConfig
 from feature_flag.feature_flag_provider import FeatureFlagProvider
@@ -13,21 +13,21 @@ logger = Logger.get_logger(__name__)
 
 class MasjidService:
     def __init__(
-        self,
-        repository: MasjidRepository,
-        config: AppConfig,
-        feature_flag_provider: FeatureFlagProvider,
+            self,
+            repository: MasjidRepository,
+            config: AppConfig,
+            feature_flag_provider: FeatureFlagProvider,
     ):
         self._repository = repository
         self._config = config
         self._feature_flags = feature_flag_provider
 
     def find_nearby(
-        self,
-        longitude: float,
-        latitude: float,
-        radius_km: Optional[float] = None,
-        limit: int = 50,
+            self,
+            longitude: float,
+            latitude: float,
+            radius_km: Optional[float] = None,
+            limit: int = 50,
     ) -> Dict[str, Any]:
         if not self._feature_flags.is_enabled(FeatureKeys.MASJID_LOCATION):
             return {

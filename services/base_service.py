@@ -1,7 +1,5 @@
 from typing import Any, Dict, Optional
 
-from auth.token_singleton import get_token_provider
-from http_client.impl.requests_http_client import RequestsHttpClient
 from utils.logger import Logger
 
 logger = Logger.get_logger(__name__)

@@ -2,7 +2,6 @@ import logging
 
 
 class Logger:
-
     _initialized: bool = False
 
     @classmethod
