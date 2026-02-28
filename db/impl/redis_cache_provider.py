@@ -18,7 +18,7 @@ class RedisCacheProvider(CacheProvider):
     def __init__(self):
         if redis is None:
             raise ImportError(
-                "redis package is not installed. Install it with: pip install redis~=7.1.0"
+                "redis package is not installed. Install it with: pip install redis"
             )
 
         redis_host = os.getenv("REDIS_HOST", "localhost")
