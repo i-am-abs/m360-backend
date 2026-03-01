@@ -1,9 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 
 class HttpClient(ABC):
 
     @abstractmethod
-    def get(self, url: str, headers: Dict[str, str], params: Dict[str, Any]) -> Dict:
+    def get(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
         pass

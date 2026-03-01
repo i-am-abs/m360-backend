@@ -1,68 +1,65 @@
 # m360-backend
 
-FastAPI wrapper over Quran Foundation APIs with OAuth2 authentication.
+FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.foundation) with OAuth2 Client Credentials authentication.
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- pip (Python package manager)
+- Python 3.11+
+- pip
 
 ## Setup
 
-1. **Install dependencies** (if not already installed):
+1. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Set up environment variables**:
-   
-   Create a `.env` file (or `.env.local`, `.env.dev`, `.env.preprod`, `.env.prod`) in the root directory with the following required variables:
-   ```
-   QURAN_CLIENT_ID=your_client_id
-   QURAN_CLIENT_SECRET=your_client_secret
-   QURAN_BASE_URL=your_base_url
-   QURAN_OAUTH_URL=your_oauth_url
-   ```
-   
-   You can also set the `APP_ENV` environment variable to explicitly specify which environment file to use:
-   - `local` → `.env.local`
-   - `dev` → `.env.dev`
-   - `preprod` → `.env.preprod`
-   - `prod` → `.env.prod`
+2. **Environment variables**
 
-## Starting the Service
+   Create a `.env` file in the project root.
 
-### Option 1: Using uvicorn directly
+   **Required (server-side only):**
+   - `QURAN_CLIENT_ID` or `QF_CLIENT_ID` — from [Quran Foundation request access](https://api-docs.quran.foundation/request-access)
+   - `QURAN_CLIENT_SECRET` or `QF_CLIENT_SECRET` — never expose client-side
+
+   **Optional:**
+   - `QF_ENV` — `production` or `prelive` (default). When set, API and OAuth base URLs are chosen automatically:
+     - **production**: `https://apis.quran.foundation`, `https://oauth2.quran.foundation`
+     - **prelive**: `https://apis-prelive.quran.foundation`, `https://prelive-oauth2.quran.foundation`
+   - `QURAN_BASE_URL` / `QURAN_OAUTH_URL` — override base URLs (must not include `/content/api` in base URL; paths in code already do).
+   - `APP_ENV` — for loading `.env.prod` / `.env.preprod` / `.env.dev` / `.env.local` if present.
+
+   **Production (e.g. Render):**
+   - Set `QF_ENV=production` so the correct production API and OAuth URLs are used.
+   - Ensure `QURAN_CLIENT_ID` and `QURAN_CLIENT_SECRET` are set in the host’s environment (no secrets in repo).
+   - Do **not** set `QURAN_BASE_URL` to a URL that ends with `/content/api` (e.g. use `https://apis.quran.foundation` or leave unset when using `QF_ENV=production`).
+
+## API Endpoints (exposed)
+
+- `GET /health` — health check
+- `POST /auth/token` — obtain OAuth2 access token (for debugging; the app gets tokens automatically)
+- `GET /chapters?language=en` — all chapters
+- `GET /verses/by-chapter/{chapter_id}` — verses by chapter
+- `GET /verses/by-juz/{juz_id}` — verses by juz
+- `GET /juzs?language=en` — all juzs
+- `GET /audio/chapter?chapter_id=&recitation_id=` — chapter recitation audio
+- `GET /audio/verse?recitation_id=&verse_key=...` — verse recitation audio
+
+Authentication follows [Quran Foundation OAuth2](https://api-docs.quran.foundation/docs/oauth2_apis_versioned/oauth-2-token-exchange): tokens are requested with Client Credentials, cached, and re-requested ~30s before expiry. Each API request sends `x-auth-token` and `x-client-id`. On 401, the app clears the token and retries once.
+
+## Running the service
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The `--reload` flag enables auto-reload on code changes (useful for development).
+- API: http://localhost:8000  
+- Swagger: http://localhost:8000/docs  
+- ReDoc: http://localhost:8000/redoc  
 
-### Option 2: Using Python module
-
-```bash
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Option 3: Using Docker
+## Docker
 
 ```bash
 docker build -t m360-backend .
 docker run -p 8000:8000 m360-backend
-```
-
-## Accessing the Service
-
-Once started, the service will be available at:
-- **API**: http://localhost:8000
-- **Interactive API Documentation (Swagger UI)**: http://localhost:8000/docs
-- **Alternative API Documentation (ReDoc)**: http://localhost:8000/redoc
-
-## Health Check
-
-Check if the service is running:
-```bash
-curl http://localhost:8000/health
 ```

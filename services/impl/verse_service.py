@@ -1,141 +1,58 @@
-from typing import Optional, List
+from typing import Optional
+
+from constants.api_endpoints import ApiEndpoints
 from services.base_service import BaseService
 
 
-class VerseService(BaseService):
+def _verse_params(
+    language: str = "en",
+    translations: Optional[list] = None,
+    words: bool = False,
+    page: Optional[int] = None,
+    per_page: Optional[int] = None,
+) -> dict:
+    params = {
+        "language": language,
+        "translation_fields": "language_name",
+        "fields": "text_uthmani",
+    }
+    if translations:
+        params["translations"] = ",".join(map(str, translations))
+    if words:
+        params["words"] = "true"
+    if page is not None:
+        params["page"] = page
+    if per_page is not None:
+        params["per_page"] = per_page
+    return params
 
-    def by_key(
-        self,
-        verse_key: str,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-        audio:int = 7,
-    ):
-        params = {"language": language, "audio": audio}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        return self._get(f"/content/api/v4/verses/by_key/{verse_key}", params)
+
+class VerseService(BaseService):
 
     def by_chapter(
         self,
         chapter_id: int,
         language: str = "en",
-        translations: Optional[List[int]] = None,
+        translations: Optional[list] = None,
         words: bool = False,
         page: Optional[int] = None,
         per_page: Optional[int] = None,
     ):
-        params = {
-            "language": language,
-            "translation_fields": "language_name",
-            "fields": "text_uthmani",
-        }
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        if page:
-            params["page"] = page
-        if per_page:
-            params["per_page"] = per_page
-
-        return self._get(f"/content/api/v4/verses/by_chapter/{chapter_id}", params)
+        params = _verse_params(language, translations, words, page, per_page)
+        return self._get(
+            f"{ApiEndpoints.CONTENT_API_V4.value}/verses/by_chapter/{chapter_id}", params
+        )
 
     def by_juz(
         self,
         juz_id: int,
         language: str = "en",
-        translations: Optional[List[int]] = None,
+        translations: Optional[list] = None,
         words: bool = False,
         page: Optional[int] = None,
         per_page: Optional[int] = None,
     ):
-        params = {
-            "language": language,
-            "translation_fields": "language_name",
-            "fields": "text_uthmani",
-        }
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        if page:
-            params["page"] = page
-        if per_page:
-            params["per_page"] = per_page
-        return self._get(f"/content/api/v4/verses/by_juz/{juz_id}", params)
-
-    def by_page(
-        self,
-        page_number: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-    ):
-        params = {"language": language}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        return self._get(f"/content/api/v4/verses/by_page/{page_number}", params)
-
-    def by_rub_el_hizb(
-        self,
-        rub_el_hizb_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-    ):
-        params = {"language": language}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
+        params = _verse_params(language, translations, words, page, per_page)
         return self._get(
-            f"/content/api/v4/verses/by_rub_el_hizb/{rub_el_hizb_id}", params
+            f"{ApiEndpoints.CONTENT_API_V4.value}/verses/by_juz/{juz_id}", params
         )
-
-    def by_hizb(
-        self,
-        hizb_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-    ):
-        params = {"language": language}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        return self._get(f"/content/api/v4/verses/by_hizb/{hizb_id}", params)
-
-    def by_ruku(
-        self,
-        ruku_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-    ):
-        params = {"language": language}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        return self._get(f"/content/api/v4/verses/by_ruku/{ruku_id}", params)
-
-    def by_manzil(
-        self,
-        manzil_id: int,
-        language: str = "en",
-        translations: Optional[List[int]] = None,
-        words: bool = False,
-    ):
-        params = {"language": language}
-        if translations:
-            params["translations"] = ",".join(map(str, translations))
-        if words:
-            params["words"] = "true"
-        return self._get(f"/content/api/v4/verses/by_manzil/{manzil_id}", params)

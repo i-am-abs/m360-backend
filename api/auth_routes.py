@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from datetime import datetime
 from typing import Optional
 
-from auth.impl.oauth_token_provider import OAuthTokenProvider
-from config.factory.quran_config_factory import QuranConfigFactory
+from auth.token_singleton import get_token_provider
+from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import TokenResponse, TokenRequest
@@ -14,19 +14,13 @@ auth_router = APIRouter(tags=["Authentication"])
 logger = Logger.get_logger(__name__)
 
 
-@auth_router.post(
-    ApiEndpoints.AUTH_TOKEN.value,
-    summary="Generate OAuth2 Access Token",
-    description="Generate a new OAuth2 bearer token for API authentication. "
-    "Tokens are cached and reused until expiration (1 hour) unless force_refresh is True.",
-)
+@auth_router.post(ApiEndpoints.AUTH_TOKEN.value, summary="Generate OAuth2 Access Token")
 def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
     try:
-        config = QuranConfigFactory.create()
-        token_provider = OAuthTokenProvider(config)
+        config = create_config()
+        token_provider = get_token_provider(config)
         if request and request.force_refresh:
-            token_provider.access_token = None
-            token_provider.expiry = None
+            token_provider.clear_token()
 
         access_token = token_provider.get_access_token()
         remaining_seconds = TokenConfig.EXPIRY_TIME.value
@@ -58,8 +52,8 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
 )
 def check_token_status():
     try:
-        config = QuranConfigFactory.create()
-        token_provider = OAuthTokenProvider(config)
+        config = create_config()
+        token_provider = get_token_provider(config)
 
         if not token_provider.access_token or not token_provider.expiry:
             return success_response(
