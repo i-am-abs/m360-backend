@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from utils.logger import Logger
+import uvicorn
+
+from logger.Logger import Logger
 from api.routes import router
 from api.auth_routes import auth_router
 from exceptions.api_exception import ApiException
@@ -37,9 +39,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(auth_router)
 app.include_router(router)
 app.add_exception_handler(ApiException, api_exception_handler)
-app.add_exception_handler(Exception, generic_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="debug",
+    )

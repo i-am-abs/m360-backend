@@ -9,9 +9,11 @@ class ChapterService(BaseService):
         )
         if language and language not in ("en", "ar"):
             chapters = data.get("chapters") if isinstance(data, dict) else None
+
             if chapters and isinstance(chapters, list):
                 for ch in chapters:
                     t = ch.get("translated_name") if isinstance(ch, dict) else None
+
                     if t and isinstance(t, dict) and t.get("name"):
                         t["language_name"] = {
                             "hi": "hindi",

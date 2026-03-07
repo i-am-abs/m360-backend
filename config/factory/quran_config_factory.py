@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 
 from config.quran_api_config import QuranApiConfig
 
-# Project root (parent of config/) so .env is found regardless of cwd
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 _ENV_FILES = {
@@ -56,6 +55,7 @@ def _load_env() -> None:
             load_dotenv(p, override=True)
     elif not env_path.exists():
         import warnings
+
         warnings.warn(
             f"Environment file {env_file or '.env'} not found. Using system env."
         )
