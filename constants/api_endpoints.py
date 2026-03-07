@@ -16,4 +16,4 @@ class ApiEndpoints(Enum):
     MASJID_NEARBY = "/masjids/nearby"
 
     CONTENT_API_V4 = "/content/api/v4"
-    AUTH_TOKEN_STATUS ="/auth/token/status"
+    AUTH_TOKEN_STATUS = "/auth/token/status"
