@@ -67,7 +67,7 @@ class GooglePlacesClient:
                 response.raise_for_status()
                 data = response.json()
                 places = data.get("places") or []
-                return self._normalize_places(places)
+                return self._normalize_places(places, http_client=client)
         except ConnectError as e:
             logger.error("Google Places API unreachable: %s", e)
             raise ApiException(
@@ -83,12 +83,49 @@ class GooglePlacesClient:
                 status_code=e.response.status_code,
             )
 
-    def _normalize_places(self, places: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _fetch_photo_uri(
+        self, http_client: Client, photo_name: str
+    ) -> Optional[str]:
+        """Resolve a place photo name to a short-lived display URL via Places Photo Media API."""
+        if not (photo_name and isinstance(photo_name, str)):
+            return None
+        media_name = (
+            f"{photo_name}/media" if not photo_name.endswith("/media") else photo_name
+        )
+        url = f"{SystemConfig.GOOGLE_PLACES_PHOTO_MEDIA_BASE.value}/{media_name}"
+        params = {
+            "key": _get_api_key(),
+            "maxHeightPx": SystemConfig.PHOTO_MEDIA_MAX_HEIGHT_PX.value,
+            "skipHttpRedirect": "true",
+        }
+        try:
+            response = http_client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("photoUri")
+        except (HTTPStatusError, Exception) as e:
+            logger.warning("Could not resolve photo %s: %s", photo_name, e)
+            return None
+
+    def _normalize_places(
+        self,
+        places: List[Dict[str, Any]],
+        http_client: Optional[Client] = None,
+    ) -> List[Dict[str, Any]]:
         result: List[Dict[str, Any]] = []
+        max_photos = SystemConfig.MAX_PHOTOS_PER_PLACE.value
         for p in places:
             name = (p.get("displayName") or {}).get("text") or ""
             address = p.get("formattedAddress") or ""
             loc = p.get("location") or {}
+            photos: List[str] = []
+            if http_client:
+                photo_objs = (p.get("photos") or [])[:max_photos]
+                for ph in photo_objs:
+                    photo_name = ph.get("name") if isinstance(ph, dict) else None
+                    uri = self._fetch_photo_uri(http_client, photo_name)
+                    if uri:
+                        photos.append(uri)
             result.append(
                 {
                     "displayName": name,
@@ -97,6 +134,7 @@ class GooglePlacesClient:
                         "latitude": loc.get("latitude"),
                         "longitude": loc.get("longitude"),
                     },
+                    "photos": photos,
                 }
             )
         return result

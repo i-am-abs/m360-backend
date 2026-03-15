@@ -147,6 +147,7 @@ def get_masjid_nearby(
     max_result_count: int = 10,
     client: GooglePlacesClient = Depends(get_places_client),
 ):
+    """Nearby masjids from Google Places. API key and field mask are backend-only (from env/config); do not pass X-Goog-Api-Key or X-Goog-FieldMask in requests."""
     try:
         data = client.search_nearby_masjid(
             latitude=latitude,
