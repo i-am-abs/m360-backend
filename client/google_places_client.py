@@ -83,9 +83,7 @@ class GooglePlacesClient:
                 status_code=e.response.status_code,
             )
 
-    def _fetch_photo_uri(
-        self, http_client: Client, photo_name: str
-    ) -> Optional[str]:
+    def _fetch_photo_uri(self, http_client: Client, photo_name: str) -> Optional[str]:
         """Resolve a place photo name to a short-lived display URL via Places Photo Media API."""
         if not (photo_name and isinstance(photo_name, str)):
             return None
@@ -138,6 +136,7 @@ class GooglePlacesClient:
                 }
             )
         return result
+
 
 _places_client: Optional[GooglePlacesClient] = None
 
