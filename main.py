@@ -1,17 +1,18 @@
 from contextlib import asynccontextmanager
+
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# import uvicorn
 
-from logger.Logger import Logger
-from api.routes import router
 from api.auth_routes import auth_router
+from api.routes import router
 from exceptions.api_exception import ApiException
 from exceptions.impl.api_exception_handler import (
     api_exception_handler,
     generic_exception_handler,
     http_exception_handler,
 )
+from logger.Logger import Logger
 
 logger = Logger.get_logger(__name__)
 
@@ -45,12 +46,11 @@ app.add_exception_handler(ApiException, api_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-
-# if __name__ == "__main__":
-#     uvicorn.run(
-#         "main:app",
-#         host="0.0.0.0",
-#         port=8000,
-#         reload=True,
-#         log_level="debug",
-#     )
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="debug",
+    )

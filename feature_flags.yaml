@@ -1,0 +1,9 @@
+feature_flags:
+  masjid_search:
+    enabled: true
+    enabled_cities:
+      - Delhi
+      - New Delhi
+      - Mumbai
+      - Bangalore
+      - Hyderabad

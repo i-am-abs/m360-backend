@@ -1,6 +1,9 @@
 import threading
-import requests
 from datetime import datetime, timedelta
+
+import requests
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
+
 from auth.token_provider import TokenProvider
 from constants.system_config import SystemConfig
 from constants.token_config import TokenConfig
@@ -47,7 +50,7 @@ class OAuthTokenProvider(TokenProvider):
             raise ApiException(
                 "Cannot reach Quran Foundation OAuth (network or DNS failed). "
                 "Check internet and QURAN_OAUTH_URL / QF_ENV.",
-                status_code=503,
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
             ) from e
         except requests.exceptions.RequestException as e:
             logger.error("OAuth token fetch failed: %s", str(e)[:200])

@@ -89,6 +89,16 @@ class GooglePlacesClient:
             name = (p.get("displayName") or {}).get("text") or ""
             address = p.get("formattedAddress") or ""
             loc = p.get("location") or {}
+            raw_photos = p.get("photos") or []
+            photos = [
+                {
+                    "name": photo.get("name"),
+                    "widthPx": photo.get("widthPx"),
+                    "heightPx": photo.get("heightPx"),
+                    "authorAttributions": photo.get("authorAttributions", []),
+                }
+                for photo in raw_photos
+            ]
             result.append(
                 {
                     "displayName": name,
@@ -97,9 +107,11 @@ class GooglePlacesClient:
                         "latitude": loc.get("latitude"),
                         "longitude": loc.get("longitude"),
                     },
+                    "photos": photos,
                 }
             )
         return result
+
 
 _places_client: Optional[GooglePlacesClient] = None
 

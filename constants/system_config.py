@@ -10,5 +10,12 @@ class SystemConfig(Enum):
 
     REDIS_CONNECTION_TIMEOUT = 5
 
-    GOOGLE_PLACES_SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"
-    FIELD_MASK = "places.displayName,places.formattedAddress,places.location"
+    GOOGLE_PLACES_SEARCH_NEARBY_URL = (
+        "https://places.googleapis.com/v1/places:searchNearby"
+    )
+    FIELD_MASK = (
+        "places.displayName,places.formattedAddress,places.location,places.photos"
+    )
+    GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+
+    MASJID_SEARCH_FLAG = "masjid_search"
