@@ -139,6 +139,7 @@ def get_verse_audio(
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
 
+
 @router.get(ApiEndpoints.MASJID_NEARBY.value)
 def get_masjid_nearby(
     latitude: float,
