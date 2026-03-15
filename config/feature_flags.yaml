@@ -1,0 +1,21 @@
+feature_flags:
+  masjid_search:
+    enabled: true
+    enabled_cities:
+      - Delhi
+      - New Delhi
+      - Mumbai
+      - Bangalore
+      - Hyderabad
+
+  masjid_amenities:
+    enabled: true
+
+  otp_verification:
+    enabled: true
+
+  broadcast:
+    enabled: false
+
+  donations:
+    enabled: false
