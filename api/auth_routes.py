@@ -8,7 +8,7 @@ from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import TokenResponse, TokenRequest
 from utils.http_response import success_response
-from utils.logger import Logger
+from logger.Logger import Logger
 
 auth_router = APIRouter(tags=["Authentication"])
 logger = Logger.get_logger(__name__)
@@ -46,7 +46,7 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
 
 
 @auth_router.get(
-    "/auth/token/status",
+    ApiEndpoints.AUTH_TOKEN_STATUS.value,
     summary="Check Token Status",
     description="Check if there's a cached token and its expiry status",
 )

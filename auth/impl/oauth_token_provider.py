@@ -5,7 +5,7 @@ from auth.token_provider import TokenProvider
 from constants.system_config import SystemConfig
 from constants.token_config import TokenConfig
 from exceptions.api_exception import ApiException
-from utils.logger import Logger
+from logger.Logger import Logger
 
 logger = Logger.get_logger(__name__)
 

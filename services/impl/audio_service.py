@@ -20,10 +20,14 @@ class AudioService(BaseService):
         params = {}
         if verse_key:
             params["verse_key"] = verse_key
+
         if chapter_number is not None:
             params["chapter_number"] = chapter_number
+
         if juz_number is not None:
             params["juz_number"] = juz_number
+
         return self._get(
-            f"{ApiEndpoints.CONTENT_API_V4.value}/quran/recitations/{recitation_id}", params
+            f"{ApiEndpoints.CONTENT_API_V4.value}/quran/recitations/{recitation_id}",
+            params,
         )

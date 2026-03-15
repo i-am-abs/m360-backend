@@ -1,19 +1,18 @@
-"""Quran API routes: chapters, verses, juzs, audio. Depends on injected client."""
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from client.google_places_client import GooglePlacesClient, get_places_client
 from client.quran_api_client import QuranApiClient
 from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
 from exceptions.api_exception import ApiException
 from utils.http_response import success_response
-from utils.logger import Logger
+from logger.Logger import Logger
 
-router = APIRouter()
+
 logger = Logger.get_logger(__name__)
-
+router = APIRouter()
 _client: Optional[QuranApiClient] = None
 
 
@@ -52,7 +51,9 @@ def get_verses_by_chapter(
     client: QuranApiClient = Depends(get_client),
 ):
     try:
-        translation_ids = list(map(int, translations.split(","))) if translations else None
+        translation_ids = (
+            list(map(int, translations.split(","))) if translations else None
+        )
         data = client.verses.by_chapter(
             chapter_id=chapter_id,
             language=language,
@@ -77,7 +78,9 @@ def get_verses_by_juz(
     client: QuranApiClient = Depends(get_client),
 ):
     try:
-        translation_ids = list(map(int, translations.split(","))) if translations else None
+        translation_ids = (
+            list(map(int, translations.split(","))) if translations else None
+        )
         data = client.verses.by_juz(
             juz_id=juz_id,
             language=language,
@@ -133,5 +136,28 @@ def get_verse_audio(
             juz_number=juz_number,
         )
         return success_response(data)
+    except ApiException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+@router.get(ApiEndpoints.MASJID_NEARBY.value)
+def get_masjid_nearby(
+    latitude: float,
+    longitude: float,
+    radius: int = 1000,
+    max_result_count: int = 10,
+    client: GooglePlacesClient = Depends(get_places_client),
+):
+    try:
+        data = client.search_nearby_masjid(
+            latitude=latitude,
+            longitude=longitude,
+            radius_meters=radius,
+            max_result_count=max_result_count,
+        )
+
+        return success_response(data)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))

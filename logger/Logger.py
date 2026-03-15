@@ -28,8 +28,6 @@ class Logger:
         console_handler.setFormatter(console_formatter)
 
         logger.addHandler(console_handler)
-
-        # Try to add file handler, but don't fail if we can't create logs directory
         try:
             logs_dir = os.getenv("LOGS_DIR", "logs")
             os.makedirs(logs_dir, exist_ok=True)
