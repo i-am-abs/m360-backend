@@ -1,19 +1,23 @@
-"""Quran API routes: chapters, verses, juzs, audio. Depends on injected client."""
-
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
+from client.google_places_client import GooglePlacesClient, get_places_client
 from client.quran_api_client import QuranApiClient
+from config.factory.feature_flag_factory import (
+    build_context_for_masjid,
+    get_feature_flag_provider,
+)
 from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
+from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
+from logger.Logger import Logger
 from utils.http_response import success_response
-from utils.logger import Logger
 
-router = APIRouter()
 logger = Logger.get_logger(__name__)
-
+router = APIRouter()
 _client: Optional[QuranApiClient] = None
 
 
@@ -52,7 +56,9 @@ def get_verses_by_chapter(
     client: QuranApiClient = Depends(get_client),
 ):
     try:
-        translation_ids = list(map(int, translations.split(","))) if translations else None
+        translation_ids = (
+            list(map(int, translations.split(","))) if translations else None
+        )
         data = client.verses.by_chapter(
             chapter_id=chapter_id,
             language=language,
@@ -77,7 +83,9 @@ def get_verses_by_juz(
     client: QuranApiClient = Depends(get_client),
 ):
     try:
-        translation_ids = list(map(int, translations.split(","))) if translations else None
+        translation_ids = (
+            list(map(int, translations.split(","))) if translations else None
+        )
         data = client.verses.by_juz(
             juz_id=juz_id,
             language=language,
@@ -133,5 +141,46 @@ def get_verse_audio(
             juz_number=juz_number,
         )
         return success_response(data)
+    except ApiException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+
+@router.get(ApiEndpoints.MASJID_NEARBY.value)
+def get_masjid_nearby(
+    request: Request,
+    latitude: float,
+    longitude: float,
+    radius: int = 1000,
+    max_result_count: int = 10,
+    client: GooglePlacesClient = Depends(get_places_client),
+):
+    context = build_context_for_masjid(
+        latitude=latitude,
+        longitude=longitude,
+        headers=dict(request.headers) if request else None,
+    )
+
+    if not (
+        get_feature_flag_provider().is_enabled(
+            SystemConfig.MASJID_SEARCH_FLAG.value, context
+        )
+    ):
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Feature not available in your area.",
+        )
+
+    try:
+        data = client.search_nearby_masjid(
+            latitude=latitude,
+            longitude=longitude,
+            radius_meters=radius,
+            max_result_count=max_result_count,
+        )
+
+        return success_response(data)
+    except ValueError as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))

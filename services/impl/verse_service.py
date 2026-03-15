@@ -16,19 +16,22 @@ def _verse_params(
         "translation_fields": "language_name",
         "fields": "text_uthmani",
     }
+
     if translations:
         params["translations"] = ",".join(map(str, translations))
+
     if words:
         params["words"] = "true"
+
     if page is not None:
-        params["page"] = page
+        params["page"] = str(page)
+
     if per_page is not None:
-        params["per_page"] = per_page
+        params["per_page"] = str(per_page)
     return params
 
 
 class VerseService(BaseService):
-
     def by_chapter(
         self,
         chapter_id: int,
@@ -40,7 +43,8 @@ class VerseService(BaseService):
     ):
         params = _verse_params(language, translations, words, page, per_page)
         return self._get(
-            f"{ApiEndpoints.CONTENT_API_V4.value}/verses/by_chapter/{chapter_id}", params
+            f"{ApiEndpoints.CONTENT_API_V4.value}/verses/by_chapter/{chapter_id}",
+            params,
         )
 
     def by_juz(

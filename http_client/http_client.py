@@ -13,3 +13,13 @@ class HttpClient(ABC):
         **kwargs: Any,
     ) -> Any:
         pass
+
+    @abstractmethod
+    def post(
+        self,
+        url: str,
+        headers: Optional[Dict[str, str]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        pass

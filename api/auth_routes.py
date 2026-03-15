@@ -1,21 +1,23 @@
-from fastapi import APIRouter, HTTPException, status
 from datetime import datetime
 from typing import Optional
+
+from fastapi import APIRouter, HTTPException, status
+from starlette.responses import JSONResponse
 
 from auth.token_singleton import get_token_provider
 from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import TokenResponse, TokenRequest
+from logger.Logger import Logger
 from utils.http_response import success_response
-from utils.logger import Logger
 
 auth_router = APIRouter(tags=["Authentication"])
 logger = Logger.get_logger(__name__)
 
 
 @auth_router.post(ApiEndpoints.AUTH_TOKEN.value, summary="Generate OAuth2 Access Token")
-def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
+def generate_token(request: Optional[TokenRequest] = None) -> JSONResponse:
     try:
         config = create_config()
         token_provider = get_token_provider(config)
@@ -35,7 +37,7 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
             expires_in=remaining_seconds,
             scope=TokenConfig.SCOPE.value,
         )
-        return success_response(token.dict(), message="Token generated")
+        return success_response(token.model_dump(), message="Token generated")
 
     except Exception as e:
         logger.error(f"Failed to generate token: {e}")
@@ -46,7 +48,7 @@ def generate_token(request: Optional[TokenRequest] = None) -> TokenResponse:
 
 
 @auth_router.get(
-    "/auth/token/status",
+    ApiEndpoints.AUTH_TOKEN_STATUS.value,
     summary="Check Token Status",
     description="Check if there's a cached token and its expiry status",
 )
