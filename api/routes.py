@@ -2,7 +2,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from client.google_places_client import GooglePlacesClient, get_places_client
+from client.google_places_client import (
+    GooglePlacesClient,
+    get_places_client,
+    is_masjid_module_enabled,
+)
 from client.quran_api_client import QuranApiClient
 from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
@@ -163,3 +167,42 @@ def get_masjid_nearby(
 
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
+
+
+@router.get(ApiEndpoints.MASJID_SEARCH.value)
+def search_masjid_by_name(
+    q: str,
+    max_result_count: int = 10,
+    client: GooglePlacesClient = Depends(get_places_client),
+):
+    try:
+        data = client.search_masjid_by_name(query=q, max_result_count=max_result_count)
+        return success_response(data)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except ApiException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+
+@router.get(ApiEndpoints.MASJID_BY_CITY.value)
+def get_masjid_by_city(
+    city: str,
+    max_result_count: int = 20,
+    client: GooglePlacesClient = Depends(get_places_client),
+):
+    try:
+        data = client.search_masjid_by_city(
+            city=city,
+            max_result_count=max_result_count,
+        )
+        return success_response(data)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except ApiException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+
+@router.get(ApiEndpoints.MASJID_STATUS.value)
+def get_masjid_status():
+    enabled = is_masjid_module_enabled()
+    return success_response({"enabled": enabled})

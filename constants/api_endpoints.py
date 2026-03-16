@@ -14,6 +14,9 @@ class ApiEndpoints(Enum):
     AUDIO_VERSE = "/audio/verse"
 
     MASJID_NEARBY = "/masjids/nearby"
+    MASJID_SEARCH = "/masjids/search"
+    MASJID_BY_CITY = "/masjids/by-city"
+    MASJID_STATUS = "/masjids/status"
 
     CONTENT_API_V4 = "/content/api/v4"
     AUTH_TOKEN_STATUS = "/auth/token/status"
