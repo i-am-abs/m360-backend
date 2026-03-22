@@ -14,10 +14,6 @@ class SystemConfig(Enum):
         "https://places.googleapis.com/v1/places:searchNearby"
     )
     GOOGLE_PLACES_SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText"
-    GOOGLE_PLACES_PHOTO_MEDIA_BASE = "https://places.googleapis.com/v1"
     FIELD_MASK = (
         "places.displayName,places.formattedAddress,places.location,places.photos"
     )
-    PHOTO_MEDIA_MAX_HEIGHT_PX = 400
-    DEFAULT_MAX_PHOTOS_PER_PLACE = 5
-    ABSOLUTE_MAX_PHOTOS_PER_PLACE = 20
