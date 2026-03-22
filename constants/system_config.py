@@ -19,3 +19,7 @@ class SystemConfig(Enum):
         "places.displayName,places.formattedAddress,places.location,places.photos"
     )
     PHOTO_MEDIA_MAX_HEIGHT_PX = 400
+    # Each photo URL needs a separate Places Photo API call — cap to control GCP usage.
+    DEFAULT_MAX_PHOTOS_PER_PLACE = 5
+    # Hard upper bound even if env asks for more (prevents accidental quota burn).
+    ABSOLUTE_MAX_PHOTOS_PER_PLACE = 20
