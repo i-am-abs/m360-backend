@@ -45,12 +45,12 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(
-#         "main:app",
-#         host="0.0.0.0",
-#         port=8000,
-#         reload=True,
-#         log_level="debug",
-#     )
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="debug",
+    )
