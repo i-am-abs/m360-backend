@@ -16,6 +16,7 @@ class ApiEndpoints(Enum):
     MASJID_NEARBY = "/masjids/nearby"
     MASJID_SEARCH = "/masjids/search"
     MASJID_BY_CITY = "/masjids/by-city"
+    MASJID_PLACE = "/masjids/place"
     MASJID_STATUS = "/masjids/status"
 
     CONTENT_API_V4 = "/content/api/v4"

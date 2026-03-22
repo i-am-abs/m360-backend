@@ -6,10 +6,10 @@ class HttpClient(ABC):
 
     @abstractmethod
     def get(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        **kwargs: Any,
+            self,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            params: Optional[Dict[str, Any]] = None,
+            **kwargs: Any,
     ) -> Any:
         pass

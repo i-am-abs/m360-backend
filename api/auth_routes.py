@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
 from datetime import datetime
 from typing import Optional
 
+from fastapi import APIRouter, HTTPException, status
 from starlette.responses import JSONResponse
 
 from auth.token_singleton import get_token_provider
@@ -9,8 +9,8 @@ from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import TokenResponse, TokenRequest
-from utils.http_response import success_response
 from logger.Logger import Logger
+from utils.http_response import success_response
 
 auth_router = APIRouter(tags=["Authentication"])
 logger = Logger.get_logger(__name__)

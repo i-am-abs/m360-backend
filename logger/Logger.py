@@ -1,6 +1,6 @@
 import logging
-import sys
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 
 from constants.system_config import SystemConfig
