@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from client.google_places_client import GooglePlacesClient, get_places_client
@@ -26,7 +28,7 @@ def get_masjid_nearby(
         )
         return success_response(data)
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value, detail=str(e))
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
 
@@ -41,7 +43,7 @@ def search_masjid_by_name(
         data = client.search_masjid_by_name(query=q, max_result_count=max_result_count)
         return success_response(data)
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value, detail=str(e))
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
 
@@ -59,7 +61,7 @@ def get_masjid_by_city(
         )
         return success_response(data)
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value, detail=str(e))
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
 
@@ -68,7 +70,7 @@ def get_masjid_by_city(
 def get_masjid_place(
         place_id: str = Query(
             ...,
-            description="Google Place ID (e.g. ChIJ...) or full resource name places/ChIJ...",
+            description="Google Place ID",
         ),
         client: GooglePlacesClient = Depends(get_places_client),
 ):
@@ -76,7 +78,7 @@ def get_masjid_place(
         data = client.get_place_by_id(place_id)
         return success_response(data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST.value, detail=str(e))
     except ApiException as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
 

@@ -1,4 +1,5 @@
 import time
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from httpx import ConnectError, HTTPStatusError, Client, TimeoutException
@@ -22,8 +23,8 @@ class RequestsHttpClient(HttpClient):
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
                 response = client.get(url, headers=headers, params=params)
 
-                if response.status_code == 401:
-                    raise ApiException("Unauthorized", status_code=401)
+                if response.status_code == HTTPStatus.UNAUTHORIZED.value:
+                    raise ApiException("Unauthorized", status_code=HTTPStatus.UNAUTHORIZED.value)
 
                 response.raise_for_status()
                 return response.json()
@@ -32,16 +33,17 @@ class RequestsHttpClient(HttpClient):
             raise ApiException(
                 "Cannot reach Quran Foundation API (network or DNS failed). "
                 "Check internet connection and that QURAN_BASE_URL / OAuth host are reachable.",
-                status_code=503,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             ) from e
         except TimeoutException:
             if retries > 0:
                 time.sleep(1)
                 return self.get(url, headers, params, retries - 1)
-            raise ApiException("Upstream timeout", status_code=504)
+            raise ApiException("Upstream timeout", status_code=HTTPStatus.GATEWAY_TIMEOUT.value)
 
         except HTTPStatusError as e:
-            if e.response.status_code in (502, 503) and retries > 0:
+            if e.response.status_code in (HTTPStatus.BAD_GATEWAY.value,
+                                          HTTPStatus.SERVICE_UNAVAILABLE.value) and retries > 0:
                 time.sleep(1)
                 return self.get(url, headers, params, retries - 1)
             raise ApiException(

@@ -1,35 +1,18 @@
-# Git / IDE
 .git
+.venv
+.idea
+.vscode/
 .gitignore
 .cursor
-.idea
-.vscode
 *.md
-
-# Python
 __pycache__
 *.py[cod]
 *$py.class
 *.so
 .Python
-.venv
 venv
 .env
 .env.*
-!.env.example
-
-# Tests / tooling (if added later)
-.pytest_cache
-.mypy_cache
-.ruff_cache
-htmlcov
-.coverage
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Docker
 Dockerfile*
-docker-compose*.yml
 .docker

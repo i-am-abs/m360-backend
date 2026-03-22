@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
@@ -39,13 +40,13 @@ class GooglePlacesClient:
             logger.error("Google Places API unreachable: %s", e)
             raise ApiException(
                 "Cannot reach Google Places API. Check network.",
-                status_code=503,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             ) from e
         except TimeoutException:
-            raise ApiException("Google Places API timeout", status_code=504)
+            raise ApiException("Google Places API timeout", status_code=HTTPStatus.GATEWAY_TIMEOUT.value)
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                raise ApiException("Place not found", status_code=404) from e
+            if e.response.status_code == HTTPStatus.NOT_FOUND.value:
+                raise ApiException("Place not found", status_code=HTTPStatus.NOT_FOUND.value) from e
             logger.error("Google Places API error: %s", e.response.text)
             raise ApiException(
                 f"Google Places API error: {e.response.status_code}",
@@ -152,10 +153,10 @@ class GooglePlacesClient:
             logger.error("Google Places API unreachable: %s", e)
             raise ApiException(
                 "Cannot reach Google Places API. Check network.",
-                status_code=503,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             ) from e
         except TimeoutException:
-            raise ApiException("Google Places API timeout", status_code=504)
+            raise ApiException("Google Places API timeout", status_code=HTTPStatus.GATEWAY_TIMEOUT.value)
         except HTTPStatusError as e:
             logger.error("Google Places API error: %s", e.response.text)
             raise ApiException(

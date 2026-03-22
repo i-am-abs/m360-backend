@@ -29,10 +29,22 @@ FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.found
    - `QURAN_BASE_URL` / `QURAN_OAUTH_URL` — override base URLs (must not include `/content/api` in base URL; paths in code already do).
    - `APP_ENV` — for loading `.env.prod` / `.env.preprod` / `.env.dev` / `.env.local` if present.
 
+   **Masjid / Google Places (optional):**
+   - `GOOGLE_PLACES_API_KEY` — enables masjid search endpoints; must stay server-side only. Responses pass through Google’s JSON (including `photos` metadata as returned by Places).
+
    **Production (e.g. Render):**
    - Set `QF_ENV=production` so the correct production API and OAuth URLs are used.
    - Ensure `QURAN_CLIENT_ID` and `QURAN_CLIENT_SECRET` are set in the host’s environment (no secrets in repo).
    - Do **not** set `QURAN_BASE_URL` to a URL that ends with `/content/api` (e.g. use `https://apis.quran.foundation` or leave unset when using `QF_ENV=production`).
+
+## Project layout (Places / masjids)
+
+| Area | Path |
+|------|------|
+| Masjid HTTP routes | `api/masjid_routes.py` (`masjid_router`) |
+| Places API client | `client/google_places_client.py` |
+| Places URLs & field masks | `constants/google_places_config.py` |
+| Helpers (env, place id, photos) | `utils/google_places/` |
 
 ## API Endpoints (exposed)
 
@@ -44,6 +56,7 @@ FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.found
 - `GET /juzs?language=en` — all juzs
 - `GET /audio/chapter?chapter_id=&recitation_id=` — chapter recitation audio
 - `GET /audio/verse?recitation_id=&verse_key=...` — verse recitation audio
+- `GET /masjids/nearby`, `GET /masjids/search`, `GET /masjids/by-city`, `GET /masjids/place?place_id=...`, `GET /masjids/status` — Google Places masjid search (requires `GOOGLE_PLACES_API_KEY`)
 
 Authentication follows [Quran Foundation OAuth2](https://api-docs.quran.foundation/docs/oauth2_apis_versioned/oauth-2-token-exchange): tokens are requested with Client Credentials, cached, and re-requested ~30s before expiry. Each API request sends `x-auth-token` and `x-client-id`. On 401, the app clears the token and retries once.
 
@@ -59,7 +72,15 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ## Docker
 
+Multi-stage build (`Dockerfile`): dependencies install in a **builder** stage, then **build-essential is purged**, the venv is **trimmed** (`__pycache__`, `.pyc`, and `pip` / `setuptools` / `wheel` removed — not needed to run the app). The final image is **slim** Python + venv only, typically **well under ~400 MB** vs ~1+ GB for a single-stage full Python image.
+
 ```bash
 docker build -t m360-backend .
 docker run -p 8000:8000 m360-backend
+```
+
+Pass secrets at runtime (do not bake `.env` into the image):
+
+```bash
+docker run -p 8000:8000 --env-file .env m360-backend
 ```
