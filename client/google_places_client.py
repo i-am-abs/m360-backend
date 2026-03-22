@@ -37,13 +37,6 @@ def is_masjid_module_enabled() -> bool:
 
 
 def _max_photos_per_place() -> int:
-    """
-    Max Places Photo (media) API calls per place per request.
-    Env MASJID_MAX_PHOTOS_PER_PLACE:
-      - unset: use DEFAULT_MAX_PHOTOS_PER_PLACE (5)
-      - 0: do not call Photo API (search-only; photos list empty)
-      - 1..ABSOLUTE_MAX: cap photo fetches per place
-    """
     _load_env()
     raw = os.getenv("MASJID_MAX_PHOTOS_PER_PLACE", "").strip()
     if not raw:
