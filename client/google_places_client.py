@@ -36,6 +36,28 @@ def is_masjid_module_enabled() -> bool:
     return bool(api_key)
 
 
+def _max_photos_per_place() -> int:
+    """
+    Max Places Photo (media) API calls per place per request.
+    Env MASJID_MAX_PHOTOS_PER_PLACE:
+      - unset: use DEFAULT_MAX_PHOTOS_PER_PLACE (5)
+      - 0: do not call Photo API (search-only; photos list empty)
+      - 1..ABSOLUTE_MAX: cap photo fetches per place
+    """
+    _load_env()
+    raw = os.getenv("MASJID_MAX_PHOTOS_PER_PLACE", "").strip()
+    if not raw:
+        return SystemConfig.DEFAULT_MAX_PHOTOS_PER_PLACE.value
+    try:
+        n = int(raw)
+    except ValueError:
+        return SystemConfig.DEFAULT_MAX_PHOTOS_PER_PLACE.value
+    if n <= 0:
+        return 0
+    cap = SystemConfig.ABSOLUTE_MAX_PHOTOS_PER_PLACE.value
+    return min(n, cap)
+
+
 class GooglePlacesClient:
     def search_nearby_masjid(
         self,
@@ -206,15 +228,21 @@ class GooglePlacesClient:
         http_client: Optional[Client] = None,
     ) -> List[Dict[str, Any]]:
         result: List[Dict[str, Any]] = []
+        max_photos = _max_photos_per_place()
+        photo_media_calls = 0
+
         for p in places:
             name = (p.get("displayName") or {}).get("text") or ""
             address = p.get("formattedAddress") or ""
             loc = p.get("location") or {}
             photos: List[str] = []
-            if http_client:
-                photo_objs = p.get("photos") or []
+            if http_client and max_photos > 0:
+                photo_objs = (p.get("photos") or [])[:max_photos]
                 for ph in photo_objs:
                     photo_name = ph.get("name") if isinstance(ph, dict) else None
+                    if not photo_name:
+                        continue
+                    photo_media_calls += 1
                     uri = self._fetch_photo_uri(http_client, photo_name)
                     if uri:
                         photos.append(uri)
@@ -228,6 +256,16 @@ class GooglePlacesClient:
                     },
                     "photos": photos,
                 }
+            )
+
+        if places:
+            logger.info(
+                "Masjid Google Places: 1 search request + %d photo media requests "
+                "(%d places, max %d photos/place). Set MASJID_MAX_PHOTOS_PER_PLACE=0 "
+                "to skip photo calls.",
+                photo_media_calls,
+                len(places),
+                max_photos,
             )
         return result
 
