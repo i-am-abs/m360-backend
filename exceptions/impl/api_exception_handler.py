@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from fastapi import HTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -20,11 +22,11 @@ async def api_exception_handler(request: Request, exc: ApiException):
 
 async def generic_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
-        status_code=500,
+        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         content={
             "status": "ERROR",
             "message": str(exc),
-            "status_code": 500,
+            "status_code": HTTPStatus.INTERNAL_SERVER_ERROR,
             "error": exc.__class__.__name__,
             "path": request.url.path,
         },
@@ -32,7 +34,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 async def http_exception_handler(request: Request, exc: HTTPException):
-    status_code = exc.status_code if hasattr(exc, "status_code") else 500
+    status_code = exc.status_code if hasattr(exc, "status_code") else HTTPStatus.INTERNAL_SERVER_ERROR
     detail = exc.detail if hasattr(exc, "detail") else None
     message = (
         detail

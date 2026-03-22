@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Quran Foundation API Wrapper",
-    version="2.0.0",
+    version="1.0.0",
     description="FastAPI wrapper over Quran Foundation APIs with OAuth2 authentication",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -47,12 +47,12 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="debug",
-    )
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(
+#         "main:app",
+#         host="0.0.0.0",
+#         port=8000,
+#         reload=True,
+#         log_level="debug",
+#     )

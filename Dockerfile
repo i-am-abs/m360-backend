@@ -19,14 +19,11 @@ RUN pip install --upgrade pip \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
 FROM python:3.12-slim-bookworm AS runtime
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_ROOT_USER_ACTION=ignore \
     PATH="/opt/venv/bin:$PATH"
-
 WORKDIR /app
-
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
 RUN find /opt/venv -depth -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \

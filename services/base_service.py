@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from exceptions.api_exception import ApiException
 from logger.Logger import Logger
 
@@ -25,7 +27,7 @@ class BaseService:
         try:
             return self.http_client.get(url, headers=headers, params=params)
         except ApiException as e:
-            if e.status_code == 401:
+            if e.status_code == HTTPStatus.UNAUTHORIZED.value:
                 logger.warning(
                     "401 received for %s — refreshing token and retrying", endpoint
                 )
