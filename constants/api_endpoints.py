@@ -9,12 +9,14 @@ class ApiEndpoints(Enum):
     VERSES_BY_CHAPTER = "/verses/by-chapter/{chapter_id}"
     VERSES_BY_JUZ = "/verses/by-juz/{juz_id}"
     JUZS = "/juzs"
+    JUZS_BY_ID = "/juzs/{juz_id}"
 
     AUDIO_CHAPTER = "/audio/chapter"
     AUDIO_VERSE = "/audio/verse"
 
     MASJID_NEARBY = "/masjids/nearby"
     MASJID_SEARCH = "/masjids/search"
+    MASJID_SEARCH_SHORT = "/search"
     MASJID_BY_CITY = "/masjids/by-city"
     MASJID_PLACE = "/masjids/place"
     MASJID_STATUS = "/masjids/status"

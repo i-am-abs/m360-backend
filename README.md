@@ -41,10 +41,11 @@ FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.found
 
 | Area | Path |
 |------|------|
-| Masjid HTTP routes | `api/masjid_routes.py` (`masjid_router`) |
-| Places API client | `client/google_places_client.py` |
-| Places URLs & field masks | `constants/google_places_config.py` |
-| Helpers (env, place id, photos) | `utils/google_places/` |
+| HTTP routers (Quran, auth, masjids) | `api/quran_routes.py`, `api/auth_routes.py`, `api/masjid_routes.py` |
+| FastAPI dependencies | `api/dependencies.py` |
+| Masjid / Places service (interface + impl) | `services/google_places/` (`contracts.py`, `provider.py`, `support/`) |
+| Static config (URLs, geo, env keys, app) | `constants/google_places_config.py`, `constants/geo.py`, `constants/env_keys.py`, `constants/app_settings.py`, … |
+| Quran upstream client | `client/quran_api_client.py` |
 
 ## API Endpoints (exposed)
 
@@ -54,9 +55,11 @@ FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.found
 - `GET /verses/by-chapter/{chapter_id}` — verses by chapter
 - `GET /verses/by-juz/{juz_id}` — verses by juz
 - `GET /juzs?language=en` — all juzs
+- `GET /juzs/{juz_id}?language=en` — same data as `GET /verses/by-juz/{juz_id}` (alias)
 - `GET /audio/chapter?chapter_id=&recitation_id=` — chapter recitation audio
 - `GET /audio/verse?recitation_id=&verse_key=...` — verse recitation audio
-- `GET /masjids/nearby`, `GET /masjids/search`, `GET /masjids/by-city`, `GET /masjids/place?place_id=...`, `GET /masjids/status` — Google Places masjid search (requires `GOOGLE_PLACES_API_KEY`)
+- `GET /masjids/nearby`, `GET /masjids/search`, `GET /search` (same as masjid search), `GET /masjids/by-city`, `GET /masjids/place?place_id=...`, `GET /masjids/status` — Google Places masjid search (requires `GOOGLE_PLACES_API_KEY`)
+- Audio query params accept **snake_case** or **camelCase** (e.g. `recitation_id` or `recitationId`, `verse_key` or `verseKey`).
 
 Authentication follows [Quran Foundation OAuth2](https://api-docs.quran.foundation/docs/oauth2_apis_versioned/oauth-2-token-exchange): tokens are requested with Client Credentials, cached, and re-requested ~30s before expiry. Each API request sends `x-auth-token` and `x-client-id`. On 401, the app clears the token and retries once.
 

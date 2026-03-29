@@ -3,12 +3,11 @@ from urllib.parse import urlencode
 
 from httpx import Client, ConnectError, HTTPStatusError, TimeoutException
 
+from constants.google_places_config import GooglePlacesConfig, GooglePlacesPayload
 from constants.system_config import SystemConfig
 from logger.Logger import Logger
 
 logger = Logger.get_logger(__name__)
-
-_GEOCODE_BASE = "https://maps.googleapis.com/maps/api/geocode/json"
 
 
 def geocode_in_india(address: str, api_key: str) -> Optional[Tuple[float, float]]:
@@ -17,11 +16,11 @@ def geocode_in_india(address: str, api_key: str) -> Optional[Tuple[float, float]
         return None
     params = {
         "address": q,
-        "components": "country:IN",
-        "region": "in",
+        "components": GooglePlacesPayload.GEOCODE_COUNTRY_COMPONENTS,
+        "region": GooglePlacesPayload.GEOCODE_REGION_BIAS,
         "key": api_key,
     }
-    url = f"{_GEOCODE_BASE}?{urlencode(params)}"
+    url = f"{GooglePlacesConfig.GEOCODE_JSON_URL.value}?{urlencode(params)}"
     try:
         with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
             response = client.get(url)
@@ -34,16 +33,14 @@ def geocode_in_india(address: str, api_key: str) -> Optional[Tuple[float, float]
         logger.warning("Geocoding HTTP error: %s", e)
         return None
 
-    status = data.get("status")
-    if status != "OK":
-        logger.debug("Geocoding status=%s for %r", status, q)
+    if data.get("status") != "OK":
+        logger.debug("Geocoding status=%s for %r", data.get("status"), q)
         return None
     results = data.get("results") or []
     if not results:
         return None
     loc = (results[0].get("geometry") or {}).get("location") or {}
-    lat = loc.get("lat")
-    lng = loc.get("lng")
+    lat, lng = loc.get("lat"), loc.get("lng")
     if lat is None or lng is None:
         return None
     try:
