@@ -28,8 +28,8 @@ def health():
 
 @router.get(ApiEndpoints.CHAPTERS.value)
 def get_chapters(
-        language: str = "en",
-        client: QuranApiClient = Depends(get_client),
+    language: str = "en",
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         data = client.chapters.get_chapters(language)
@@ -40,13 +40,13 @@ def get_chapters(
 
 @router.get(ApiEndpoints.VERSES_BY_CHAPTER.value)
 def get_verses_by_chapter(
-        chapter_id: int,
-        language: str = "en",
-        translations: Optional[str] = None,
-        words: bool = False,
-        page: Optional[int] = None,
-        per_page: Optional[int] = None,
-        client: QuranApiClient = Depends(get_client),
+    chapter_id: int,
+    language: str = "en",
+    translations: Optional[str] = None,
+    words: bool = False,
+    page: Optional[int] = None,
+    per_page: Optional[int] = None,
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         translation_ids = (
@@ -67,13 +67,13 @@ def get_verses_by_chapter(
 
 @router.get(ApiEndpoints.VERSES_BY_JUZ.value)
 def get_verses_by_juz(
-        juz_id: int,
-        language: str = "en",
-        translations: Optional[str] = None,
-        words: bool = False,
-        page: Optional[int] = None,
-        per_page: Optional[int] = None,
-        client: QuranApiClient = Depends(get_client),
+    juz_id: int,
+    language: str = "en",
+    translations: Optional[str] = None,
+    words: bool = False,
+    page: Optional[int] = None,
+    per_page: Optional[int] = None,
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         translation_ids = (
@@ -94,8 +94,8 @@ def get_verses_by_juz(
 
 @router.get(ApiEndpoints.JUZS.value)
 def get_juzs(
-        language: str = "en",
-        client: QuranApiClient = Depends(get_client),
+    language: str = "en",
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         return success_response(client.juzs.get_juzs(language))
@@ -105,9 +105,9 @@ def get_juzs(
 
 @router.get(ApiEndpoints.AUDIO_CHAPTER.value)
 def get_chapter_audio(
-        chapter_id: int,
-        recitation_id: int,
-        client: QuranApiClient = Depends(get_client),
+    chapter_id: int,
+    recitation_id: int,
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         data = client.audio.get_chapter_recitation_audio(
@@ -120,11 +120,11 @@ def get_chapter_audio(
 
 @router.get(ApiEndpoints.AUDIO_VERSE.value)
 def get_verse_audio(
-        recitation_id: int,
-        verse_key: Optional[str] = None,
-        chapter_number: Optional[int] = None,
-        juz_number: Optional[int] = None,
-        client: QuranApiClient = Depends(get_client),
+    recitation_id: int,
+    verse_key: Optional[str] = None,
+    chapter_number: Optional[int] = None,
+    juz_number: Optional[int] = None,
+    client: QuranApiClient = Depends(get_client),
 ):
     try:
         data = client.audio.get_verse_recitation_audio(

@@ -25,3 +25,13 @@ def get_google_places_api_key() -> str:
 def is_masjid_module_enabled() -> bool:
     load_project_dotenv()
     return bool(os.getenv("GOOGLE_PLACES_API_KEY", "").strip())
+
+
+def get_masjid_search_default_radius_meters() -> int:
+    load_project_dotenv()
+    raw = os.getenv("MASJID_SEARCH_RADIUS_METERS", "5000").strip()
+    try:
+        v = int(raw)
+    except ValueError:
+        v = 5000
+    return max(500, min(50000, v))

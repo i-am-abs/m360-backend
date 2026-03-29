@@ -5,11 +5,11 @@ from services.base_service import BaseService
 
 
 def _verse_params(
-        language: str = "en",
-        translations: Optional[list] = None,
-        words: bool = False,
-        page: Optional[int] = None,
-        per_page: Optional[int] = None,
+    language: str = "en",
+    translations: Optional[list] = None,
+    words: bool = False,
+    page: Optional[int] = None,
+    per_page: Optional[int] = None,
 ) -> dict:
     params = {
         "language": language,
@@ -33,13 +33,13 @@ def _verse_params(
 
 class VerseService(BaseService):
     def by_chapter(
-            self,
-            chapter_id: int,
-            language: str = "en",
-            translations: Optional[list] = None,
-            words: bool = False,
-            page: Optional[int] = None,
-            per_page: Optional[int] = None,
+        self,
+        chapter_id: int,
+        language: str = "en",
+        translations: Optional[list] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
     ):
         params = _verse_params(language, translations, words, page, per_page)
         return self._get(
@@ -48,13 +48,13 @@ class VerseService(BaseService):
         )
 
     def by_juz(
-            self,
-            juz_id: int,
-            language: str = "en",
-            translations: Optional[list] = None,
-            words: bool = False,
-            page: Optional[int] = None,
-            per_page: Optional[int] = None,
+        self,
+        juz_id: int,
+        language: str = "en",
+        translations: Optional[list] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
     ):
         params = _verse_params(language, translations, words, page, per_page)
         return self._get(

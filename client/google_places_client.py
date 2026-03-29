@@ -1,5 +1,6 @@
 from http import HTTPStatus
-from typing import Any, Dict, Optional
+from math import inf
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import quote
 
 from httpx import Client, ConnectError, HTTPStatusError, TimeoutException
@@ -8,6 +9,12 @@ from constants.google_places_config import GooglePlacesConfig
 from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
 from logger.Logger import Logger
+from utils.google_places.distance import haversine_meters
+from utils.google_places.geocoding import geocode_in_india
+from utils.google_places.india_geo import (
+    india_location_restriction_rectangle,
+    is_point_in_india,
+)
 from utils.google_places import (
     get_google_places_api_key,
     normalize_place_id_for_path,
@@ -43,32 +50,106 @@ class GooglePlacesClient:
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             ) from e
         except TimeoutException:
-            raise ApiException("Google Places API timeout", status_code=HTTPStatus.GATEWAY_TIMEOUT.value)
+            raise ApiException(
+                "Google Places API timeout",
+                status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
+            )
         except HTTPStatusError as e:
             if e.response.status_code == HTTPStatus.NOT_FOUND.value:
-                raise ApiException("Place not found", status_code=HTTPStatus.NOT_FOUND.value) from e
+                raise ApiException(
+                    "Place not found", status_code=HTTPStatus.NOT_FOUND.value
+                ) from e
             logger.error("Google Places API error: %s", e.response.text)
             raise ApiException(
                 f"Google Places API error: {e.response.status_code}",
                 status_code=e.response.status_code,
             ) from e
 
-    def search_nearby_masjid(
-            self,
-            latitude: float,
-            longitude: float,
-            radius_meters: int = 1000,
-            max_result_count: int = 10,
+    @staticmethod
+    def _filter_places_to_india(data: Dict[str, Any]) -> Dict[str, Any]:
+        places = data.get("places") or []
+        kept = []
+        for p in places:
+            if not isinstance(p, dict):
+                continue
+            loc = p.get("location") or {}
+            lat = loc.get("latitude")
+            lng = loc.get("longitude")
+            if lat is None or lng is None:
+                continue
+            try:
+                if is_point_in_india(float(lat), float(lng)):
+                    kept.append(p)
+            except (TypeError, ValueError):
+                continue
+        data["places"] = kept
+        return data
+
+    @staticmethod
+    def _enrich_distance_meters_and_sort(
+        data: Dict[str, Any],
+        origin_lat: float,
+        origin_lng: float,
     ) -> Dict[str, Any]:
+        places = data.get("places") or []
+
+        def distance_for(place: Dict[str, Any]) -> Optional[int]:
+            raw = place.get("straightLineDistanceMeters")
+            if raw is not None:
+                try:
+                    return int(round(float(raw)))
+                except (TypeError, ValueError):
+                    pass
+            loc = place.get("location") or {}
+            try:
+                plat = float(loc.get("latitude"))
+                plng = float(loc.get("longitude"))
+            except (TypeError, ValueError):
+                return None
+            return int(round(haversine_meters(origin_lat, origin_lng, plat, plng)))
+
+        for p in places:
+            if isinstance(p, dict):
+                d = distance_for(p)
+                if d is not None:
+                    p["distanceMeters"] = d
+
+        def sort_key(p: Any) -> float:
+            if not isinstance(p, dict):
+                return inf
+            dm = p.get("distanceMeters")
+            if dm is None:
+                return inf
+            try:
+                return float(dm)
+            except (TypeError, ValueError):
+                return inf
+
+        data["places"] = sorted(places, key=sort_key)
+        return data
+
+    def search_nearby_masjid(
+        self,
+        latitude: float,
+        longitude: float,
+        radius_meters: int = 1000,
+        max_result_count: int = 10,
+    ) -> Dict[str, Any]:
+        if not is_point_in_india(latitude, longitude):
+            raise ApiException(
+                "Masjid search is limited to India, You have provided wrong Data.",
+                status_code=HTTPStatus.BAD_REQUEST.value,
+            )
         api_key = get_google_places_api_key()
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": GooglePlacesConfig.SEARCH_FIELD_MASK.value,
+            "X-Goog-FieldMask": GooglePlacesConfig.SEARCH_NEARBY_FIELD_MASK.value,
         }
         body = {
             "includedTypes": ["mosque"],
             "maxResultCount": max_result_count,
+            "rankPreference": "DISTANCE",
             "locationRestriction": {
                 "circle": {
                     "center": {
@@ -79,69 +160,87 @@ class GooglePlacesClient:
                 }
             },
         }
-        return self._post_places(
+        data = self._post_places(
             GooglePlacesConfig.SEARCH_NEARBY_URL.value,
             headers,
             body,
             api_key,
         )
+        data = self._filter_places_to_india(data)
+        return self._enrich_distance_meters_and_sort(data, latitude, longitude)
 
-    def search_masjid_by_name(
-            self,
-            query: str,
-            max_result_count: int = 10,
+    def _text_search_mosques(
+        self,
+        text_query: str,
+        max_result_count: int,
+        api_key: str,
     ) -> Dict[str, Any]:
-        if not query:
-            return {"places": []}
-        api_key = get_google_places_api_key()
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": GooglePlacesConfig.SEARCH_FIELD_MASK.value,
+            "X-Goog-FieldMask": GooglePlacesConfig.SEARCH_TEXT_FIELD_MASK.value,
         }
         body = {
-            "textQuery": query,
+            "textQuery": text_query,
             "includedType": "mosque",
             "maxResultCount": max_result_count,
+            "regionCode": "IN",
+            "locationRestriction": india_location_restriction_rectangle(),
         }
-        return self._post_places(
+        data = self._post_places(
             GooglePlacesConfig.SEARCH_TEXT_URL.value,
             headers,
             body,
             api_key,
+        )
+        return self._filter_places_to_india(data)
+
+    def search_masjid_by_name(
+        self,
+        query: str,
+        max_result_count: int = 10,
+        radius_meters: int = 5000,
+    ) -> Dict[str, Any]:
+        if not query or not query.strip():
+            return {"places": []}
+        q = query.strip()
+        api_key = get_google_places_api_key()
+
+        coords: Optional[Tuple[float, float]] = geocode_in_india(q, api_key)
+        if coords:
+            lat, lng = coords
+            if is_point_in_india(lat, lng):
+                return self.search_nearby_masjid(
+                    latitude=lat,
+                    longitude=lng,
+                    radius_meters=radius_meters,
+                    max_result_count=max_result_count,
+                )
+
+        return self._text_search_mosques(
+            text_query=f"mosque in {q}",
+            max_result_count=max_result_count,
+            api_key=api_key,
         )
 
     def search_masjid_by_city(
-            self,
-            city: str,
-            max_result_count: int = 20,
+        self,
+        city: str,
+        max_result_count: int = 20,
+        radius_meters: int = 5000,
     ) -> Dict[str, Any]:
-        if not city:
-            return {"places": []}
-        api_key = get_google_places_api_key()
-        headers = {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": GooglePlacesConfig.SEARCH_FIELD_MASK.value,
-        }
-        body = {
-            "textQuery": f"mosque in {city}",
-            "includedType": "mosque",
-            "maxResultCount": max_result_count,
-        }
-        return self._post_places(
-            GooglePlacesConfig.SEARCH_TEXT_URL.value,
-            headers,
-            body,
-            api_key,
+        return self.search_masjid_by_name(
+            query=city,
+            max_result_count=max_result_count,
+            radius_meters=radius_meters,
         )
 
     def _post_places(
-            self,
-            url: str,
-            headers: Dict[str, str],
-            body: Dict[str, Any],
-            api_key: str,
+        self,
+        url: str,
+        headers: Dict[str, str],
+        body: Dict[str, Any],
+        api_key: str,
     ) -> Dict[str, Any]:
         try:
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
@@ -156,13 +255,26 @@ class GooglePlacesClient:
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             ) from e
         except TimeoutException:
-            raise ApiException("Google Places API timeout", status_code=HTTPStatus.GATEWAY_TIMEOUT.value)
-        except HTTPStatusError as e:
-            logger.error("Google Places API error: %s", e.response.text)
             raise ApiException(
-                f"Google Places API error: {e.response.status_code}",
-                status_code=e.response.status_code,
+                "Google Places API timeout",
+                status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
             )
+        except HTTPStatusError as e:
+            body = e.response.text
+            logger.error(
+                "Google Places API error %s: %s",
+                e.response.status_code,
+                body,
+            )
+            detail = f"Google Places API error: {e.response.status_code}"
+            try:
+                err = e.response.json().get("error") or {}
+                api_msg = err.get("message") or err.get("status")
+                if api_msg:
+                    detail = f"Google Places API: {api_msg}"
+            except Exception:
+                pass
+            raise ApiException(detail, status_code=e.response.status_code) from e
 
 
 _places_client: Optional[GooglePlacesClient] = None

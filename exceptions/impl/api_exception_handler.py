@@ -34,7 +34,11 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 async def http_exception_handler(request: Request, exc: HTTPException):
-    status_code = exc.status_code if hasattr(exc, "status_code") else HTTPStatus.INTERNAL_SERVER_ERROR
+    status_code = (
+        exc.status_code
+        if hasattr(exc, "status_code")
+        else HTTPStatus.INTERNAL_SERVER_ERROR
+    )
     detail = exc.detail if hasattr(exc, "detail") else None
     message = (
         detail

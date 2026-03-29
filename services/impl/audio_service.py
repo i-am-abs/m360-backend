@@ -11,11 +11,11 @@ class AudioService(BaseService):
         )
 
     def get_verse_recitation_audio(
-            self,
-            recitation_id: int,
-            verse_key: Optional[str] = None,
-            chapter_number: Optional[int] = None,
-            juz_number: Optional[int] = None,
+        self,
+        recitation_id: int,
+        verse_key: Optional[str] = None,
+        chapter_number: Optional[int] = None,
+        juz_number: Optional[int] = None,
     ):
         params = {}
         if verse_key:
