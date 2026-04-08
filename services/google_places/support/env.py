@@ -15,7 +15,7 @@ def load_project_dotenv() -> None:
 
 def get_google_places_api_key() -> str:
     load_project_dotenv()
-    api_key = os.getenv(EnvKeys.GOOGLE_PLACES_API_KEY, "").strip()
+    api_key = os.getenv(EnvKeys.GOOGLE_PLACES_API_KEY.value, "").strip()
     if not api_key:
         raise ValueError(
             "Missing GOOGLE_PLACES_API_KEY. Set it in .env to use Masjid search."
@@ -25,13 +25,13 @@ def get_google_places_api_key() -> str:
 
 def is_masjid_module_enabled() -> bool:
     load_project_dotenv()
-    return bool(os.getenv(EnvKeys.GOOGLE_PLACES_API_KEY, "").strip())
+    return bool(os.getenv(EnvKeys.GOOGLE_PLACES_API_KEY.value, "").strip())
 
 
 def get_masjid_search_default_radius_meters() -> int:
     load_project_dotenv()
     raw = os.getenv(
-        EnvKeys.MASJID_SEARCH_RADIUS_METERS,
+        EnvKeys.MASJID_SEARCH_RADIUS_METERS.value,
         str(MasjidQueryLimits.SEARCH_RADIUS_DEFAULT_FALLBACK_M),
     ).strip()
     try:

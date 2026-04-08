@@ -10,3 +10,12 @@ class TokenResponse(BaseModel):
 
 class TokenRequest(BaseModel):
     force_refresh: bool = False
+
+
+class PhoneLoginRequest(BaseModel):
+    phone_number: str
+
+
+class OtpVerifyRequest(BaseModel):
+    phone_number: str
+    otp: str

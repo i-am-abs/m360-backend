@@ -1,9 +1,13 @@
 from http import HTTPStatus
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.dependencies import get_masjid_places_service
+from api.dependencies import (
+    get_current_user,
+    get_masjid_places_service,
+    get_user_masjid_service,
+)
 from constants.api_endpoints import ApiEndpoints
 from constants.masjid_query import MasjidQueryLimits
 from exceptions.api_exception import ApiException
@@ -12,6 +16,7 @@ from services.google_places.support.env import (
     get_masjid_search_default_radius_meters,
     is_masjid_module_enabled,
 )
+from services.user_masjid_service import UserMasjidService
 from utils.http_response import success_response
 
 masjid_router = APIRouter(tags=["masjids"])
@@ -153,3 +158,82 @@ def get_masjid_place(
 @masjid_router.get(ApiEndpoints.MASJID_STATUS.value)
 def get_masjid_status():
     return success_response({"enabled": is_masjid_module_enabled()})
+
+
+def _extract_masjid_details(place: Dict[str, Any]) -> Dict[str, Any]:
+    accessibility = place.get("accessibilityOptions") or {}
+    amenity = place.get("amenityOptions") or {}
+    payment = place.get("paymentOptions") or {}
+    return {
+        "place_id": place.get("id"),
+        "name": (place.get("displayName") or {}).get("text"),
+        "address": place.get("formattedAddress"),
+        "location": place.get("location"),
+        "timings": {
+            "current_opening_hours": place.get("currentOpeningHours"),
+            "regular_opening_hours": place.get("regularOpeningHours"),
+        },
+        "management": {
+            "phone_number": place.get("internationalPhoneNumber"),
+            "website": place.get("websiteUri"),
+            "business_status": place.get("businessStatus"),
+        },
+        "facilities": {
+            "wheelchair_accessible_entrance": accessibility.get(
+                "wheelchairAccessibleEntrance"
+            ),
+            "wheelchair_accessible_parking": accessibility.get(
+                "wheelchairAccessibleParking"
+            ),
+            "restroom": amenity.get("restroom"),
+            "free_parking_lot": amenity.get("freeParkingLot"),
+            "accepts_nfc": payment.get("acceptsNfc"),
+        },
+        "raw": place,
+    }
+
+
+@masjid_router.get(ApiEndpoints.MASJID_DETAILS.value)
+def get_masjid_details(
+    place_id: str,
+    svc: MasjidPlacesService = Depends(get_masjid_places_service),
+):
+    try:
+        place = svc.get_place_by_id(place_id)
+        return success_response(_extract_masjid_details(place))
+    except ValueError as e:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST.value,
+            detail=str(e),
+        )
+    except ApiException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+
+@masjid_router.get(ApiEndpoints.MY_MASJIDS.value)
+def list_my_masjids(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: UserMasjidService = Depends(get_user_masjid_service),
+):
+    data = svc.list_my_masjids(current_user["user_id"])
+    return success_response(data)
+
+
+@masjid_router.post(ApiEndpoints.MY_MASJID_ADD.value)
+def add_my_masjid(
+    place_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: UserMasjidService = Depends(get_user_masjid_service),
+):
+    data = svc.add_my_masjid(current_user["user_id"], place_id)
+    return success_response(data, message="Masjid added to favorites")
+
+
+@masjid_router.delete(ApiEndpoints.MY_MASJID_REMOVE.value)
+def remove_my_masjid(
+    place_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: UserMasjidService = Depends(get_user_masjid_service),
+):
+    data = svc.remove_my_masjid(current_user["user_id"], place_id)
+    return success_response(data, message="Masjid removed from favorites")
