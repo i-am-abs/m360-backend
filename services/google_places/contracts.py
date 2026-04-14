@@ -1,5 +1,3 @@
-"""Masjid / Google Places port and default implementation (same module)."""
-
 from http import HTTPStatus
 from math import inf
 from typing import Any, Dict, Optional, Protocol, Tuple
@@ -28,25 +26,25 @@ class MasjidPlacesService(Protocol):
     def get_place_by_id(self, place_id: str) -> Dict[str, Any]: ...
 
     def search_nearby_masjid(
-        self,
-        latitude: float,
-        longitude: float,
-        radius_meters: int = 1000,
-        max_result_count: int = 10,
+            self,
+            latitude: float,
+            longitude: float,
+            radius_meters: int = 1000,
+            max_result_count: int = 10,
     ) -> Dict[str, Any]: ...
 
     def search_masjid_by_name(
-        self,
-        query: str,
-        max_result_count: int = 10,
-        radius_meters: int = 5000,
+            self,
+            query: str,
+            max_result_count: int = 10,
+            radius_meters: int = 5000,
     ) -> Dict[str, Any]: ...
 
     def search_masjid_by_city(
-        self,
-        city: str,
-        max_result_count: int = 20,
-        radius_meters: int = 5000,
+            self,
+            city: str,
+            max_result_count: int = 20,
+            radius_meters: int = 5000,
     ) -> Dict[str, Any]: ...
 
 
@@ -112,9 +110,9 @@ class GoogleMasjidPlacesService:
 
     @staticmethod
     def _enrich_distance_meters_and_sort(
-        data: Dict[str, Any],
-        origin_lat: float,
-        origin_lng: float,
+            data: Dict[str, Any],
+            origin_lat: float,
+            origin_lng: float,
     ) -> Dict[str, Any]:
         places = data.get("places") or []
 
@@ -154,11 +152,11 @@ class GoogleMasjidPlacesService:
         return data
 
     def search_nearby_masjid(
-        self,
-        latitude: float,
-        longitude: float,
-        radius_meters: int = 1000,
-        max_result_count: int = 10,
+            self,
+            latitude: float,
+            longitude: float,
+            radius_meters: int = 1000,
+            max_result_count: int = 10,
     ) -> Dict[str, Any]:
         if not is_point_in_india(latitude, longitude):
             raise ApiException(
@@ -192,10 +190,10 @@ class GoogleMasjidPlacesService:
         return self._enrich_distance_meters_and_sort(data, latitude, longitude)
 
     def _text_search_mosques(
-        self,
-        text_query: str,
-        max_result_count: int,
-        api_key: str,
+            self,
+            text_query: str,
+            max_result_count: int,
+            api_key: str,
     ) -> Dict[str, Any]:
         headers = {
             "Content-Type": "application/json",
@@ -218,10 +216,10 @@ class GoogleMasjidPlacesService:
         return self._filter_places_to_india(data)
 
     def search_masjid_by_name(
-        self,
-        query: str,
-        max_result_count: int = 10,
-        radius_meters: int = 5000,
+            self,
+            query: str,
+            max_result_count: int = 10,
+            radius_meters: int = 5000,
     ) -> Dict[str, Any]:
         if not query or not query.strip():
             return {"places": []}
@@ -246,10 +244,10 @@ class GoogleMasjidPlacesService:
         )
 
     def search_masjid_by_city(
-        self,
-        city: str,
-        max_result_count: int = 20,
-        radius_meters: int = 5000,
+            self,
+            city: str,
+            max_result_count: int = 20,
+            radius_meters: int = 5000,
     ) -> Dict[str, Any]:
         return self.search_masjid_by_name(
             query=city,
@@ -258,11 +256,11 @@ class GoogleMasjidPlacesService:
         )
 
     def _post_places(
-        self,
-        url: str,
-        headers: Dict[str, str],
-        body: Dict[str, Any],
-        api_key: str,
+            self,
+            url: str,
+            headers: Dict[str, str],
+            body: Dict[str, Any],
+            api_key: str,
     ) -> Dict[str, Any]:
         try:
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:

@@ -11,7 +11,7 @@ from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
 from dto.models import OtpVerifyRequest, PhoneLoginRequest, TokenRequest, TokenResponse
 from logger.Logger import Logger
-from services.phone_auth_service import Msg91PhoneAuthService
+from modules.auth.service.phone_auth_service import PhoneAuthApplicationService
 from utils.http_response import success_response
 
 auth_router = APIRouter(tags=["Authentication"])
@@ -99,8 +99,8 @@ def check_token_status():
 
 @auth_router.post(ApiEndpoints.AUTH_PHONE_REQUEST_OTP.value, summary="Send OTP to phone")
 def request_phone_otp(
-    request: PhoneLoginRequest,
-    svc: Msg91PhoneAuthService = Depends(get_phone_auth_service),
+        request: PhoneLoginRequest,
+        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
 ):
     try:
         data = svc.request_otp(request.phone_number)
@@ -115,8 +115,8 @@ def request_phone_otp(
     summary="Verify OTP and return app access token",
 )
 def verify_phone_otp(
-    request: OtpVerifyRequest,
-    svc: Msg91PhoneAuthService = Depends(get_phone_auth_service),
+        request: OtpVerifyRequest,
+        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
 ):
     try:
         data = svc.verify_otp(request.phone_number, request.otp)

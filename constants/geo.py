@@ -25,6 +25,6 @@ def india_location_restriction_rectangle() -> Dict[str, Any]:
 
 def is_point_in_india(latitude: float, longitude: float) -> bool:
     return (
-        INDIA_RECTANGLE_LOW_LAT <= latitude <= INDIA_RECTANGLE_HIGH_LAT
-        and INDIA_RECTANGLE_LOW_LNG <= longitude <= INDIA_RECTANGLE_HIGH_LNG
+            INDIA_RECTANGLE_LOW_LAT <= latitude <= INDIA_RECTANGLE_HIGH_LAT
+            and INDIA_RECTANGLE_LOW_LNG <= longitude <= INDIA_RECTANGLE_HIGH_LNG
     )
