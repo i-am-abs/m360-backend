@@ -1,6 +1,6 @@
 import os
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import requests
 from requests import RequestException
@@ -13,63 +13,128 @@ from services.google_places.support.env import load_project_dotenv
 
 
 class Msg91OtpGateway:
+    """MSG91 Widget OTP Gateway.
+
+    Uses the Widget API v5 (POST / JSON body / authkey header).
+    Flow:  send_otp → (optional) retry_otp → verify_otp
+    """
+
+    # ------------------------------------------------------------------ #
+    #  Config helpers                                                       #
+    # ------------------------------------------------------------------ #
+
     @staticmethod
-    def _msg91_auth_key() -> str:
+    def _auth_key() -> str:
         load_project_dotenv()
         key = os.getenv(EnvKeys.MSG91_AUTH_KEY.value, "").strip()
         if not key:
             raise ApiException(
-                "MSG91 auth key is not configured",
+                "MSG91_AUTH_KEY is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
         return key
 
     @staticmethod
-    def _msg91_template_id() -> str:
+    def _widget_id() -> str:
         load_project_dotenv()
-        template_id = os.getenv(EnvKeys.MSG91_TEMPLATE_ID.value, "").strip()
-        if not template_id:
+        widget_id = os.getenv(EnvKeys.MSG91_WIDGET_ID.value, "").strip()
+        if not widget_id:
             raise ApiException(
-                "MSG91 template id is not configured",
+                "MSG91_WIDGET_ID is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
-        return template_id
+        return widget_id
 
-    def request_otp(self, formatted_mobile: str) -> Dict[str, Any]:
-        params = {
-            "mobile": formatted_mobile,
-            "template_id": self._msg91_template_id(),
-            "authkey": self._msg91_auth_key(),
+    # ------------------------------------------------------------------ #
+    #  Public API                                                           #
+    # ------------------------------------------------------------------ #
+
+    def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
+        """Send OTP via the widget API.
+
+        Returns a dict that contains ``reqId``, which the caller MUST
+        persist (e.g. in the session) and pass to retry_otp / verify_otp.
+        """
+        payload = {
+            "widgetId": self._widget_id(),
+            "identifier": formatted_mobile,
         }
-        return self._call_msg91(params=params, error_status=HTTPStatus.BAD_GATEWAY.value)
+        return self._post(
+            url=Msg91Config.WIDGET_SEND_OTP_URL.value,
+            payload=payload,
+            error_status=HTTPStatus.BAD_GATEWAY.value,
+        )
 
-    def verify_otp(self, formatted_mobile: str, otp: str) -> Dict[str, Any]:
-        params = {
-            "mobile": formatted_mobile,
+    def retry_otp(
+        self,
+        widget_id: str,
+        req_id: str,
+        retry_channel: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Resend / retry an OTP for an existing request ID."""
+        payload: Dict[str, Any] = {
+            "widgetId": widget_id,
+            "reqId": req_id,
+        }
+        if retry_channel:
+            payload["retryChannel"] = retry_channel
+        return self._post(
+            url=Msg91Config.WIDGET_RETRY_OTP_URL.value,
+            payload=payload,
+            error_status=HTTPStatus.BAD_GATEWAY.value,
+        )
+
+    def verify_otp(
+        self,
+        widget_id: str,
+        req_id: str,
+        otp: str,
+    ) -> Dict[str, Any]:
+        """Verify the OTP entered by the user.
+
+        On success MSG91 returns an access token inside the response body.
+        """
+        payload = {
+            "widgetId": widget_id,
+            "reqId": req_id,
             "otp": otp,
-            "authkey": self._msg91_auth_key(),
         }
-        return self._call_msg91(
-            params=params,
+        return self._post(
+            url=Msg91Config.WIDGET_VERIFY_OTP_URL.value,
+            payload=payload,
             error_status=HTTPStatus.UNAUTHORIZED.value,
         )
 
-    @staticmethod
-    def _call_msg91(params: Dict[str, Any], error_status: int) -> Dict[str, Any]:
+    # ------------------------------------------------------------------ #
+    #  Internal helpers                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _post(
+        self,
+        url: str,
+        payload: Dict[str, Any],
+        error_status: int,
+    ) -> Dict[str, Any]:
+        headers = {
+            "authkey": self._auth_key(),
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
         try:
-            response = requests.get(
-                Msg91Config.OTP_SEND_URL.value,
-                params=params,
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers,
                 timeout=SystemConfig.REQUEST_TIMEOUT.value,
             )
-            data = response.json() if response.content else {}
-        except RequestException as e:
+            data: Dict[str, Any] = response.json() if response.content else {}
+        except RequestException as exc:
             raise ApiException(
                 "MSG91 service unreachable",
                 status_code=HTTPStatus.BAD_GATEWAY.value,
-            ) from e
+            ) from exc
 
         if response.status_code >= 400:
-            msg = (data or {}).get("message", "MSG91 OTP request failed")
+            msg = (data or {}).get("message", "MSG91 request failed")
             raise ApiException(msg, status_code=error_status)
         return data

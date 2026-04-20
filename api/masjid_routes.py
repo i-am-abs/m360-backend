@@ -162,7 +162,7 @@ def get_masjid_status():
 
 def _extract_masjid_details(place: Dict[str, Any]) -> Dict[str, Any]:
     accessibility = place.get("accessibilityOptions") or {}
-    amenity = place.get("amenityOptions") or {}
+    parking = place.get("parkingOptions") or {}
     payment = place.get("paymentOptions") or {}
     return {
         "place_id": place.get("id"),
@@ -185,8 +185,9 @@ def _extract_masjid_details(place: Dict[str, Any]) -> Dict[str, Any]:
             "wheelchair_accessible_parking": accessibility.get(
                 "wheelchairAccessibleParking"
             ),
-            "restroom": amenity.get("restroom"),
-            "free_parking_lot": amenity.get("freeParkingLot"),
+            "restroom": place.get("restroom"),
+            "free_parking_lot": parking.get("freeParkingLot"),
+            "paid_parking_lot": parking.get("paidParkingLot"),
             "accepts_nfc": payment.get("acceptsNfc"),
         },
         "raw": place,

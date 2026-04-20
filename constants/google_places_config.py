@@ -18,7 +18,8 @@ class GooglePlacesConfig(Enum):
     PLACE_DETAILS_FIELD_MASK = (
         "id,displayName,formattedAddress,location,photos,name,"
         "currentOpeningHours,regularOpeningHours,internationalPhoneNumber,"
-        "websiteUri,businessStatus,accessibilityOptions,amenityOptions,paymentOptions"
+        "websiteUri,businessStatus,accessibilityOptions,paymentOptions,"
+        "restroom,parkingOptions"
     )
 
     PHOTO_MEDIA_DEFAULT_MAX_HEIGHT_PX = 400

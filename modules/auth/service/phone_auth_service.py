@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from constants.env_keys import EnvKeys
 from exceptions.api_exception import ApiException
@@ -27,6 +27,10 @@ class PhoneAuthApplicationService:
         self._otp_gateway = otp_gateway or Msg91OtpGateway()
         self._phone_validator = phone_validator or IndiaPhoneNumberValidator()
 
+    # ------------------------------------------------------------------ #
+    #  Config helpers                                                       #
+    # ------------------------------------------------------------------ #
+
     @staticmethod
     def _session_ttl_seconds() -> int:
         load_project_dotenv()
@@ -44,27 +48,88 @@ class PhoneAuthApplicationService:
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
 
+    @staticmethod
+    def _widget_id() -> str:
+        load_project_dotenv()
+        widget_id = os.getenv(EnvKeys.MSG91_WIDGET_ID.value, "").strip()
+        if not widget_id:
+            raise ApiException(
+                "MSG91_WIDGET_ID is not configured",
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
+            )
+        return widget_id
+
+    # ------------------------------------------------------------------ #
+    #  Public API                                                           #
+    # ------------------------------------------------------------------ #
+
     def request_otp(self, phone_number: str) -> Dict[str, Any]:
+        """Send OTP to the given phone number via the MSG91 widget.
+
+        Returns the ``reqId`` from MSG91 which the client must pass back
+        when calling retry_otp or verify_otp.
+        """
         formatted_mobile = self._phone_validator.validate_and_format(phone_number)
-        data = self._otp_gateway.request_otp(formatted_mobile)
-        otp_hint = (
-            (data or {}).get("otp")
-            or (data or {}).get("code")
-            or (data or {}).get("verification_code")
+        data = self._otp_gateway.send_otp(formatted_mobile)
+
+        # MSG91 widget sendOtp response:
+        #   { "message": "<reqId>", "type": "success" }  ← reqId is in "message"
+        # Fallback to explicit "reqId" / "request_id" keys for forward-compatibility.
+        otp_type = str((data or {}).get("type", "")).lower()
+        raw_message = (data or {}).get("message", "")
+        req_id = (
+            raw_message
+            if otp_type == "success"
+            else (data or {}).get("reqId") or (data or {}).get("request_id")
         )
+
         logger.info(
-            "MSG91 OTP requested for %s | request_id=%s | otp=%s | response=%s",
+            "MSG91 OTP sent for %s | reqId=%s | response=%s",
             phone_number,
-            (data or {}).get("request_id"),
-            otp_hint,
+            req_id,
             data,
         )
-        return {"phone_number": phone_number, "provider_response": data}
+        return {
+            "phone_number": phone_number,
+            "req_id": req_id,
+            "provider_response": data,
+        }
 
-    def verify_otp(self, phone_number: str, otp: str) -> Dict[str, Any]:
+    def retry_otp(
+        self,
+        phone_number: str,
+        req_id: str,
+        retry_channel: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Resend the OTP for the given request ID.
+
+        ``retry_channel`` is optional — e.g. ``"sms"``, ``"voice"``,
+        ``"whatsapp"``, ``"email"``.
+        """
+        data = self._otp_gateway.retry_otp(
+            widget_id=self._widget_id(),
+            req_id=req_id,
+            retry_channel=retry_channel,
+        )
+        logger.info(
+            "MSG91 OTP retry for %s | reqId=%s | channel=%s | response=%s",
+            phone_number,
+            req_id,
+            retry_channel,
+            data,
+        )
+        return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
+
+    def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
+        """Verify the OTP and issue an app-level session token on success."""
         formatted_mobile = self._phone_validator.validate_and_format(phone_number)
-        data = self._otp_gateway.verify_otp(formatted_mobile, otp)
+        data = self._otp_gateway.verify_otp(
+            widget_id=self._widget_id(),
+            req_id=req_id,
+            otp=otp,
+        )
 
+        # MSG91 widget verify returns {"type": "success"} or {"message": "... success ..."}
         msg = str((data or {}).get("message", "")).lower()
         otp_type = str((data or {}).get("type", "")).lower()
         if "success" not in msg and otp_type != "success":
@@ -77,6 +142,12 @@ class PhoneAuthApplicationService:
         session = self._store.create_session(
             user_id=user["user_id"],
             ttl_seconds=self._session_ttl_seconds(),
+        )
+        logger.info(
+            "OTP verified for %s | reqId=%s | userId=%s",
+            phone_number,
+            req_id,
+            user["user_id"],
         )
         return {
             "user": user,

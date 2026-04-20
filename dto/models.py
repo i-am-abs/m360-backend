@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -16,6 +18,18 @@ class PhoneLoginRequest(BaseModel):
     phone_number: str
 
 
-class OtpVerifyRequest(BaseModel):
+class OtpRetryRequest(BaseModel):
+    """Request body for the retry-OTP endpoint."""
     phone_number: str
+    req_id: str
+    retry_channel: Optional[str] = None  # optional: "sms" | "voice" | "whatsapp" | "email"
+
+
+class OtpVerifyRequest(BaseModel):
+    """Request body for the verify-OTP endpoint.
+
+    req_id is the value returned by MSG91 sendOtp (stored client-side after calling request-otp).
+    """
+    phone_number: str
+    req_id: str
     otp: str

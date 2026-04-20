@@ -1,4 +1,4 @@
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Optional, Protocol
 
 
 class PhoneNumberValidator(Protocol):
@@ -6,6 +6,18 @@ class PhoneNumberValidator(Protocol):
 
 
 class OtpGateway(Protocol):
-    def request_otp(self, formatted_mobile: str) -> Dict[str, Any]: ...
+    def send_otp(self, formatted_mobile: str) -> Dict[str, Any]: ...
 
-    def verify_otp(self, formatted_mobile: str, otp: str) -> Dict[str, Any]: ...
+    def retry_otp(
+        self,
+        widget_id: str,
+        req_id: str,
+        retry_channel: Optional[str] = None,
+    ) -> Dict[str, Any]: ...
+
+    def verify_otp(
+        self,
+        widget_id: str,
+        req_id: str,
+        otp: str,
+    ) -> Dict[str, Any]: ...

@@ -9,7 +9,7 @@ from auth.token_singleton import get_token_provider
 from config.factory.quran_config_factory import create_config
 from constants.api_endpoints import ApiEndpoints
 from constants.token_config import TokenConfig
-from dto.models import OtpVerifyRequest, PhoneLoginRequest, TokenRequest, TokenResponse
+from dto.models import OtpRetryRequest, OtpVerifyRequest, PhoneLoginRequest, TokenRequest, TokenResponse
 from logger.Logger import Logger
 from modules.auth.service.phone_auth_service import PhoneAuthApplicationService
 from utils.http_response import success_response
@@ -111,15 +111,41 @@ def request_phone_otp(
 
 
 @auth_router.post(
+    ApiEndpoints.AUTH_PHONE_RETRY_OTP.value,
+    summary="Retry / resend OTP",
+    description="Resend the OTP using the reqId returned by the send-OTP call. Pass an optional retryChannel (sms | voice | whatsapp | email).",
+)
+def retry_phone_otp(
+        request: OtpRetryRequest,
+        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
+):
+    try:
+        data = svc.retry_otp(
+            phone_number=request.phone_number,
+            req_id=request.req_id,
+            retry_channel=request.retry_channel,
+        )
+        return success_response(data, message="OTP resent")
+    except Exception as e:
+        logger.error(f"OTP retry failed: {e}")
+        raise
+
+
+@auth_router.post(
     ApiEndpoints.AUTH_PHONE_VERIFY_OTP.value,
     summary="Verify OTP and return app access token",
+    description="Pass the reqId returned by send-OTP, the phone number, and the OTP entered by the user.",
 )
 def verify_phone_otp(
         request: OtpVerifyRequest,
         svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
 ):
     try:
-        data = svc.verify_otp(request.phone_number, request.otp)
+        data = svc.verify_otp(
+            phone_number=request.phone_number,
+            req_id=request.req_id,
+            otp=request.otp,
+        )
         return success_response(data, message="OTP verified")
     except Exception as e:
         logger.error(f"OTP verification failed: {e}")
