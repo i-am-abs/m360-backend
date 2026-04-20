@@ -12,12 +12,12 @@ from http_client.http_client import HttpClient
 class RequestsHttpClient(HttpClient):
 
     def get(
-        self,
-        url: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        retries: int = 2,
-        **kwargs: Any,
+            self,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            params: Optional[Dict[str, Any]] = None,
+            retries: int = 2,
+            **kwargs: Any,
     ) -> Any:
         try:
             with Client(timeout=SystemConfig.REQUEST_TIMEOUT.value) as client:
@@ -47,9 +47,9 @@ class RequestsHttpClient(HttpClient):
 
         except HTTPStatusError as e:
             if (
-                e.response.status_code
-                in (HTTPStatus.BAD_GATEWAY.value, HTTPStatus.SERVICE_UNAVAILABLE.value)
-                and retries > 0
+                    e.response.status_code
+                    in (HTTPStatus.BAD_GATEWAY.value, HTTPStatus.SERVICE_UNAVAILABLE.value)
+                    and retries > 0
             ):
                 time.sleep(1)
                 return self.get(url, headers, params, retries - 1)

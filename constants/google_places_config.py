@@ -15,7 +15,12 @@ class GooglePlacesConfig(Enum):
 
     SEARCH_TEXT_FIELD_MASK = _PLACES_SEARCH_BASE_FIELDS
     SEARCH_NEARBY_FIELD_MASK = _PLACES_SEARCH_BASE_FIELDS
-    PLACE_DETAILS_FIELD_MASK = "id,displayName,formattedAddress,location,photos,name"
+    PLACE_DETAILS_FIELD_MASK = (
+        "id,displayName,formattedAddress,location,photos,name,"
+        "currentOpeningHours,regularOpeningHours,internationalPhoneNumber,"
+        "websiteUri,businessStatus,accessibilityOptions,paymentOptions,"
+        "restroom,parkingOptions"
+    )
 
     PHOTO_MEDIA_DEFAULT_MAX_HEIGHT_PX = 400
 

@@ -1,0 +1,3 @@
+from modules.auth.service.phone_auth_service import PhoneAuthApplicationService
+
+Msg91PhoneAuthService = PhoneAuthApplicationService

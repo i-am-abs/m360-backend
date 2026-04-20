@@ -23,3 +23,11 @@ class ApiEndpoints(Enum):
 
     CONTENT_API_V4 = "/content/api/v4"
     AUTH_TOKEN_STATUS = "/auth/token/status"
+    AUTH_PHONE_REQUEST_OTP = "/auth/phone/request-otp"
+    AUTH_PHONE_RETRY_OTP = "/auth/phone/retry-otp"
+    AUTH_PHONE_VERIFY_OTP = "/auth/phone/verify-otp"
+
+    MASJID_DETAILS = "/masjids/{place_id}/details"
+    MY_MASJIDS = "/users/me/masjids"
+    MY_MASJID_ADD = "/users/me/masjids/{place_id}"
+    MY_MASJID_REMOVE = "/users/me/masjids/{place_id}"

@@ -13,13 +13,13 @@ quran_router = APIRouter()
 
 
 def _verses_by_juz_payload(
-    client: QuranApiClient,
-    juz_id: int,
-    language: str,
-    translations: Optional[str],
-    words: bool,
-    page: Optional[int],
-    per_page: Optional[int],
+        client: QuranApiClient,
+        juz_id: int,
+        language: str,
+        translations: Optional[str],
+        words: bool,
+        page: Optional[int],
+        per_page: Optional[int],
 ):
     translation_ids = (
         list(map(int, translations.split(","))) if translations else None
@@ -41,8 +41,8 @@ def health():
 
 @quran_router.get(ApiEndpoints.CHAPTERS.value)
 def get_chapters(
-    language: str = "en",
-    client: QuranApiClient = Depends(get_quran_api_client),
+        language: str = "en",
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     try:
         data = client.chapters.get_chapters(language)
@@ -53,13 +53,13 @@ def get_chapters(
 
 @quran_router.get(ApiEndpoints.VERSES_BY_CHAPTER.value)
 def get_verses_by_chapter(
-    chapter_id: int,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
-    client: QuranApiClient = Depends(get_quran_api_client),
+        chapter_id: int,
+        language: str = "en",
+        translations: Optional[str] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     try:
         translation_ids = (
@@ -80,13 +80,13 @@ def get_verses_by_chapter(
 
 @quran_router.get(ApiEndpoints.VERSES_BY_JUZ.value)
 def get_verses_by_juz(
-    juz_id: int,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
-    client: QuranApiClient = Depends(get_quran_api_client),
+        juz_id: int,
+        language: str = "en",
+        translations: Optional[str] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     try:
         data = _verses_by_juz_payload(
@@ -99,8 +99,8 @@ def get_verses_by_juz(
 
 @quran_router.get(ApiEndpoints.JUZS.value)
 def get_juzs(
-    language: str = "en",
-    client: QuranApiClient = Depends(get_quran_api_client),
+        language: str = "en",
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     try:
         return success_response(client.juzs.get_juzs(language))
@@ -110,13 +110,13 @@ def get_juzs(
 
 @quran_router.get(ApiEndpoints.JUZS_BY_ID.value)
 def get_juzs_by_id(
-    juz_id: int,
-    language: str = "en",
-    translations: Optional[str] = None,
-    words: bool = False,
-    page: Optional[int] = None,
-    per_page: Optional[int] = None,
-    client: QuranApiClient = Depends(get_quran_api_client),
+        juz_id: int,
+        language: str = "en",
+        translations: Optional[str] = None,
+        words: bool = False,
+        page: Optional[int] = None,
+        per_page: Optional[int] = None,
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     """Same payload as GET /verses/by-juz/{juz_id} (friendly alias)."""
     try:
@@ -130,11 +130,11 @@ def get_juzs_by_id(
 
 @quran_router.get(ApiEndpoints.AUDIO_CHAPTER.value)
 def get_chapter_audio(
-    chapter_id: Optional[int] = Query(None),
-    chapterId: Optional[int] = Query(None),
-    recitation_id: Optional[int] = Query(None),
-    recitationId: Optional[int] = Query(None),
-    client: QuranApiClient = Depends(get_quran_api_client),
+        chapter_id: Optional[int] = Query(None),
+        chapterId: Optional[int] = Query(None),
+        recitation_id: Optional[int] = Query(None),
+        recitationId: Optional[int] = Query(None),
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     cid = chapter_id if chapter_id is not None else chapterId
     rid = recitation_id if recitation_id is not None else recitationId
@@ -154,15 +154,15 @@ def get_chapter_audio(
 
 @quran_router.get(ApiEndpoints.AUDIO_VERSE.value)
 def get_verse_audio(
-    recitation_id: Optional[int] = Query(None),
-    recitationId: Optional[int] = Query(None),
-    verse_key: Optional[str] = Query(None),
-    verseKey: Optional[str] = Query(None),
-    chapter_number: Optional[int] = Query(None),
-    chapterNumber: Optional[int] = Query(None),
-    juz_number: Optional[int] = Query(None),
-    juzNumber: Optional[int] = Query(None),
-    client: QuranApiClient = Depends(get_quran_api_client),
+        recitation_id: Optional[int] = Query(None),
+        recitationId: Optional[int] = Query(None),
+        verse_key: Optional[str] = Query(None),
+        verseKey: Optional[str] = Query(None),
+        chapter_number: Optional[int] = Query(None),
+        chapterNumber: Optional[int] = Query(None),
+        juz_number: Optional[int] = Query(None),
+        juzNumber: Optional[int] = Query(None),
+        client: QuranApiClient = Depends(get_quran_api_client),
 ):
     rid = recitation_id if recitation_id is not None else recitationId
     if rid is None:
