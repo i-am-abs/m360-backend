@@ -69,14 +69,16 @@ class PhoneAuthApplicationService:
         Returns the ``reqId`` from MSG91 which the client must pass back
         when calling retry_otp or verify_otp.
         """
-        formatted_mobile = self._phone_validator.validate_and_format(phone_number)
-        data = self._otp_gateway.send_otp(formatted_mobile)
 
-        # MSG91 widget sendOtp response:
-        #   { "message": "<reqId>", "type": "success" }  ← reqId is in "message"
-        # Fallback to explicit "reqId" / "request_id" keys for forward-compatibility.
+        formatted_mobile = self._phone_validator.validate_and_format(phone_number)
+        logger.info(f"======{formatted_mobile}")
+        data = self._otp_gateway.send_otp(formatted_mobile)
+        logger.info(f"====={data}")
         otp_type = str((data or {}).get("type", "")).lower()
+        logger.info(f"====={otp_type}")
         raw_message = (data or {}).get("message", "")
+        logger.info(f"====={raw_message}")
+        logger.info("sent the OTP --- Before")
         req_id = (
             raw_message
             if otp_type == "success"
