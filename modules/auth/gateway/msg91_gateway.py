@@ -90,18 +90,18 @@ class Msg91OtpGateway:
             payload: Dict[str, Any],
             error_status: int,
     ) -> Dict[str, Any]:
-        def _mask(value: Any, keep: int = 3) -> str:
-            raw = str(value or "")
-            if not raw:
-                return ""
-            if len(raw) <= keep * 2:
-                return "*" * len(raw)
-            return f"{raw[:keep]}{'*' * (len(raw) - (keep * 2))}{raw[-keep:]}"
+        # def _mask(value: Any, keep: int = 3) -> str:
+        #     raw = str(value or "")
+        #     if not raw:
+        #         return ""
+        #     if len(raw) <= keep * 2:
+        #         return "*" * len(raw)
+        #     return f"{raw[:keep]}{'*' * (len(raw) - (keep * 2))}{raw[-keep:]}"
 
         diagnostic_payload = {
             "widgetId": payload.get("widgetId"),
-            "identifier": _mask(payload.get("identifier")),
-            "reqId": _mask(payload.get("reqId")),
+            "identifier": payload.get("identifier"),
+            "reqId": payload.get("reqId"),
             "retryChannel": payload.get("retryChannel"),
         }
         headers = {
