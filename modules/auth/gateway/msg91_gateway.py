@@ -9,20 +9,13 @@ from constants.env_keys import EnvKeys
 from constants.msg91_config import Msg91Config
 from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
+from logger.Logger import Logger
 from services.google_places.support.env import load_project_dotenv
+
+logger = Logger.get_logger(__name__)
 
 
 class Msg91OtpGateway:
-    """MSG91 Widget OTP Gateway.
-
-    Uses the Widget API v5 (POST / JSON body / authkey header).
-    Flow:  send_otp → (optional) retry_otp → verify_otp
-    """
-
-    # ------------------------------------------------------------------ #
-    #  Config helpers                                                       #
-    # ------------------------------------------------------------------ #
-
     @staticmethod
     def _auth_key() -> str:
         load_project_dotenv()
@@ -45,16 +38,7 @@ class Msg91OtpGateway:
             )
         return widget_id
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                           #
-    # ------------------------------------------------------------------ #
-
     def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
-        """Send OTP via the widget API.
-
-        Returns a dict that contains ``reqId``, which the caller MUST
-        persist (e.g. in the session) and pass to retry_otp / verify_otp.
-        """
         payload = {
             "widgetId": self._widget_id(),
             "identifier": formatted_mobile,
@@ -66,12 +50,11 @@ class Msg91OtpGateway:
         )
 
     def retry_otp(
-        self,
-        widget_id: str,
-        req_id: str,
-        retry_channel: Optional[str] = None,
+            self,
+            widget_id: str,
+            req_id: str,
+            retry_channel: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Resend / retry an OTP for an existing request ID."""
         payload: Dict[str, Any] = {
             "widgetId": widget_id,
             "reqId": req_id,
@@ -85,15 +68,11 @@ class Msg91OtpGateway:
         )
 
     def verify_otp(
-        self,
-        widget_id: str,
-        req_id: str,
-        otp: str,
+            self,
+            widget_id: str,
+            req_id: str,
+            otp: str,
     ) -> Dict[str, Any]:
-        """Verify the OTP entered by the user.
-
-        On success MSG91 returns an access token inside the response body.
-        """
         payload = {
             "widgetId": widget_id,
             "reqId": req_id,
@@ -105,16 +84,26 @@ class Msg91OtpGateway:
             error_status=HTTPStatus.UNAUTHORIZED.value,
         )
 
-    # ------------------------------------------------------------------ #
-    #  Internal helpers                                                     #
-    # ------------------------------------------------------------------ #
-
     def _post(
-        self,
-        url: str,
-        payload: Dict[str, Any],
-        error_status: int,
+            self,
+            url: str,
+            payload: Dict[str, Any],
+            error_status: int,
     ) -> Dict[str, Any]:
+        def _mask(value: Any, keep: int = 3) -> str:
+            raw = str(value or "")
+            if not raw:
+                return ""
+            if len(raw) <= keep * 2:
+                return "*" * len(raw)
+            return f"{raw[:keep]}{'*' * (len(raw) - (keep * 2))}{raw[-keep:]}"
+
+        diagnostic_payload = {
+            "widgetId": payload.get("widgetId"),
+            "identifier": _mask(payload.get("identifier")),
+            "reqId": _mask(payload.get("reqId")),
+            "retryChannel": payload.get("retryChannel"),
+        }
         headers = {
             "authkey": self._auth_key(),
             "Content-Type": "application/json",
@@ -136,5 +125,13 @@ class Msg91OtpGateway:
 
         if response.status_code >= 400:
             msg = (data or {}).get("message", "MSG91 request failed")
+            body_preview = (response.text or "")[:500]
+            logger.error(
+                "MSG91 request failed | url=%s | status=%s | payload=%s | response=%s",
+                url,
+                response.status_code,
+                diagnostic_payload,
+                body_preview,
+            )
             raise ApiException(msg, status_code=error_status)
         return data
