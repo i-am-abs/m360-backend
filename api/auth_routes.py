@@ -58,10 +58,9 @@ def check_token_status(
         )
 
 
-@auth_router.post(ApiEndpoints.AUTH_PHONE_REQUEST_OTP.value, summary="Send OTP to phone")
-def request_phone_otp(
+def _request_phone_otp(
         request: PhoneLoginRequest,
-        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
+        svc: PhoneAuthApplicationService,
 ):
     try:
         data = svc.request_otp(request.phone_number)
@@ -69,6 +68,29 @@ def request_phone_otp(
     except Exception as e:
         logger.error(f"OTP request failed: {e}")
         raise
+
+
+@auth_router.post(
+    ApiEndpoints.AUTH_PHONE_REQUEST_OTP.value,
+    summary="Send OTP to phone",
+)
+def request_phone_otp(
+        request: PhoneLoginRequest,
+        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
+):
+    return _request_phone_otp(request, svc)
+
+
+@auth_router.post(
+    ApiEndpoints.AUTH_LOGIN.value,
+    summary="Phone login (alias for request-otp)",
+    description="Same as POST /auth/phone/request-otp. Sends an OTP to the given phone number.",
+)
+def auth_login(
+        request: PhoneLoginRequest,
+        svc: PhoneAuthApplicationService = Depends(get_phone_auth_service),
+):
+    return _request_phone_otp(request, svc)
 
 
 @auth_router.post(
