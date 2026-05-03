@@ -74,11 +74,10 @@ class PersistenceSettings:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> PersistenceSettings:
-        return cls(
-            user_store_file=(
-                    env.get(EnvKeys.USER_STORE_FILE.value) or ""
-            ).strip(),
-        )
+        raw = (
+            env.get(EnvKeys.USER_STORE_FILE.value) or "data/user_store.json"
+        ).strip()
+        return cls(user_store_file=raw or "data/user_store.json")
 
 
 @dataclass(frozen=True)
