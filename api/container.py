@@ -15,8 +15,13 @@ from services.user_store import UserStore
 
 def bootstrap_app_container(app: FastAPI) -> None:
     settings = ApplicationSettings.build()
-    token_provider = OAuthTokenProvider(settings.quran_config)
-    quran_client = QuranApiClient(settings.quran_config, token_provider)
+
+    if settings.quran_config is not None:
+        token_provider = OAuthTokenProvider(settings.quran_config)
+        quran_client = QuranApiClient(settings.quran_config, token_provider)
+    else:
+        token_provider = None
+        quran_client = None
 
     masjid_svc = build_masjid_places_service(settings.masjid)
     msg91 = Msg91OtpGateway(settings.msg91)

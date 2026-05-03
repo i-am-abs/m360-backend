@@ -16,21 +16,39 @@ from services.user_store import UserStore
 
 _bearer = HTTPBearer(auto_error=False)
 
+_QURAN_NOT_CONFIGURED = (
+    "Quran Foundation API is not configured. "
+    "Set QURAN_CLIENT_ID and QURAN_CLIENT_SECRET (or QF_CLIENT_ID / QF_CLIENT_SECRET), "
+    "or provide a .env file mounted at the application root."
+)
+
 
 def get_settings(request: Request) -> ApplicationSettings:
     return request.app.state.settings
 
 
 def get_oauth_token_provider(request: Request) -> OAuthTokenProvider:
-    return request.app.state.oauth_token_provider
+    provider = request.app.state.oauth_token_provider
+    if provider is None:
+        raise ApiException(
+            _QURAN_NOT_CONFIGURED,
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+        )
+    return provider
 
 
 def get_quran_oauth_facade(request: Request) -> QuranOAuthFacade:
-    return QuranOAuthFacade(request.app.state.oauth_token_provider)
+    return QuranOAuthFacade(get_oauth_token_provider(request))
 
 
 def get_quran_api_client(request: Request) -> QuranApiClient:
-    return request.app.state.quran_api_client
+    client = request.app.state.quran_api_client
+    if client is None:
+        raise ApiException(
+            _QURAN_NOT_CONFIGURED,
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+        )
+    return client
 
 
 def get_masjid_places_service(request: Request) -> MasjidPlacesService:

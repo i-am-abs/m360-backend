@@ -93,7 +93,7 @@ class LoggingSettings:
 
 @dataclass(frozen=True)
 class ApplicationSettings:
-    quran_config: QuranApiConfig
+    quran_config: QuranApiConfig | None
     masjid: MasjidModuleSettings
     msg91: Msg91Settings
     phone_auth: PhoneAuthSettings
@@ -104,8 +104,12 @@ class ApplicationSettings:
     def build(cls) -> ApplicationSettings:
         load_app_env()
         env = ENV
+        try:
+            quran_config = create_quran_api_config(env)
+        except ValueError:
+            quran_config = None
         return cls(
-            quran_config=create_quran_api_config(env),
+            quran_config=quran_config,
             masjid=MasjidModuleSettings.from_env(env),
             msg91=Msg91Settings.from_env(env),
             phone_auth=PhoneAuthSettings.from_env(env),

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import os
-import warnings
-from pathlib import Path
 from typing import Final, Mapping
 
 
@@ -40,11 +38,6 @@ class DotEnvBootstrap:
             p = self._root / env_file
             if p.exists():
                 load_dotenv(p, override=True)
-        elif not env_path.exists():
-            warnings.warn(
-                f"Environment file {env_file or '.env'} not found. Using system env.",
-                stacklevel=3,
-            )
 
 
 DEFAULT_LAYERED_ENV_FILES: Final[dict[str, str]] = {
