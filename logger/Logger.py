@@ -3,6 +3,8 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
+from config.env_config import get_env
+from constants.env_keys import EnvKeys
 from constants.system_config import SystemConfig
 
 
@@ -29,7 +31,7 @@ class Logger:
 
         logger.addHandler(console_handler)
         try:
-            logs_dir = os.getenv("LOGS_DIR", "logs")
+            logs_dir = get_env(EnvKeys.LOGS_DIR.value, "logs") or "logs"
             os.makedirs(logs_dir, exist_ok=True)
             file_handler = RotatingFileHandler(
                 os.path.join(logs_dir, "quran_api.log"),
