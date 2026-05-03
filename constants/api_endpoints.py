@@ -4,6 +4,7 @@ from enum import Enum
 class ApiEndpoints(Enum):
     HEALTH = "/health"
     AUTH_TOKEN = "/auth/token"
+    AUTH_LOGIN = "/auth/login"
 
     CHAPTERS = "/chapters"
     VERSES_BY_CHAPTER = "/verses/by-chapter/{chapter_id}"

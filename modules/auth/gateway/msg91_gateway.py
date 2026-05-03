@@ -1,25 +1,24 @@
-import os
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 import requests
 from requests import RequestException
 
-from constants.env_keys import EnvKeys
+from config.application_settings import Msg91Settings
 from constants.msg91_config import Msg91Config
 from constants.system_config import SystemConfig
 from exceptions.api_exception import ApiException
 from logger.Logger import Logger
-from services.google_places.support.env import load_project_dotenv
 
 logger = Logger.get_logger(__name__)
 
 
 class Msg91OtpGateway:
-    @staticmethod
-    def _auth_key() -> str:
-        load_project_dotenv()
-        key = os.getenv(EnvKeys.MSG91_AUTH_KEY.value, "").strip()
+    def __init__(self, settings: Msg91Settings) -> None:
+        self._settings = settings
+
+    def _auth_key(self) -> str:
+        key = self._settings.auth_key
         if not key:
             raise ApiException(
                 "MSG91_AUTH_KEY is not configured",
@@ -27,10 +26,8 @@ class Msg91OtpGateway:
             )
         return key
 
-    @staticmethod
-    def _widget_id() -> str:
-        load_project_dotenv()
-        widget_id = os.getenv(EnvKeys.MSG91_WIDGET_ID.value, "").strip()
+    def _widget_id(self) -> str:
+        widget_id = self._settings.widget_id
         if not widget_id:
             raise ApiException(
                 "MSG91_WIDGET_ID is not configured",
@@ -90,14 +87,6 @@ class Msg91OtpGateway:
             payload: Dict[str, Any],
             error_status: int,
     ) -> Dict[str, Any]:
-        # def _mask(value: Any, keep: int = 3) -> str:
-        #     raw = str(value or "")
-        #     if not raw:
-        #         return ""
-        #     if len(raw) <= keep * 2:
-        #         return "*" * len(raw)
-        #     return f"{raw[:keep]}{'*' * (len(raw) - (keep * 2))}{raw[-keep:]}"
-
         diagnostic_payload = {
             "widgetId": payload.get("widgetId"),
             "identifier": payload.get("identifier"),

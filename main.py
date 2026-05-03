@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth_routes import auth_router
+from api.container import bootstrap_app_container
 from api.masjid_routes import masjid_router
 from api.quran_routes import quran_router
 from constants.app_settings import AppSettings
@@ -34,6 +35,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+bootstrap_app_container(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(AppSettings.CORS_ALLOW_ORIGINS),
@@ -48,9 +51,9 @@ app.add_exception_handler(ApiException, api_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-
 # if __name__ == "__main__":
 #     import uvicorn
+#
 #     uvicorn.run(
 #         "main:app",
 #         host=AppSettings.UVICORN_HOST,

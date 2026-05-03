@@ -6,15 +6,12 @@ from threading import RLock
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from constants.env_keys import EnvKeys
 from exceptions.api_exception import ApiException
-from services.google_places.support.env import load_project_dotenv
 
 
 class UserStore:
-    def __init__(self):
-        load_project_dotenv()
-        self._path = os.getenv(EnvKeys.USER_STORE_FILE.value, "").strip()
+    def __init__(self, store_path: str) -> None:
+        self._path = (store_path or "").strip()
         if not self._path:
             raise ApiException(
                 "USER_STORE_FILE is not configured",

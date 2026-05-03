@@ -6,16 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from api.dependencies import (
     get_current_user,
     get_masjid_places_service,
+    get_settings,
     get_user_masjid_service,
 )
+from api.presentation.masjid_details_presenter import masjid_details_view
+from config.application_settings import ApplicationSettings
 from constants.api_endpoints import ApiEndpoints
 from constants.masjid_query import MasjidQueryLimits
 from exceptions.api_exception import ApiException
 from services.google_places.contracts import MasjidPlacesService
-from services.google_places.support.env import (
-    get_masjid_search_default_radius_meters,
-    is_masjid_module_enabled,
-)
 from services.user_masjid_service import UserMasjidService
 from utils.http_response import success_response
 
@@ -27,9 +26,10 @@ def _masjid_search_by_name_response(
         max_result_count: int,
         radius_meters: Optional[int],
         svc: MasjidPlacesService,
+        settings: ApplicationSettings,
 ):
     if radius_meters is None:
-        radius_meters = get_masjid_search_default_radius_meters()
+        radius_meters = settings.masjid.default_search_radius_meters
     data = svc.search_masjid_by_name(
         query=q,
         max_result_count=max_result_count,
@@ -89,13 +89,14 @@ def search_masjid_by_name(
             description="CamelCase alias for radius_meters.",
         ),
         svc: MasjidPlacesService = Depends(get_masjid_places_service),
+        settings: ApplicationSettings = Depends(get_settings),
 ):
     try:
         limit = (
             maxResultCount if maxResultCount is not None else max_result_count
         )
         radius = radius_meters if radius_meters is not None else radiusMeters
-        return _masjid_search_by_name_response(q, limit, radius, svc)
+        return _masjid_search_by_name_response(q, limit, radius, svc, settings)
     except ValueError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
@@ -119,10 +120,11 @@ def get_masjid_by_city(
             ),
         ),
         svc: MasjidPlacesService = Depends(get_masjid_places_service),
+        settings: ApplicationSettings = Depends(get_settings),
 ):
     try:
         if radius_meters is None:
-            radius_meters = get_masjid_search_default_radius_meters()
+            radius_meters = settings.masjid.default_search_radius_meters
         data = svc.search_masjid_by_city(
             city=city,
             max_result_count=max_result_count,
@@ -156,42 +158,8 @@ def get_masjid_place(
 
 
 @masjid_router.get(ApiEndpoints.MASJID_STATUS.value)
-def get_masjid_status():
-    return success_response({"enabled": is_masjid_module_enabled()})
-
-
-def _extract_masjid_details(place: Dict[str, Any]) -> Dict[str, Any]:
-    accessibility = place.get("accessibilityOptions") or {}
-    parking = place.get("parkingOptions") or {}
-    payment = place.get("paymentOptions") or {}
-    return {
-        "place_id": place.get("id"),
-        "name": (place.get("displayName") or {}).get("text"),
-        "address": place.get("formattedAddress"),
-        "location": place.get("location"),
-        "timings": {
-            "current_opening_hours": place.get("currentOpeningHours"),
-            "regular_opening_hours": place.get("regularOpeningHours"),
-        },
-        "management": {
-            "phone_number": place.get("internationalPhoneNumber"),
-            "website": place.get("websiteUri"),
-            "business_status": place.get("businessStatus"),
-        },
-        "facilities": {
-            "wheelchair_accessible_entrance": accessibility.get(
-                "wheelchairAccessibleEntrance"
-            ),
-            "wheelchair_accessible_parking": accessibility.get(
-                "wheelchairAccessibleParking"
-            ),
-            "restroom": place.get("restroom"),
-            "free_parking_lot": parking.get("freeParkingLot"),
-            "paid_parking_lot": parking.get("paidParkingLot"),
-            "accepts_nfc": payment.get("acceptsNfc"),
-        },
-        "raw": place,
-    }
+def get_masjid_status(settings: ApplicationSettings = Depends(get_settings)):
+    return success_response({"enabled": settings.masjid.is_module_enabled()})
 
 
 @masjid_router.get(ApiEndpoints.MASJID_DETAILS.value)
@@ -201,7 +169,7 @@ def get_masjid_details(
 ):
     try:
         place = svc.get_place_by_id(place_id)
-        return success_response(_extract_masjid_details(place))
+        return success_response(masjid_details_view(place))
     except ValueError as e:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST.value,

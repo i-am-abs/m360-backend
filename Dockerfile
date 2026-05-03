@@ -19,6 +19,10 @@ RUN pip install --upgrade pip \
     && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
 FROM python:3.12-slim-bookworm AS runtime
+# Quran content routes (/chapters, /verses, …) require OAuth client credentials at runtime:
+#   QURAN_CLIENT_ID (or QF_CLIENT_ID) and QURAN_CLIENT_SECRET (or QF_CLIENT_SECRET)
+# Optional: QF_ENV (production | prelive), QURAN_BASE_URL, QURAN_OAUTH_URL
+# Phone auth: MSG91_* and USER_STORE_FILE (defaults to data/user_store.json).
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_ROOT_USER_ACTION=ignore \

@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import os
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from constants.env_keys import EnvKeys
 from exceptions.api_exception import ApiException
 from logger.Logger import Logger
 from modules.auth.domain.contracts import OtpGateway, PhoneNumberValidator
-from modules.auth.domain.validators import IndiaPhoneNumberValidator
-from modules.auth.gateway.msg91_gateway import Msg91OtpGateway
-from services.google_places.support.env import load_project_dotenv
 from services.user_store import UserStore
 
 logger = Logger.get_logger(__name__)
@@ -18,42 +13,40 @@ logger = Logger.get_logger(__name__)
 
 class PhoneAuthApplicationService:
     def __init__(
-        self,
-        store: UserStore,
-        otp_gateway: OtpGateway | None = None,
-        phone_validator: PhoneNumberValidator | None = None,
-    ):
+            self,
+            store: UserStore,
+            otp_gateway: OtpGateway,
+            phone_validator: PhoneNumberValidator,
+            widget_id: str,
+            session_ttl_seconds_raw: str,
+    ) -> None:
         self._store = store
-        self._otp_gateway = otp_gateway or Msg91OtpGateway()
-        self._phone_validator = phone_validator or IndiaPhoneNumberValidator()
+        self._otp_gateway = otp_gateway
+        self._phone_validator = phone_validator
+        self._widget_id = (widget_id or "").strip()
+        self._session_ttl_seconds_raw = (session_ttl_seconds_raw or "").strip()
 
-    @staticmethod
-    def _session_ttl_seconds() -> int:
-        load_project_dotenv()
-        raw = os.getenv(EnvKeys.AUTH_SESSION_TTL_SECONDS.value, "").strip()
-        if not raw:
+    def _session_ttl_seconds(self) -> int:
+        if not self._session_ttl_seconds_raw:
             raise ApiException(
                 "AUTH_SESSION_TTL_SECONDS is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
         try:
-            return int(raw)
+            return int(self._session_ttl_seconds_raw)
         except ValueError:
             raise ApiException(
                 "AUTH_SESSION_TTL_SECONDS must be a valid integer",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
 
-    @staticmethod
-    def _widget_id() -> str:
-        load_project_dotenv()
-        widget_id = os.getenv(EnvKeys.MSG91_WIDGET_ID.value, "").strip()
-        if not widget_id:
+    def _widget_id_for_otp(self) -> str:
+        if not self._widget_id:
             raise ApiException(
                 "MSG91_WIDGET_ID is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
             )
-        return widget_id
+        return self._widget_id
 
     def request_otp(self, phone_number: str) -> Dict[str, Any]:
         formatted_mobile = self._phone_validator.validate_and_format(phone_number)
@@ -80,13 +73,13 @@ class PhoneAuthApplicationService:
         }
 
     def retry_otp(
-        self,
-        phone_number: str,
-        req_id: str,
-        retry_channel: Optional[str] = None,
+            self,
+            phone_number: str,
+            req_id: str,
+            retry_channel: Optional[str] = None,
     ) -> Dict[str, Any]:
         data = self._otp_gateway.retry_otp(
-            widget_id=self._widget_id(),
+            widget_id=self._widget_id_for_otp(),
             req_id=req_id,
             retry_channel=retry_channel,
         )
@@ -102,7 +95,7 @@ class PhoneAuthApplicationService:
     def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
         formatted_mobile = self._phone_validator.validate_and_format(phone_number)
         data = self._otp_gateway.verify_otp(
-            widget_id=self._widget_id(),
+            widget_id=self._widget_id_for_otp(),
             req_id=req_id,
             otp=otp,
         )

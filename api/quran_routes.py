@@ -118,7 +118,6 @@ def get_juzs_by_id(
         per_page: Optional[int] = None,
         client: QuranApiClient = Depends(get_quran_api_client),
 ):
-    """Same payload as GET /verses/by-juz/{juz_id} (friendly alias)."""
     try:
         data = _verses_by_juz_payload(
             client, juz_id, language, translations, words, page, per_page
