@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from pymongo import MongoClient
 
 from app.core.config import Settings
 from app.core.logging import get_logger
+
 from app.gateways.http_client import HttpxClient
 from app.gateways.msg91_gateway import Msg91OtpGateway
 from app.gateways.oauth_token_provider import OAuthTokenProvider
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.token_provider import TokenProvider
+from app.interfaces.user_repository import UserRepository
 from app.repositories.google_places_client import GooglePlacesClient
-from app.repositories.user_store import JsonFileUserStore
+from app.repositories.local_cache_user_store import LocalCacheUserStore
+from app.repositories.mongo_user_store import MongoUserStore
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
@@ -45,9 +49,33 @@ def _create_masjid_search_service(settings: Settings) -> MasjidSearchService:
     return GoogleMasjidSearchService(places_client)
 
 
+def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
+    if settings.mongodb_enabled:
+        if not settings.mongodb_uri or not str(settings.mongodb_uri).strip():
+            raise RuntimeError(
+                "MONGODB_URI is required when MONGODB_ENABLED (or MONGODB) is true."
+            )
+        client = MongoClient(
+            settings.mongodb_uri,
+            serverSelectionTimeoutMS=10_000,
+        )
+        try:
+            client.admin.command("ping")
+        except Exception as e:
+            client.close()
+            raise RuntimeError(
+                "MongoDB ping failed — check MONGODB_URI, credentials, and firewall "
+                "(e.g. GCP allowlist for Atlas / self-hosted port 27017)."
+            ) from e
+        app.state.mongo_client = client
+        return MongoUserStore(client.get_database(settings.mongodb_database))
+    app.state.mongo_client = None
+    return LocalCacheUserStore()
+
+
 def _create_phone_auth_service(
         settings: Settings,
-        user_store: JsonFileUserStore,
+        user_store: UserRepository,
 ) -> PhoneAuthService:
     return PhoneAuthService(
         store=user_store,
@@ -68,7 +96,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     masjid_search = _create_masjid_search_service(settings)
     app.state.masjid_search_service = masjid_search
 
-    user_store = JsonFileUserStore(settings.user_store_file)
+    user_store = _create_user_repository(app, settings)
     app.state.user_store = user_store
 
     app.state.phone_auth_service = _create_phone_auth_service(settings, user_store)
@@ -78,4 +106,5 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         places_reader=masjid_search,
     )
 
-    _log.info("Bootstrap complete — all services wired.")
+    mode = "mongodb" if settings.mongodb_enabled else "local_cache"
+    _log.info("Bootstrap complete — persistence=%s — all services wired.", mode)

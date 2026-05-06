@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Tuple
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
@@ -41,6 +41,21 @@ class Settings(BaseSettings):
     auth_session_ttl_seconds: int = 86400
 
     user_store_file: str = "data/user_store.json"
+    """Legacy file path; unused when persistence is MongoDB or local cache."""
+
+    mongodb_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "MONGODB_ENABLED",
+            "MONGODB",
+            "mongodb_enabled",
+        ),
+    )
+    mongodb_uri: Optional[str] = None
+    mongodb_database: str = "m360"
+
+    uvicorn_workers: int = 2
+    forwarded_allow_ips: str = "*"
 
     request_timeout_seconds: int = 10
 
@@ -56,6 +71,10 @@ class Settings(BaseSettings):
     @property
     def masjid_module_enabled(self) -> bool:
         return bool(self.google_places_api_key)
+
+    @property
+    def mongodb_configured(self) -> bool:
+        return self.mongodb_enabled and bool(self.mongodb_uri and self.mongodb_uri.strip())
 
     @property
     def project_root(self) -> Path:

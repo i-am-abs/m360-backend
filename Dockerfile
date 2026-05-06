@@ -18,4 +18,9 @@ USER m360
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+ENV SERVER_PORT=8000 \
+    UVICORN_WORKERS=2 \
+    FORWARDED_ALLOW_IPS="*"
+
+# Shell form so SERVER_PORT / UVICORN_WORKERS / FORWARDED_ALLOW_IPS can be overridden on the VM.
+CMD /bin/sh -c 'exec uvicorn main:app --host 0.0.0.0 --port "${SERVER_PORT}" --workers "${UVICORN_WORKERS}" --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS}"'

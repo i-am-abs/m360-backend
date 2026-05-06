@@ -26,6 +26,10 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI):
         log.info("application_startup env=%s", settings.app_env)
         yield
+        client = getattr(app.state, "mongo_client", None)
+        if client is not None:
+            client.close()
+            log.info("mongodb_client_closed")
         log.info("application_shutdown")
 
     application = FastAPI(
