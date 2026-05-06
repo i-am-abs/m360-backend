@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     masjid_search_radius_meters: int = 5000
 
     msg91_auth_key: Optional[str] = None
-    """Account API Auth Key (Control Panel → OTP Widget → Server-Side Integration → Get Authkey)."""
 
     msg91_widget_auth_token: Optional[str] = Field(
         default=None,
@@ -45,7 +44,6 @@ class Settings(BaseSettings):
             "MSG91_TOKEN",
         ),
     )
-    """OTP Widget token (OTP section → Token → Generate New Token). Use header `token` + body `tokenAuth`; do not put this in MSG91_AUTH_KEY."""
 
     msg91_widget_id: Optional[str] = None
     msg91_country_code: str = "91"
@@ -53,7 +51,6 @@ class Settings(BaseSettings):
     auth_session_ttl_seconds: int = 86400
 
     user_store_file: str = "data/user_store.json"
-    """Legacy file path; unused when persistence is MongoDB or local cache."""
 
     mongodb_enabled: bool = Field(
         default=False,
