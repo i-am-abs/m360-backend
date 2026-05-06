@@ -27,6 +27,7 @@ class Msg91OtpGateway(OtpGateway):
         self._ssl_ctx = create_ssl_context()
 
     def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
+        self._require_widget_credentials()
         return self._post(
             endpoint=Msg91Endpoint.SEND_OTP,
             payload={"widgetId": self._widget_id, "identifier": formatted_mobile},
@@ -39,6 +40,7 @@ class Msg91OtpGateway(OtpGateway):
             req_id: str,
             retry_channel: Optional[str] = None,
     ) -> Dict[str, Any]:
+        self._require_auth_key()
         payload: Dict[str, Any] = {"widgetId": widget_id, "reqId": req_id}
         if retry_channel:
             payload["retryChannel"] = retry_channel
@@ -54,6 +56,7 @@ class Msg91OtpGateway(OtpGateway):
             req_id: str,
             otp: str,
     ) -> Dict[str, Any]:
+        self._require_auth_key()
         return self._post(
             endpoint=Msg91Endpoint.VERIFY_OTP,
             payload={"widgetId": widget_id, "reqId": req_id, "otp": otp},
@@ -67,6 +70,7 @@ class Msg91OtpGateway(OtpGateway):
             error_status: int,
             _attempt: int = 0,
     ) -> Dict[str, Any]:
+        self._require_auth_key()
         headers = {
             "authkey": self._auth_key,
             "Content-Type": "application/json",
@@ -100,4 +104,60 @@ class Msg91OtpGateway(OtpGateway):
                 code=ErrorCode.MSG91_ERROR,
                 provider_message=msg,
             )
+
+        self._raise_if_body_error(data, error_status)
         return data
+
+    def _require_auth_key(self) -> None:
+        if not (self._auth_key or "").strip():
+            raise ApiException(
+                "MSG91 is not configured — set MSG91_AUTH_KEY (API Auth Key from MSG91 control panel).",
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+                code=ErrorCode.CONFIG_MISSING,
+            )
+
+    def _require_widget_credentials(self) -> None:
+        self._require_auth_key()
+        if not (self._widget_id or "").strip():
+            raise ApiException(
+                "MSG91 widget is not configured — set MSG91_WIDGET_ID from your OTP widget setup.",
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+                code=ErrorCode.CONFIG_MISSING,
+            )
+
+    def _raise_if_body_error(self, data: Dict[str, Any], default_status: int) -> None:
+        if not data or not self._msg91_payload_is_error(data):
+            return
+        msg = str(data.get("message") or "MSG91 request failed")
+        code_str = str(data.get("code", "") or "")
+        provider_message = msg if not code_str else f"{msg} (MSG91 code {code_str})"
+
+        if (
+                code_str == "418"
+                or "authenticationfailure" in msg.lower()
+                or "auth" in msg.lower() and "fail" in msg.lower()
+        ):
+            raise ApiException(
+                "MSG91 rejected the API auth key — use the Auth Key from MSG91 "
+                "(Control Panel → API, or the key shown for your OTP Widget). "
+                "It must match the account that owns this widget.",
+                status_code=HTTPStatus.UNAUTHORIZED.value,
+                code=ErrorCode.MSG91_AUTH_FAILED,
+                provider_message=provider_message,
+            )
+
+        raise ApiException(
+            msg,
+            status_code=default_status,
+            code=ErrorCode.MSG91_ERROR,
+            provider_message=provider_message,
+        )
+
+    @staticmethod
+    def _msg91_payload_is_error(data: Dict[str, Any]) -> bool:
+        t = str(data.get("type", "")).lower()
+        if t == "error":
+            return True
+        if data.get("success") is False:
+            return True
+        return False
