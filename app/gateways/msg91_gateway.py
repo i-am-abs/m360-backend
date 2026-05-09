@@ -46,6 +46,14 @@ class Msg91OtpGateway(OtpGateway):
             "identifier": formatted_mobile,
             "tokenAuth": self._widget_token,
         }
+        _log.info(
+            "MSG91 sendOtp request payload=%s",
+            {
+                "widgetId": self._widget_id,
+                "identifier": formatted_mobile,
+                "tokenAuth": self._mask_token(self._widget_token),
+            },
+        )
 
         return self._post(
             endpoint=Msg91Endpoint.SEND_OTP,
@@ -85,8 +93,6 @@ class Msg91OtpGateway(OtpGateway):
     def _headers(self) -> Dict[str, str]:
         return {
             "Content-Type": "application/json",
-            "Accept": "application/json",
-            "token": self._widget_token,
         }
 
     def _post(
@@ -162,3 +168,11 @@ class Msg91OtpGateway(OtpGateway):
         if data.get("success") is False:
             return True
         return False
+
+    @staticmethod
+    def _mask_token(token: str) -> str:
+        if not token:
+            return ""
+        if len(token) <= 8:
+            return "***"
+        return f"{token[:4]}...{token[-4:]}"

@@ -25,6 +25,14 @@ from app.utils.phone import IndiaPhoneValidator
 _log = get_logger(__name__)
 
 
+def _mask_secret(value: str) -> str:
+    if not value:
+        return ""
+    if len(value) <= 8:
+        return "***"
+    return f"{value[:4]}...{value[-4:]}"
+
+
 def _create_quran_components(
         settings: Settings,
 ) -> tuple:
@@ -87,6 +95,12 @@ def _create_phone_auth_service(
 
 def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
+    _log.info(
+        "MSG91 config loaded widget_id=%s country_code=%s widget_token=%s",
+        settings.msg91_widget_id or "",
+        settings.msg91_country_code,
+        _mask_secret((settings.msg91_widget_auth_token or "").strip()),
+    )
 
     quran_client, quran_oauth = _create_quran_components(settings)
     app.state.quran_api_client = quran_client
