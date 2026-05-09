@@ -27,10 +27,10 @@ class OAuthTokenProvider(TokenProvider):
 
     def get_access_token(self) -> str:
         if self._is_token_valid():
-            return self._access_token  # type: ignore[return-value]
+            return self._access_token
         with self._lock:
             if self._is_token_valid():
-                return self._access_token  # type: ignore[return-value]
+                return self._access_token
             return self._fetch_token()
 
     def clear_token(self) -> None:

@@ -81,7 +81,6 @@ def _create_phone_auth_service(
         store=user_store,
         otp_gateway=Msg91OtpGateway(settings),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
-        widget_id=settings.msg91_widget_id or "",
         session_ttl_seconds=settings.auth_session_ttl_seconds,
     )
 

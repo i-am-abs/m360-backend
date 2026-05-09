@@ -12,7 +12,6 @@ class OtpGateway(ABC):
     @abstractmethod
     def retry_otp(
             self,
-            widget_id: str,
             req_id: str,
             retry_channel: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -21,7 +20,6 @@ class OtpGateway(ABC):
     @abstractmethod
     def verify_otp(
             self,
-            widget_id: str,
             req_id: str,
             otp: str,
     ) -> Dict[str, Any]:

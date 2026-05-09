@@ -1,9 +1,3 @@
-"""httpx-based HTTP client implementing :class:`HttpClient`.
-
-Uses the **Adapter pattern** — adapts ``httpx.Client`` to the
-application's :class:`~app.interfaces.http_client.HttpClient` contract.
-"""
-
 from __future__ import annotations
 
 import time

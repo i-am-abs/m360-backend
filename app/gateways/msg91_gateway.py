@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from httpx import Client, ConnectError, TimeoutException
 
@@ -20,13 +20,6 @@ _RETRY_DELAY_S = 1
 
 
 class Msg91OtpGateway(OtpGateway):
-    """
-    MSG91 OTP Widget ONLY implementation.
-    Uses:
-      - Header: token
-      - Body: tokenAuth
-    """
-
     def __init__(self, settings: Settings) -> None:
         self._widget_token = (settings.msg91_widget_auth_token or "").strip()
         self._widget_id = (settings.msg91_widget_id or "").strip()
@@ -46,11 +39,7 @@ class Msg91OtpGateway(OtpGateway):
                 status_code=503,
                 code=ErrorCode.CONFIG_MISSING,
             )
-
-    # --------------------------
-    # Public APIs
-    # --------------------------
-
+    
     def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
         payload = {
             "widgetId": self._widget_id,
@@ -78,22 +67,20 @@ class Msg91OtpGateway(OtpGateway):
             error_status=HTTPStatus.UNAUTHORIZED.value,
         )
 
-    def retry_otp(self, req_id: str) -> Dict[str, Any]:
+    def retry_otp(self, req_id: str, retry_channel: Optional[str] = None) -> Dict[str, Any]:
         payload = {
             "widgetId": self._widget_id,
             "reqId": req_id,
             "tokenAuth": self._widget_token,
         }
+        if retry_channel:
+            payload["retryChannel"] = retry_channel
 
         return self._post(
             endpoint=Msg91Endpoint.RETRY_OTP,
             payload=payload,
             error_status=HTTPStatus.BAD_GATEWAY.value,
         )
-
-    # --------------------------
-    # Internal helpers
-    # --------------------------
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -116,7 +103,8 @@ class Msg91OtpGateway(OtpGateway):
                     json=payload,
                     headers=self._headers(),
                 )
-                data: Dict[str, Any] = response.json() if response.content else {}
+                body = response.json() if response.content else {}
+                data: Dict[str, Any] = body if isinstance(body, dict) else {}
 
         except (ConnectError, TimeoutException) as exc:
             if _attempt < _MAX_RETRIES:
@@ -140,7 +128,6 @@ class Msg91OtpGateway(OtpGateway):
                 provider_message=msg,
             )
 
-        # Body-level error (important for 418)
         if self._is_error(data):
             msg = str(data.get("message") or "MSG91 error")
             code = str(data.get("code", ""))
@@ -164,6 +151,12 @@ class Msg91OtpGateway(OtpGateway):
 
     @staticmethod
     def _is_error(data: Dict[str, Any]) -> bool:
+        if data.get("hasError") is True:
+            return True
+        if str(data.get("status", "")).lower() in {"fail", "error", "failed"}:
+            return True
+        if data.get("errors"):
+            return True
         if str(data.get("type", "")).lower() == "error":
             return True
         if data.get("success") is False:
