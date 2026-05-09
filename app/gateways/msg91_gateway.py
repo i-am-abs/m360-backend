@@ -135,7 +135,7 @@ class Msg91OtpGateway(OtpGateway):
             )
 
         if self._is_error(data):
-            msg = str(data.get("message") or "MSG91 error")
+            msg = self._extract_error_message(data)
             code = str(data.get("code", ""))
 
             if code == "418" or "auth" in msg.lower():
@@ -176,3 +176,17 @@ class Msg91OtpGateway(OtpGateway):
         if len(token) <= 8:
             return "***"
         return f"{token[:4]}...{token[-4:]}"
+
+    @staticmethod
+    def _extract_error_message(data: Dict[str, Any]) -> str:
+        if data.get("message"):
+            return str(data["message"])
+        if data.get("errors"):
+            return str(data["errors"])
+        status = str(data.get("status", "")).strip()
+        code = str(data.get("code", "")).strip()
+        if status and code:
+            return f"MSG91 {status} (code {code})"
+        if status:
+            return f"MSG91 {status}"
+        return "MSG91 error"
