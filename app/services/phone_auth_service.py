@@ -68,11 +68,46 @@ class PhoneAuthService:
 
     @staticmethod
     def _extract_req_id(data: Dict[str, Any]) -> Optional[str]:
-        return (
-            (data or {}).get("reqId")
-            or (data or {}).get("request_id")
-            or (data or {}).get("req_id")
-        )
+        """Parse MSG91 (and similar) sendOtp payloads — widget API often uses `message` for the id."""
+        if not data:
+            return None
+        nested_raw = data.get("data")
+        nested_dict = nested_raw if isinstance(nested_raw, dict) else None
+
+        layers: list[Dict[str, Any]] = [data]
+        if nested_dict is not None:
+            layers.append(nested_dict)
+
+        for layer in layers:
+            for key in ("reqId", "request_id", "req_id", "requestId"):
+                val = layer.get(key)
+                if val is not None and str(val).strip():
+                    return str(val).strip()
+
+        outer_type = str(data.get("type", "")).lower()
+        inner_type = str(nested_dict.get("type", "")).lower() if nested_dict else ""
+
+        msg = None
+        if nested_dict is not None:
+            msg = nested_dict.get("message")
+        if msg is None:
+            msg = data.get("message")
+        if msg is None or not str(msg).strip():
+            return None
+        msg_s = str(msg).strip()
+        if outer_type == "success" or inner_type == "success":
+            return msg_s
+        if PhoneAuthService._looks_like_provider_req_token(msg_s):
+            return msg_s
+        return None
+
+    @staticmethod
+    def _looks_like_provider_req_token(value: str) -> bool:
+        if len(value) < 8 or " " in value:
+            return False
+        if all(c in "0123456789abcdefABCDEF" for c in value):
+            return len(value) >= 12
+        return value.replace("-", "").replace("_", "").isalnum()
 
     @staticmethod
     def _assert_verification_success(data: Dict[str, Any]) -> None:
