@@ -1,21 +1,27 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import FastAPI
 from pymongo import MongoClient
+from redis import Redis
 
 from app.core.config import Settings
 from app.core.logging import get_logger
-
 from app.gateways.http_client import HttpxClient
 from app.gateways.msg91_gateway import Msg91OtpGateway
 from app.gateways.oauth_token_provider import OAuthTokenProvider
-from app.integrations.msg91_pending_req import msg91_pending_req_id_store
+from app.gateways.redis_caching_http_client import RedisCachingHttpClient
+from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
+from app.interfaces.http_client import HttpClient
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
 from app.repositories.google_places_client import GooglePlacesClient
 from app.repositories.local_cache_user_store import LocalCacheUserStore
 from app.repositories.mongo_user_store import MongoUserStore
+from app.repositories.redis_user_store import RedisUserStore
+from app.services.cached_masjid_search_service import CachedMasjidSearchService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
@@ -34,8 +40,23 @@ def _mask_secret(value: str) -> str:
     return f"{value[:4]}...{value[-4:]}"
 
 
+def _init_redis(app: FastAPI, settings: Settings) -> None:
+    app.state.redis = None
+    if not settings.redis_configured:
+        return
+    r = Redis.from_url(
+        settings.redis_url or "",
+        decode_responses=True,
+        socket_connect_timeout=5,
+    )
+    r.ping()
+    app.state.redis = r
+    _log.info("Redis connected for caching and optional persistence (prefix=%s).", settings.redis_key_prefix)
+
+
 def _create_quran_components(
         settings: Settings,
+        redis_client: Optional[Redis],
 ) -> tuple:
     if not settings.quran_api_configured:
         _log.warning(
@@ -44,22 +65,48 @@ def _create_quran_components(
         return None, None
 
     provider: TokenProvider = OAuthTokenProvider(settings)
-    http_client = HttpxClient(timeout=settings.request_timeout_seconds)
+    http_inner = HttpxClient(timeout=settings.request_timeout_seconds)
+    if (
+            redis_client is not None
+            and settings.api_get_cache_ttl_seconds > 0
+    ):
+        http_client: HttpClient = RedisCachingHttpClient(
+            http_inner,
+            redis_client,
+            settings.api_get_cache_ttl_seconds,
+            settings.redis_key_prefix,
+        )
+    else:
+        http_client = http_inner
     client = QuranApiClient(settings, provider, http_client)
     oauth_service = QuranOAuthService(provider)
     return client, oauth_service
 
 
-def _create_masjid_search_service(settings: Settings) -> MasjidSearchService:
+def _create_masjid_search_service(
+        settings: Settings,
+        redis_client: Optional[Redis],
+) -> MasjidSearchService:
     places_client = GooglePlacesClient(
         api_key=settings.google_places_api_key or "",
         timeout=settings.request_timeout_seconds,
     )
-    return GoogleMasjidSearchService(places_client)
+    inner = GoogleMasjidSearchService(places_client)
+    if (
+            redis_client is not None
+            and settings.api_get_cache_ttl_seconds > 0
+    ):
+        return CachedMasjidSearchService(
+            inner,
+            redis_client,
+            settings.api_get_cache_ttl_seconds,
+            settings.redis_key_prefix,
+        )
+    return inner
 
 
 def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
-    if settings.mongodb_enabled:
+    if settings.mongodb_configured:
         if not settings.mongodb_uri or not str(settings.mongodb_uri).strip():
             raise RuntimeError(
                 "MONGODB_URI is required when MONGODB_ENABLED (or MONGODB) is true."
@@ -79,26 +126,42 @@ def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
         app.state.mongo_client = client
         return MongoUserStore(client.get_database(settings.mongodb_database))
     app.state.mongo_client = None
+    if settings.redis_configured:
+        r = app.state.redis
+        if r is None:
+            raise RuntimeError(
+                "Redis must be enabled and reachable when REDIS_ENABLED is true and MongoDB is off."
+            )
+        return RedisUserStore(r, settings)
     return LocalCacheUserStore()
 
 
 def _create_phone_auth_service(
         settings: Settings,
         user_store: UserRepository,
+        msg91_pending: Msg91PendingReqIdStore,
 ) -> PhoneAuthService:
     return PhoneAuthService(
         store=user_store,
         otp_gateway=Msg91OtpGateway(settings),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
         session_ttl_seconds=settings.auth_session_ttl_seconds,
-        msg91_pending=msg91_pending_req_id_store,
+        msg91_pending=msg91_pending,
         msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
     )
 
 
 def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
-    app.state.msg91_pending_req_id_store = msg91_pending_req_id_store
+    _init_redis(app, settings)
+
+    msg91_pending = Msg91PendingReqIdStore(
+        redis_client=app.state.redis,
+        ttl_seconds=300.0,
+        key_prefix=settings.redis_key_prefix,
+    )
+    app.state.msg91_pending_req_id_store = msg91_pending
+
     _log.info(
         "MSG91 config loaded widget_id=%s country_code=%s auth_key=%s",
         settings.msg91_widget_id or "",
@@ -106,25 +169,27 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         _mask_secret((settings.msg91_auth_key or "").strip()),
     )
 
-    quran_client, quran_oauth = _create_quran_components(settings)
+    quran_client, quran_oauth = _create_quran_components(settings, app.state.redis)
     app.state.quran_api_client = quran_client
     app.state.quran_oauth_service = quran_oauth
 
-    masjid_search = _create_masjid_search_service(settings)
+    masjid_search = _create_masjid_search_service(settings, app.state.redis)
     app.state.masjid_search_service = masjid_search
 
     user_store = _create_user_repository(app, settings)
     app.state.user_store = user_store
 
-    app.state.phone_auth_service = _create_phone_auth_service(settings, user_store)
+    app.state.phone_auth_service = _create_phone_auth_service(
+        settings, user_store, msg91_pending,
+    )
     if (
-        settings.uvicorn_workers > 1
-        and settings.msg91_async_req_id_wait_seconds > 0
+            settings.uvicorn_workers > 1
+            and settings.msg91_async_req_id_wait_seconds > 0
+            and app.state.redis is None
     ):
         _log.warning(
             "MSG91 async requestId buffer uses process memory; multiple uvicorn workers "
-            "may miss webhooks. Use 1 worker or a shared store, or point MSG91 webhook to a "
-            "single instance."
+            "may miss webhooks. Enable Redis or use a single worker."
         )
 
     app.state.user_masjid_service = UserMasjidService(
@@ -132,5 +197,10 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         places_reader=masjid_search,
     )
 
-    mode = "mongodb" if settings.mongodb_enabled else "local_cache"
+    if settings.mongodb_configured:
+        mode = "mongodb"
+    elif settings.redis_configured:
+        mode = "redis"
+    else:
+        mode = "local_cache"
     _log.info("Bootstrap complete — persistence=%s — all services wired.", mode)

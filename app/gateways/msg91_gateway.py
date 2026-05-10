@@ -114,11 +114,11 @@ class Msg91OtpGateway(OtpGateway):
         return {}
 
     def _post(
-        self,
-        endpoint: Msg91Endpoint,
-        payload: Dict[str, Any],
-        error_status: int,
-        _attempt: int = 0,
+            self,
+            endpoint: Msg91Endpoint,
+            payload: Dict[str, Any],
+            error_status: int,
+            _attempt: int = 0,
     ) -> Dict[str, Any]:
         try:
             with Client(timeout=self._timeout, verify=self._ssl_ctx) as client:

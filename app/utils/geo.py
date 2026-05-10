@@ -1,5 +1,3 @@
-"""Geography utilities — haversine distance, India geo-fence."""
-
 from __future__ import annotations
 
 import math

@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     mongodb_uri: Optional[str] = None
     mongodb_database: str = "m360"
 
+    redis_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("REDIS_ENABLED", "redis_enabled"),
+    )
+    redis_url: Optional[str] = None
+    redis_key_prefix: str = "m360"
+    api_get_cache_ttl_seconds: int = 300
+
     uvicorn_workers: int = 2
     forwarded_allow_ips: str = "*"
 
@@ -76,6 +84,10 @@ class Settings(BaseSettings):
     @property
     def mongodb_configured(self) -> bool:
         return self.mongodb_enabled and bool(self.mongodb_uri and self.mongodb_uri.strip())
+
+    @property
+    def redis_configured(self) -> bool:
+        return self.redis_enabled and bool(self.redis_url and str(self.redis_url).strip())
 
     @property
     def project_root(self) -> Path:

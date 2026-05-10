@@ -26,6 +26,13 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI):
         log.info("application_startup env=%s", settings.app_env)
         yield
+        redis_client = getattr(app.state, "redis", None)
+        if redis_client is not None:
+            try:
+                redis_client.close()
+            except Exception:
+                pass
+            log.info("redis_client_closed")
         client = getattr(app.state, "mongo_client", None)
         if client is not None:
             client.close()

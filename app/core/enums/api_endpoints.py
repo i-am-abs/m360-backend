@@ -3,6 +3,8 @@ from enum import Enum
 
 class ApiEndpoint(Enum):
     HEALTH = "/health"
+    HEALTH_LIVE = "/health/live"
+    HEALTH_READY = "/health/ready"
 
     AUTH_TOKEN = "/auth/token"
     AUTH_TOKEN_STATUS = "/auth/token/status"

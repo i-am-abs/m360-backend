@@ -1,5 +1,3 @@
-"""Application interfaces — abstract contracts for Dependency Inversion."""
-
 from app.interfaces.http_client import HttpClient
 from app.interfaces.masjid_service import MasjidSearchService, PlacesReader
 from app.interfaces.otp_gateway import OtpGateway

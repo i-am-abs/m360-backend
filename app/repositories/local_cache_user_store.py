@@ -9,11 +9,6 @@ from app.interfaces.user_repository import UserRepository
 
 
 class LocalCacheUserStore(UserRepository):
-    """
-    In-process user/session/favorites storage for tests and single-node dev.
-    Data is lost when the process exits.
-    """
-
     def __init__(self) -> None:
         self._lock = RLock()
         self._data: Dict[str, Any] = {
