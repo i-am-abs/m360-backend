@@ -14,3 +14,11 @@ class RetryChannel(str, Enum):
     VOICE = "voice"
     WHATSAPP = "whatsapp"
     EMAIL = "email"
+
+
+MSG91_RETRY_CHANNEL_CODE: dict[str, int] = {
+    RetryChannel.SMS.value: 11,
+    RetryChannel.VOICE.value: 4,
+    RetryChannel.EMAIL.value: 3,
+    RetryChannel.WHATSAPP.value: 12,
+}

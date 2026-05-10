@@ -9,7 +9,7 @@ from httpx import Client, ConnectError, TimeoutException
 
 from app.core.config import Settings, create_ssl_context
 from app.core.enums.error_code import ErrorCode
-from app.core.enums.msg91 import Msg91Endpoint
+from app.core.enums.msg91 import MSG91_RETRY_CHANNEL_CODE, Msg91Endpoint
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.otp_gateway import OtpGateway
@@ -79,14 +79,25 @@ class Msg91OtpGateway(OtpGateway):
             "widgetId": self._widget_id,
             "reqId": req_id,
         }
-        if retry_channel:
-            payload["retryChannel"] = retry_channel
+        code = self._msg91_retry_channel_code(retry_channel)
+        if code is not None:
+            payload["retryChannel"] = code
 
         return self._post(
             endpoint=Msg91Endpoint.RETRY_OTP,
             payload=payload,
             error_status=HTTPStatus.BAD_GATEWAY.value,
         )
+
+    @staticmethod
+    def _msg91_retry_channel_code(retry_channel: Optional[str]) -> Optional[int]:
+        if not retry_channel:
+            return None
+        raw = str(retry_channel).strip()
+        if raw.isdigit():
+            return int(raw)
+        key = raw.lower()
+        return MSG91_RETRY_CHANNEL_CODE.get(key)
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -184,7 +195,7 @@ class Msg91OtpGateway(OtpGateway):
 
     @staticmethod
     def _is_error(data: Dict[str, Any]) -> bool:
-        if data.get("hasError") is True:
+        if data.get("hasError"):
             return True
         if str(data.get("status", "")).lower() in {"fail", "error", "failed"}:
             return True

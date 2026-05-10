@@ -11,6 +11,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
+def _bootstrap_dotenv() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    env_path = _PROJECT_ROOT / ".env"
+    if env_path.is_file():
+        load_dotenv(env_path)
+
+
+_bootstrap_dotenv()
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(_PROJECT_ROOT / ".env"),

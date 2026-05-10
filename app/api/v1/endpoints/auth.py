@@ -33,7 +33,7 @@ def check_token_status(
     return success_response(payload, message=message)
 
 
-def _handle_request_otp(request: PhoneLoginRequest, svc: PhoneAuthService) -> JSONResponse:
+def handle_request_otp(request: PhoneLoginRequest, svc: PhoneAuthService) -> JSONResponse:
     data = svc.request_otp(request.phone_number)
     return success_response(data, message="OTP sent")
 
@@ -43,7 +43,7 @@ def request_phone_otp(
         request: PhoneLoginRequest,
         svc: PhoneAuthService = Depends(get_phone_auth_service),
 ) -> JSONResponse:
-    return _handle_request_otp(request, svc)
+    return handle_request_otp(request, svc)
 
 
 @router.post(ApiEndpoint.AUTH_LOGIN.value, summary="Phone login (alias)")
@@ -51,7 +51,7 @@ def auth_login(
         request: PhoneLoginRequest,
         svc: PhoneAuthService = Depends(get_phone_auth_service),
 ) -> JSONResponse:
-    return _handle_request_otp(request, svc)
+    return handle_request_otp(request, svc)
 
 
 @router.post(ApiEndpoint.AUTH_PHONE_RETRY_OTP.value, summary="Retry / resend OTP")

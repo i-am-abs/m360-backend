@@ -178,6 +178,15 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
 
     user_store = _create_user_repository(app, settings)
     app.state.user_store = user_store
+    if isinstance(user_store, MongoUserStore):
+        app.state.user_store_backend = "mongodb"
+    elif isinstance(user_store, RedisUserStore):
+        app.state.user_store_backend = "redis"
+    else:
+        app.state.user_store_backend = "local_cache"
+    app.state.api_response_cache = (
+            app.state.redis is not None and settings.api_get_cache_ttl_seconds > 0
+    )
 
     app.state.phone_auth_service = _create_phone_auth_service(
         settings, user_store, msg91_pending,
@@ -197,10 +206,9 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         places_reader=masjid_search,
     )
 
-    if settings.mongodb_configured:
-        mode = "mongodb"
-    elif settings.redis_configured:
-        mode = "redis"
-    else:
-        mode = "local_cache"
-    _log.info("Bootstrap complete — persistence=%s — all services wired.", mode)
+    mode = app.state.user_store_backend
+    _log.info(
+        "Bootstrap complete — persistence=%s — api_response_cache=%s — all services wired.",
+        mode,
+        app.state.api_response_cache,
+    )

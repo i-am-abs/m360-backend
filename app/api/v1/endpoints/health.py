@@ -11,7 +11,10 @@ from app.utils.response import success_response
 router = APIRouter(tags=["health"])
 
 
-def _persistence_label(settings) -> str:
+def persistence_label(request: Request, settings) -> str:
+    backend = getattr(request.app.state, "user_store_backend", None)
+    if backend:
+        return backend
     if settings.mongodb_configured:
         return "mongodb"
     if settings.redis_configured:
@@ -33,7 +36,8 @@ def health_ready(request: Request):
     data: dict = {
         "status": "UP",
         "check": "ready",
-        "persistence": _persistence_label(s),
+        "persistence": persistence_label(request, s),
+        "api_response_cache": getattr(request.app.state, "api_response_cache", False),
     }
     redis_client = getattr(request.app.state, "redis", None)
     if s.redis_configured:
@@ -67,7 +71,8 @@ def health(request: Request):
     s = request.app.state.settings
     data = {
         "status": "UP",
-        "persistence": _persistence_label(s),
+        "persistence": persistence_label(request, s),
+        "api_response_cache": getattr(request.app.state, "api_response_cache", False),
     }
     redis_client = getattr(request.app.state, "redis", None)
     if s.redis_configured:
