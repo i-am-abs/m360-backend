@@ -96,10 +96,10 @@ def _create_phone_auth_service(
 def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
     _log.info(
-        "MSG91 config loaded widget_id=%s country_code=%s widget_token=%s",
+        "MSG91 config loaded widget_id=%s country_code=%s auth_key=%s",
         settings.msg91_widget_id or "",
         settings.msg91_country_code,
-        _mask_secret((settings.msg91_widget_auth_token or "").strip()),
+        _mask_secret((settings.msg91_auth_key or "").strip()),
     )
 
     quran_client, quran_oauth = _create_quran_components(settings)

@@ -21,14 +21,14 @@ _RETRY_DELAY_S = 1
 
 class Msg91OtpGateway(OtpGateway):
     def __init__(self, settings: Settings) -> None:
-        self._widget_token = (settings.msg91_widget_auth_token or "").strip()
+        self._auth_key = (settings.msg91_auth_key or "").strip()
         self._widget_id = (settings.msg91_widget_id or "").strip()
         self._timeout = settings.request_timeout_seconds
         self._ssl_ctx = create_ssl_context()
 
-        if not self._widget_token:
+        if not self._auth_key:
             raise ApiException(
-                "MSG91 widget token missing. Set MSG91_WIDGET_AUTH_TOKEN.",
+                "MSG91 auth key missing. Set MSG91_AUTH_KEY.",
                 status_code=503,
                 code=ErrorCode.CONFIG_MISSING,
             )
@@ -39,19 +39,18 @@ class Msg91OtpGateway(OtpGateway):
                 status_code=503,
                 code=ErrorCode.CONFIG_MISSING,
             )
-    
+
     def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
         payload = {
             "widgetId": self._widget_id,
             "identifier": formatted_mobile,
-            "tokenAuth": self._widget_token,
         }
         _log.info(
             "MSG91 sendOtp request payload=%s",
             {
                 "widgetId": self._widget_id,
                 "identifier": formatted_mobile,
-                "tokenAuth": self._mask_token(self._widget_token),
+                "authkey": self._mask_token(self._auth_key),
             },
         )
 
@@ -66,7 +65,6 @@ class Msg91OtpGateway(OtpGateway):
             "widgetId": self._widget_id,
             "reqId": req_id,
             "otp": otp,
-            "tokenAuth": self._widget_token,
         }
 
         return self._post(
@@ -76,10 +74,9 @@ class Msg91OtpGateway(OtpGateway):
         )
 
     def retry_otp(self, req_id: str, retry_channel: Optional[str] = None) -> Dict[str, Any]:
-        payload = {
+        payload: Dict[str, Any] = {
             "widgetId": self._widget_id,
             "reqId": req_id,
-            "tokenAuth": self._widget_token,
         }
         if retry_channel:
             payload["retryChannel"] = retry_channel
@@ -93,6 +90,7 @@ class Msg91OtpGateway(OtpGateway):
     def _headers(self) -> Dict[str, str]:
         return {
             "Content-Type": "application/json",
+            "authkey": self._auth_key,
         }
 
     def _post(
@@ -140,7 +138,7 @@ class Msg91OtpGateway(OtpGateway):
 
             if code == "418" or "auth" in msg.lower():
                 raise ApiException(
-                    "MSG91 authentication failed (418). Check widget token + widgetId.",
+                    "MSG91 authentication failed (418). Check MSG91_AUTH_KEY and widgetId.",
                     status_code=401,
                     code=ErrorCode.MSG91_AUTH_FAILED,
                     provider_message=f"{msg} (MSG91 code {code})",

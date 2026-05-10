@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     google_places_api_key: Optional[str] = None
     masjid_search_radius_meters: int = 5000
 
-    msg91_widget_auth_token: Optional[str] = None
+    msg91_auth_key: Optional[str] = None
 
     msg91_widget_id: Optional[str] = None
     msg91_country_code: str = "91"
