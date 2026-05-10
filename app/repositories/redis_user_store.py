@@ -12,8 +12,6 @@ from app.interfaces.user_repository import UserRepository
 
 
 class RedisUserStore(UserRepository):
-    """Session and user persistence in Redis (replaces in-process LocalCacheUserStore)."""
-
     def __init__(self, client: Redis, settings: Settings) -> None:
         self._r = client
         self._pfx = (settings.redis_key_prefix or "m360").strip() or "m360"

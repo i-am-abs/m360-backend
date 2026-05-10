@@ -21,7 +21,6 @@ def _persistence_label(settings) -> str:
 
 @router.get(ApiEndpoint.HEALTH_LIVE.value, summary="Liveness (no dependencies)")
 def health_live():
-    """Use for GCP/load balancer probes: always returns 200 if the process is running."""
     return JSONResponse(
         status_code=HTTPStatus.OK.value,
         content={"status": "up", "check": "live"},

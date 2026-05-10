@@ -16,8 +16,6 @@ def _geo_part(x: float) -> str:
 
 
 class CachedMasjidSearchService(MasjidSearchService):
-    """Redis cache wrapper for public masjid search GETs (underlying Google API is POST)."""
-
     def __init__(
             self,
             inner: MasjidSearchService,

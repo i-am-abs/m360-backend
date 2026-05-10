@@ -152,7 +152,6 @@ class Msg91OtpGateway(OtpGateway):
                 code=ErrorCode.MSG91_UNREACHABLE,
             ) from exc
 
-        # HTTP error
         if response.status_code >= 400:
             msg = data.get("message", "MSG91 request failed")
             raise ApiException(

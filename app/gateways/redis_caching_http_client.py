@@ -8,8 +8,6 @@ from app.interfaces.http_client import HttpClient
 
 
 class RedisCachingHttpClient(HttpClient):
-    """Caches successful GET JSON responses (e.g. Quran Foundation content API)."""
-
     def __init__(
             self,
             inner: HttpClient,

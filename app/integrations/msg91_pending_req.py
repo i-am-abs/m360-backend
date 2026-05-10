@@ -10,8 +10,6 @@ _log = get_logger(__name__)
 
 
 class Msg91PendingReqIdStore:
-    """Buffers requestId from MSG91 webhooks when sendOtp HTTP body does not include it yet."""
-
     def __init__(
             self,
             *,

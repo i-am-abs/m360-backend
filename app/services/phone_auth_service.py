@@ -85,7 +85,6 @@ class PhoneAuthService:
 
     @staticmethod
     def _extract_req_id(data: Dict[str, Any]) -> Optional[str]:
-        """Parse MSG91 (and similar) sendOtp payloads — widget API often uses `message` for the id."""
         if data is None or not isinstance(data, dict):
             return None
         nested_raw = data.get("data")
