@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import time
 from http import HTTPStatus
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from httpx import Client, ConnectError, TimeoutException
 
@@ -93,6 +94,25 @@ class Msg91OtpGateway(OtpGateway):
             "authkey": self._auth_key,
         }
 
+    @staticmethod
+    def _normalize_response_json(body: Union[None, Dict[str, Any], list, str, Any]) -> Dict[str, Any]:
+        if body is None:
+            return {}
+        if isinstance(body, dict):
+            return body
+        if isinstance(body, list):
+            for item in body:
+                if isinstance(item, dict):
+                    return item
+            return {}
+        if isinstance(body, str) and body.strip():
+            try:
+                parsed = json.loads(body)
+            except json.JSONDecodeError:
+                return {}
+            return Msg91OtpGateway._normalize_response_json(parsed)
+        return {}
+
     def _post(
         self,
         endpoint: Msg91Endpoint,
@@ -107,8 +127,18 @@ class Msg91OtpGateway(OtpGateway):
                     json=payload,
                     headers=self._headers(),
                 )
-                body = response.json() if response.content else {}
-                data: Dict[str, Any] = body if isinstance(body, dict) else {}
+                body_raw = None
+                if response.content:
+                    try:
+                        body_raw = response.json()
+                    except ValueError:
+                        body_raw = None
+                data = self._normalize_response_json(body_raw)
+                if endpoint == Msg91Endpoint.SEND_OTP:
+                    _log.info(
+                        "MSG91 sendOtp response keys=%s",
+                        list(data.keys()) if data else [],
+                    )
 
         except (ConnectError, TimeoutException) as exc:
             if _attempt < _MAX_RETRIES:

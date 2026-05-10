@@ -9,6 +9,7 @@ from app.core.logging import get_logger
 from app.gateways.http_client import HttpxClient
 from app.gateways.msg91_gateway import Msg91OtpGateway
 from app.gateways.oauth_token_provider import OAuthTokenProvider
+from app.integrations.msg91_pending_req import msg91_pending_req_id_store
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
@@ -90,11 +91,14 @@ def _create_phone_auth_service(
         otp_gateway=Msg91OtpGateway(settings),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
         session_ttl_seconds=settings.auth_session_ttl_seconds,
+        msg91_pending=msg91_pending_req_id_store,
+        msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
     )
 
 
 def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
+    app.state.msg91_pending_req_id_store = msg91_pending_req_id_store
     _log.info(
         "MSG91 config loaded widget_id=%s country_code=%s auth_key=%s",
         settings.msg91_widget_id or "",
@@ -113,6 +117,15 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.user_store = user_store
 
     app.state.phone_auth_service = _create_phone_auth_service(settings, user_store)
+    if (
+        settings.uvicorn_workers > 1
+        and settings.msg91_async_req_id_wait_seconds > 0
+    ):
+        _log.warning(
+            "MSG91 async requestId buffer uses process memory; multiple uvicorn workers "
+            "may miss webhooks. Use 1 worker or a shared store, or point MSG91 webhook to a "
+            "single instance."
+        )
 
     app.state.user_masjid_service = UserMasjidService(
         store=user_store,

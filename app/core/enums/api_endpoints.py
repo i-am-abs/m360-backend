@@ -12,6 +12,8 @@ class ApiEndpoint(Enum):
     AUTH_PHONE_VERIFY_OTP = "/auth/phone/verify-otp"
     AUTH_LOGIN = "/auth/login"
 
+    MSG91_OTP_WEBHOOK = "/webhooks/msg91/otp-events"
+
     CHAPTERS = "/chapters"
     VERSES_BY_CHAPTER = "/verses/by-chapter/{chapter_id}"
     VERSES_BY_JUZ = "/verses/by-juz/{juz_id}"

@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     msg91_widget_id: Optional[str] = None
     msg91_country_code: str = "91"
+    msg91_async_req_id_wait_seconds: float = 3.0
 
     auth_session_ttl_seconds: int = 86400
 
