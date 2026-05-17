@@ -49,7 +49,16 @@ def _init_redis(app: FastAPI, settings: Settings) -> None:
         decode_responses=True,
         socket_connect_timeout=5,
     )
-    r.ping()
+    try:
+        r.ping()
+    except Exception as exc:
+        _log.warning(
+            "Redis unreachable at %s — continuing without Redis (%s). "
+            "Set REDIS_ENABLED=false or start Redis to remove this warning.",
+            settings.redis_url,
+            exc,
+        )
+        return
     app.state.redis = r
     _log.info("Redis connected for caching and optional persistence (prefix=%s).", settings.redis_key_prefix)
 
@@ -126,13 +135,12 @@ def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
         app.state.mongo_client = client
         return MongoUserStore(client.get_database(settings.mongodb_database))
     app.state.mongo_client = None
+    if settings.redis_configured and app.state.redis is not None:
+        return RedisUserStore(app.state.redis, settings)
     if settings.redis_configured:
-        r = app.state.redis
-        if r is None:
-            raise RuntimeError(
-                "Redis must be enabled and reachable when REDIS_ENABLED is true and MongoDB is off."
-            )
-        return RedisUserStore(r, settings)
+        _log.warning(
+            "REDIS_ENABLED is true but Redis is unavailable — using in-memory user store."
+        )
     return LocalCacheUserStore()
 
 
