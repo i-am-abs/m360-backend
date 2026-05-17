@@ -72,3 +72,14 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - API: http://localhost:8000  
 - Swagger: http://localhost:8000/docs  
 - ReDoc: http://localhost:8000/redoc  
+
+## Docker
+
+```bash
+docker build -t muslim360 .
+docker run -d --name muslim360 -p 8000:8000 --env-file .env muslim360
+```
+
+If Redis runs on the host (not inside the container), either set `REDIS_ENABLED=false` in `.env` or point `REDIS_URL` at the host, e.g. `redis://host.docker.internal:6379/0` (Linux: add `--add-host=host.docker.internal:host-gateway` to `docker run`).
+
+The app starts even when Redis is unreachable; it falls back to in-memory storage and logs a warning.
