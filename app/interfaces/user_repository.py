@@ -18,6 +18,14 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
+    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
+        pass
+
+    @abstractmethod
+    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
     def list_favorites(self, user_id: str) -> List[str]:
         pass
 

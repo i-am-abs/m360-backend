@@ -9,6 +9,7 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from app.interfaces.user_repository import UserRepository
+from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
 class MongoUserStore(UserRepository):
@@ -46,23 +47,20 @@ class MongoUserStore(UserRepository):
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         token = str(uuid4())
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-        self._sessions.insert_one(
-            {
-                "access_token": token,
-                "user_id": user_id,
-                "expires_at": expires_at,
-            }
-        )
-        return {"access_token": token, "expires_in": ttl_seconds}
+        payload: Dict[str, Any] = {
+            "access_token": token,
+            "user_id": user_id,
+        }
+        if not session_never_expires(ttl_seconds):
+            payload["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+        self._sessions.insert_one(payload)
+        return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
 
     def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
-        now = datetime.now(timezone.utc)
         sess = self._sessions.find_one({"access_token": access_token})
         if not sess:
             return None
-        exp = sess.get("expires_at")
-        if exp is not None and isinstance(exp, datetime) and exp <= now:
+        if not self._session_is_active(sess):
             self._sessions.delete_one({"access_token": access_token})
             return None
         user_id = sess.get("user_id")
@@ -70,6 +68,33 @@ class MongoUserStore(UserRepository):
             return None
         doc = self._users.find_one({"user_id": user_id})
         return self._as_user_dict(doc) if doc else None
+
+    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
+        sess = self._sessions.find_one({"access_token": access_token})
+        if not sess:
+            return None
+        user_id = sess.get("user_id")
+        return str(user_id) if user_id else None
+
+    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
+        user_id = self.resolve_session_user_id(access_token)
+        if not user_id:
+            return None
+        if session_never_expires(ttl_seconds):
+            return {
+                "access_token": access_token,
+                "expires_in": session_expires_in(ttl_seconds),
+            }
+        self._sessions.delete_one({"access_token": access_token})
+        return self.create_session(user_id, ttl_seconds)
+
+    def _session_is_active(self, sess: Dict[str, Any]) -> bool:
+        exp = sess.get("expires_at")
+        if exp is None:
+            return True
+        if not isinstance(exp, datetime):
+            return True
+        return exp > datetime.now(timezone.utc)
 
     def list_favorites(self, user_id: str) -> List[str]:
         doc = self._favorites.find_one({"user_id": user_id})

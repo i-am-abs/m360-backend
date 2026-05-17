@@ -53,7 +53,14 @@ class Settings(BaseSettings):
     msg91_country_code: str = "91"
     msg91_async_req_id_wait_seconds: float = 3.0
 
-    auth_session_ttl_seconds: int = 86400
+    auth_session_ttl_seconds: int = Field(
+        default=0,
+        description="Phone login bearer TTL in seconds. 0 = never expires.",
+        validation_alias=AliasChoices(
+            "AUTH_SESSION_TTL_SECONDS",
+            "auth_session_ttl_seconds",
+        ),
+    )
 
     user_store_file: str = "data/user_store.json"
 
@@ -110,6 +117,19 @@ class Settings(BaseSettings):
     @classmethod
     def _strip_trailing_slash(cls, v: str) -> str:
         return v.strip().rstrip("/") if isinstance(v, str) else v
+
+    @field_validator("auth_session_ttl_seconds", mode="before")
+    @classmethod
+    def _normalize_session_ttl(cls, v: object) -> int:
+        try:
+            ttl = int(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return 0
+        return max(0, ttl)
+
+    @property
+    def auth_session_never_expires(self) -> bool:
+        return self.auth_session_ttl_seconds <= 0
 
     @field_validator("masjid_search_radius_meters", mode="before")
     @classmethod

@@ -10,6 +10,7 @@ from app.bootstrap import bootstrap
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.exceptions.handlers import register_exception_handlers
+from app.middleware.normalize_path import NormalizePathMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     bootstrap(application, settings)
+    application.add_middleware(NormalizePathMiddleware)
     application.add_middleware(RequestContextMiddleware)
     application.add_middleware(
         CORSMiddleware,
@@ -57,5 +59,6 @@ def create_app() -> FastAPI:
         allow_headers=list(settings.cors_allow_headers),
     )
     register_exception_handlers(application)
+    application.include_router(api_v1_router, prefix="/api/v1")
     application.include_router(api_v1_router)
     return application

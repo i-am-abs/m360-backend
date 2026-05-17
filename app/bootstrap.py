@@ -208,7 +208,10 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
 
     mode = app.state.user_store_backend
     _log.info(
-        "Bootstrap complete — persistence=%s — api_response_cache=%s — all services wired.",
+        "Bootstrap complete — persistence=%s — api_response_cache=%s — "
+        "auth_session_ttl_seconds=%s (never_expires=%s) — all services wired.",
         mode,
         app.state.api_response_cache,
+        settings.auth_session_ttl_seconds,
+        settings.auth_session_never_expires,
     )

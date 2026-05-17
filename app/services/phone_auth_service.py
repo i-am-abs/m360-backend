@@ -10,6 +10,7 @@ from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
 from app.interfaces.otp_gateway import OtpGateway
 from app.interfaces.phone_validator import PhoneValidator
 from app.interfaces.user_repository import UserRepository
+from app.utils.session_ttl import session_never_expires
 
 _log = get_logger(__name__)
 
@@ -76,11 +77,37 @@ class PhoneAuthService:
         _log.info("OTP verified for %s | userId=%s", phone_number, user["user_id"])
         return {
             "user": user,
-            "auth": {
-                "access_token": session["access_token"],
-                "token_type": "bearer",
-                "expires_in": session["expires_in"],
-            },
+            "auth": self._auth_payload(session),
+        }
+
+    def refresh_access_token(self, access_token: str) -> Dict[str, Any]:
+        session = self._store.refresh_session(access_token, self._session_ttl)
+        if not session:
+            raise ApiException(
+                "Invalid or expired access token",
+                status_code=HTTPStatus.UNAUTHORIZED.value,
+                code=ErrorCode.AUTH_INVALID_TOKEN,
+            )
+        user = self._store.get_user_by_session(session["access_token"])
+        if not user:
+            raise ApiException(
+                "Invalid or expired access token",
+                status_code=HTTPStatus.UNAUTHORIZED.value,
+                code=ErrorCode.AUTH_INVALID_TOKEN,
+            )
+        _log.info(
+            "Access token refreshed for userId=%s (never_expires=%s)",
+            user["user_id"],
+            session_never_expires(self._session_ttl),
+        )
+        return {"user": user, "auth": self._auth_payload(session)}
+
+    @staticmethod
+    def _auth_payload(session: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "access_token": session["access_token"],
+            "token_type": "bearer",
+            "expires_in": session.get("expires_in"),
         }
 
     @staticmethod

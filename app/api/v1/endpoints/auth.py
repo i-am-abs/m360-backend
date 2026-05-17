@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from starlette.responses import JSONResponse
 
-from app.api.deps import get_phone_auth_service, get_quran_oauth_service
+from app.api.deps import get_bearer_credentials, get_phone_auth_service, get_quran_oauth_service
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.schemas.auth import OtpRetryRequest, OtpVerifyRequest, PhoneLoginRequest, TokenRequest
 from app.services.phone_auth_service import PhoneAuthService
@@ -71,3 +72,12 @@ def verify_phone_otp(
 ) -> JSONResponse:
     data = svc.verify_otp(request.phone_number, request.req_id, request.otp)
     return success_response(data, message="OTP verified")
+
+
+@router.post(ApiEndpoint.AUTH_REFRESH.value, summary="Refresh bearer access token")
+def refresh_access_token(
+        credentials: HTTPAuthorizationCredentials = Depends(get_bearer_credentials),
+        svc: PhoneAuthService = Depends(get_phone_auth_service),
+) -> JSONResponse:
+    data = svc.refresh_access_token(credentials.credentials)
+    return success_response(data, message="Token refreshed")

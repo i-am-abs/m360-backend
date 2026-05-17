@@ -66,6 +66,18 @@ def get_user_store(request: Request) -> UserRepository:
     return request.app.state.user_store
 
 
+def get_bearer_credentials(
+        credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> HTTPAuthorizationCredentials:
+    if credentials is None or not credentials.credentials:
+        raise ApiException(
+            "Missing Authorization bearer token",
+            status_code=HTTPStatus.UNAUTHORIZED.value,
+            code=ErrorCode.AUTH_MISSING_TOKEN,
+        )
+    return credentials
+
+
 def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(_bearer),
         store: UserRepository = Depends(get_user_store),

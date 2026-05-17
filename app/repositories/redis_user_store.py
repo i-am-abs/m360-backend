@@ -9,6 +9,7 @@ from redis import Redis
 
 from app.core.config import Settings
 from app.interfaces.user_repository import UserRepository
+from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
 class RedisUserStore(UserRepository):
@@ -44,8 +45,12 @@ class RedisUserStore(UserRepository):
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         token = str(uuid4())
-        self._r.setex(self._key_session(token), ttl_seconds, user_id)
-        return {"access_token": token, "expires_in": ttl_seconds}
+        key = self._key_session(token)
+        if session_never_expires(ttl_seconds):
+            self._r.set(key, user_id)
+        else:
+            self._r.setex(key, ttl_seconds, user_id)
+        return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
 
     def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
         user_id = self._r.get(self._key_session(access_token))
@@ -55,6 +60,22 @@ class RedisUserStore(UserRepository):
         if not raw:
             return None
         return json.loads(raw)
+
+    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
+        user_id = self._r.get(self._key_session(access_token))
+        return str(user_id) if user_id else None
+
+    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
+        user_id = self.resolve_session_user_id(access_token)
+        if not user_id:
+            return None
+        if session_never_expires(ttl_seconds):
+            return {
+                "access_token": access_token,
+                "expires_in": session_expires_in(ttl_seconds),
+            }
+        self._r.delete(self._key_session(access_token))
+        return self.create_session(user_id, ttl_seconds)
 
     def list_favorites(self, user_id: str) -> List[str]:
         raw = self._r.get(self._key_favorites(user_id))

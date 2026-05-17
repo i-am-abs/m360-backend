@@ -13,6 +13,7 @@ class ApiEndpoint(Enum):
     AUTH_PHONE_RETRY_OTP = "/auth/phone/retry-otp"
     AUTH_PHONE_VERIFY_OTP = "/auth/phone/verify-otp"
     AUTH_LOGIN = "/auth/login"
+    AUTH_REFRESH = "/auth/refresh"
 
     MSG91_OTP_WEBHOOK = "/webhooks/msg91/otp-events"
 
