@@ -1,3 +1,4 @@
+from app.interfaces.cache_store import CacheStore
 from app.interfaces.http_client import HttpClient
 from app.interfaces.masjid_service import MasjidSearchService, PlacesReader
 from app.interfaces.otp_gateway import OtpGateway
@@ -7,6 +8,7 @@ from app.interfaces.user_repository import UserRepository
 
 __all__ = [
     "HttpClient",
+    "CacheStore",
     "MasjidSearchService",
     "OtpGateway",
     "PhoneValidator",

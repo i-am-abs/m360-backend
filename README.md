@@ -32,6 +32,19 @@ FastAPI wrapper over [Quran Foundation Content API](https://api-docs.quran.found
    **Masjid / Google Places (optional):**
    - `GOOGLE_PLACES_API_KEY` — enables masjid search endpoints; must stay server-side only. Responses pass through Google’s JSON (including `photos` metadata as returned by Places).
 
+   **Cache / Redis:**
+   - `LOCAL_MODE=true` uses the in-memory local cache and local user store.
+   - `LOCAL_MODE=false` uses Redis for cache and user persistence when MongoDB is off.
+   - `REDIS_MASTER_URLS` configures key-sharded masters, comma-separated. Default: `redis://localhost:6379/0,redis://localhost:6380/0,redis://localhost:6381/0`.
+   - `REDIS_SLAVE_URLS` configures replicas, comma-separated. Default: `redis://localhost:6382/0,redis://localhost:6383/0,redis://localhost:6384/0`.
+   - `REDIS_READ_FROM_SLAVES=false` keeps reads strongly consistent from masters by default. Set true only when your replicas are healthy and acceptable for cache reads.
+   - `API_GET_CACHE_TTL_SECONDS=300` controls GET response and upstream GET cache TTL. Set `0` to disable GET caching.
+
+   Start the local 3-master / 3-slave Redis topology:
+   ```bash
+   docker compose -f docker-compose.redis.yml up -d
+   ```
+
    **Production (e.g. Render):**
    - Set `QF_ENV=production` so the correct production API and OAuth URLs are used.
    - Ensure `QURAN_CLIENT_ID` and `QURAN_CLIENT_SECRET` are set in the host’s environment (no secrets in repo).

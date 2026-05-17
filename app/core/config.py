@@ -8,25 +8,25 @@ from typing import Optional, Tuple
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
-def _bootstrap_dotenv() -> None:
+def bootstrap_dotenv() -> None:
     try:
         from dotenv import load_dotenv
     except ImportError:
         return
-    env_path = _PROJECT_ROOT / ".env"
+    env_path = PROJECT_ROOT / ".env"
     if env_path.is_file():
         load_dotenv(env_path)
 
 
-_bootstrap_dotenv()
+bootstrap_dotenv()
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(_PROJECT_ROOT / ".env"),
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -68,13 +68,45 @@ class Settings(BaseSettings):
     mongodb_uri: Optional[str] = None
     mongodb_database: str = "m360"
 
+    local_mode: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("LOCAL_MODE", "local_mode"),
+    )
     redis_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices("REDIS_ENABLED", "redis_enabled"),
     )
     redis_url: Optional[str] = None
+    redis_master_urls: Tuple[str, ...] = Field(
+        default=(
+            "redis://localhost:6379/0",
+            "redis://localhost:6380/0",
+            "redis://localhost:6381/0",
+        ),
+        validation_alias=AliasChoices("REDIS_MASTER_URLS", "redis_master_urls"),
+    )
+    redis_slave_urls: Tuple[str, ...] = Field(
+        default=(
+            "redis://localhost:6382/0",
+            "redis://localhost:6383/0",
+            "redis://localhost:6384/0",
+        ),
+        validation_alias=AliasChoices("REDIS_SLAVE_URLS", "redis_slave_urls"),
+    )
     redis_key_prefix: str = "m360"
+    redis_decode_responses: bool = True
+    redis_socket_connect_timeout_seconds: float = 5.0
+    redis_socket_timeout_seconds: float = 5.0
+    redis_read_from_slaves: bool = False
     api_get_cache_ttl_seconds: int = 300
+    api_get_cache_excluded_paths: Tuple[str, ...] = (
+        "/health",
+        "/health/live",
+        "/health/ready",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    )
 
     uvicorn_workers: int = 2
     forwarded_allow_ips: str = "*"
@@ -100,25 +132,44 @@ class Settings(BaseSettings):
 
     @property
     def redis_configured(self) -> bool:
-        return self.redis_enabled and bool(self.redis_url and str(self.redis_url).strip())
+        return not self.local_mode and bool(self.redis_master_urls)
+
+    @property
+    def cache_enabled(self) -> bool:
+        return self.api_get_cache_ttl_seconds > 0
 
     @property
     def project_root(self) -> Path:
-        return _PROJECT_ROOT
+        return PROJECT_ROOT
 
     @field_validator("quran_base_url", "quran_oauth_url", mode="before")
     @classmethod
-    def _strip_trailing_slash(cls, v: str) -> str:
+    def strip_trailing_slash(cls, v: str) -> str:
         return v.strip().rstrip("/") if isinstance(v, str) else v
 
     @field_validator("masjid_search_radius_meters", mode="before")
     @classmethod
-    def _clamp_radius(cls, v: int) -> int:
+    def clamp_radius(cls, v: int) -> int:
         try:
             v = int(v)
         except (TypeError, ValueError):
             return 5000
         return max(500, min(50_000, v))
+
+    @field_validator(
+        "cors_allow_origins",
+        "cors_allow_methods",
+        "cors_allow_headers",
+        "redis_master_urls",
+        "redis_slave_urls",
+        "api_get_cache_excluded_paths",
+        mode="before",
+    )
+    @classmethod
+    def parse_csv_tuple(cls, v):
+        if isinstance(v, str):
+            return tuple(item.strip() for item in v.split(",") if item.strip())
+        return v
 
 
 def create_ssl_context() -> ssl.SSLContext:

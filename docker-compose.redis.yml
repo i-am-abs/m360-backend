@@ -1,0 +1,42 @@
+services:
+  redis-master-1:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+
+  redis-master-2:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+
+  redis-master-3:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6381:6379"
+
+  redis-slave-1:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis-master-1", "6379"]
+    ports:
+      - "6382:6379"
+    depends_on:
+      - redis-master-1
+
+  redis-slave-2:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis-master-2", "6379"]
+    ports:
+      - "6383:6379"
+    depends_on:
+      - redis-master-2
+
+  redis-slave-3:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis-master-3", "6379"]
+    ports:
+      - "6384:6379"
+    depends_on:
+      - redis-master-3
