@@ -14,117 +14,118 @@ from app.utils.session_ttl import session_expires_in, session_never_expires
 
 class MongoUserStore(UserRepository):
     def __init__(self, db: Database) -> None:
-        self._users = db["users"]
-        self._sessions = db["sessions"]
-        self._favorites = db["favorites"]
-        self._ensure_indexes()
+        self.database = db
+        self.usersCollection = db["users"]
+        self.sessionsCollection = db["sessions"]
+        self.favoritesCollection = db["favorites"]
+        self.ensureIndexes()
 
-    def _ensure_indexes(self) -> None:
-        self._users.create_index([("phone_number", ASCENDING)], unique=True)
-        self._users.create_index([("user_id", ASCENDING)], unique=True)
-        self._sessions.create_index([("access_token", ASCENDING)], unique=True)
-        self._sessions.create_index("expires_at", expireAfterSeconds=0)
-        self._favorites.create_index([("user_id", ASCENDING)], unique=True)
+    def ensureIndexes(self) -> None:
+        self.usersCollection.create_index([("phone_number", ASCENDING)], unique=True)
+        self.usersCollection.create_index([("user_id", ASCENDING)], unique=True)
+        self.sessionsCollection.create_index([("access_token", ASCENDING)], unique=True)
+        self.sessionsCollection.create_index("expires_at", expireAfterSeconds=0)
+        self.favoritesCollection.create_index([("user_id", ASCENDING)], unique=True)
 
-    def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        doc = self._users.find_one({"phone_number": phone_number})
-        if doc:
-            return self._as_user_dict(doc)
-        user_id = str(uuid4())
+    def ensureUser(self, phoneNumber: str) -> Dict[str, Any]:
+        document = self.usersCollection.find_one({"phone_number": phoneNumber})
+        if document:
+            return self.asUserDictionary(document)
+        userId = str(uuid4())
         payload = {
-            "user_id": user_id,
-            "phone_number": phone_number,
-            "created_at": self._now_iso(),
+            "user_id": userId,
+            "phone_number": phoneNumber,
+            "created_at": self.nowIsoTimestamp(),
         }
         try:
-            self._users.insert_one(payload)
+            self.usersCollection.insert_one(payload)
         except DuplicateKeyError:
-            doc = self._users.find_one({"phone_number": phone_number})
-            if doc:
-                return self._as_user_dict(doc)
+            document = self.usersCollection.find_one({"phone_number": phoneNumber})
+            if document:
+                return self.asUserDictionary(document)
             raise
         return payload
 
-    def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
-        token = str(uuid4())
+    def createSession(self, userId: str, ttlSeconds: int) -> Dict[str, Any]:
+        accessToken = str(uuid4())
         payload: Dict[str, Any] = {
-            "access_token": token,
-            "user_id": user_id,
+            "access_token": accessToken,
+            "user_id": userId,
         }
-        if not session_never_expires(ttl_seconds):
-            payload["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-        self._sessions.insert_one(payload)
-        return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
+        if not session_never_expires(ttlSeconds):
+            payload["expires_at"] = datetime.now(timezone.utc) + timedelta(seconds=ttlSeconds)
+        self.sessionsCollection.insert_one(payload)
+        return {"access_token": accessToken, "expires_in": session_expires_in(ttlSeconds)}
 
-    def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
-        sess = self._sessions.find_one({"access_token": access_token})
-        if not sess:
+    def getUserBySession(self, accessToken: str) -> Optional[Dict[str, Any]]:
+        sessionDocument = self.sessionsCollection.find_one({"access_token": accessToken})
+        if not sessionDocument:
             return None
-        if not self._session_is_active(sess):
-            self._sessions.delete_one({"access_token": access_token})
+        if not self.isSessionActive(sessionDocument):
+            self.sessionsCollection.delete_one({"access_token": accessToken})
             return None
-        user_id = sess.get("user_id")
-        if not user_id:
+        userId = sessionDocument.get("user_id")
+        if not userId:
             return None
-        doc = self._users.find_one({"user_id": user_id})
-        return self._as_user_dict(doc) if doc else None
+        userDocument = self.usersCollection.find_one({"user_id": userId})
+        return self.asUserDictionary(userDocument) if userDocument else None
 
-    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
-        sess = self._sessions.find_one({"access_token": access_token})
-        if not sess:
+    def resolveSessionUserId(self, accessToken: str) -> Optional[str]:
+        sessionDocument = self.sessionsCollection.find_one({"access_token": accessToken})
+        if not sessionDocument:
             return None
-        user_id = sess.get("user_id")
-        return str(user_id) if user_id else None
+        userId = sessionDocument.get("user_id")
+        return str(userId) if userId else None
 
-    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
-        user_id = self.resolve_session_user_id(access_token)
-        if not user_id:
+    def refreshSession(self, accessToken: str, ttlSeconds: int) -> Optional[Dict[str, Any]]:
+        userId = self.resolveSessionUserId(accessToken)
+        if not userId:
             return None
-        if session_never_expires(ttl_seconds):
+        if session_never_expires(ttlSeconds):
             return {
-                "access_token": access_token,
-                "expires_in": session_expires_in(ttl_seconds),
+                "access_token": accessToken,
+                "expires_in": session_expires_in(ttlSeconds),
             }
-        self._sessions.delete_one({"access_token": access_token})
-        return self.create_session(user_id, ttl_seconds)
+        self.sessionsCollection.delete_one({"access_token": accessToken})
+        return self.createSession(userId, ttlSeconds)
 
-    def _session_is_active(self, sess: Dict[str, Any]) -> bool:
-        exp = sess.get("expires_at")
-        if exp is None:
+    def isSessionActive(self, sessionDocument: Dict[str, Any]) -> bool:
+        expiresAt = sessionDocument.get("expires_at")
+        if expiresAt is None:
             return True
-        if not isinstance(exp, datetime):
+        if not isinstance(expiresAt, datetime):
             return True
-        return exp > datetime.now(timezone.utc)
+        return expiresAt > datetime.now(timezone.utc)
 
-    def list_favorites(self, user_id: str) -> List[str]:
-        doc = self._favorites.find_one({"user_id": user_id})
-        if not doc:
+    def listFavorites(self, userId: str) -> List[str]:
+        favoritesDocument = self.favoritesCollection.find_one({"user_id": userId})
+        if not favoritesDocument:
             return []
-        return list(doc.get("place_ids") or [])
+        return list(favoritesDocument.get("place_ids") or [])
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
-        self._favorites.update_one(
-            {"user_id": user_id},
-            {"$addToSet": {"place_ids": place_id}, "$setOnInsert": {"user_id": user_id}},
+    def addFavorite(self, userId: str, placeId: str) -> List[str]:
+        self.favoritesCollection.update_one(
+            {"user_id": userId},
+            {"$addToSet": {"place_ids": placeId}, "$setOnInsert": {"user_id": userId}},
             upsert=True,
         )
-        return self.list_favorites(user_id)
+        return self.listFavorites(userId)
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
-        self._favorites.update_one(
-            {"user_id": user_id},
-            {"$pull": {"place_ids": place_id}},
+    def removeFavorite(self, userId: str, placeId: str) -> List[str]:
+        self.favoritesCollection.update_one(
+            {"user_id": userId},
+            {"$pull": {"place_ids": placeId}},
         )
-        return self.list_favorites(user_id)
+        return self.listFavorites(userId)
 
     @staticmethod
-    def _now_iso() -> str:
+    def nowIsoTimestamp() -> str:
         return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
-    def _as_user_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
+    def asUserDictionary(userDocument: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "user_id": doc["user_id"],
-            "phone_number": doc["phone_number"],
-            "created_at": doc["created_at"],
+            "user_id": userDocument["user_id"],
+            "phone_number": userDocument["phone_number"],
+            "created_at": userDocument["created_at"],
         }

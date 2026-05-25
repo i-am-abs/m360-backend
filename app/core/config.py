@@ -11,17 +11,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
-def _bootstrap_dotenv() -> None:
+def bootstrapDotenv() -> None:
     try:
         from dotenv import load_dotenv
     except ImportError:
         return
-    env_path = PROJECT_ROOT / ".env"
-    if env_path.is_file():
-        load_dotenv(env_path)
+    envPath = PROJECT_ROOT / ".env"
+    if envPath.is_file():
+        load_dotenv(envPath)
 
 
-_bootstrap_dotenv()
+bootstrapDotenv()
 
 
 class Settings(BaseSettings):
@@ -37,6 +37,35 @@ class Settings(BaseSettings):
     logging_level: str = "INFO"
     logs_dir: str = "logs"
 
+    quran_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("QURAN_MODULE_ENABLED", "quran_module_enabled"),
+    )
+    masjid_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("MASJID_MODULE_ENABLED", "masjid_module_enabled"),
+    )
+    auth_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("AUTH_MODULE_ENABLED", "auth_module_enabled"),
+    )
+    msg91_webhook_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("MSG91_WEBHOOK_MODULE_ENABLED", "msg91_webhook_module_enabled"),
+    )
+    feature_flag_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("FEATURE_FLAG_MODULE_ENABLED", "feature_flag_module_enabled"),
+    )
+    redis_cache_module_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("REDIS_CACHE_MODULE_ENABLED", "redis_cache_module_enabled"),
+    )
+    api_docs_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("API_DOCS_ENABLED", "api_docs_enabled"),
+    )
+
     quran_base_url: str = "https://apis.quran.foundation"
     quran_client_id: Optional[str] = None
     quran_client_secret: Optional[str] = None
@@ -46,31 +75,26 @@ class Settings(BaseSettings):
 
     google_places_api_key: Optional[str] = None
     masjid_search_radius_meters: int = 5000
+    masjid_cache_ttl_seconds: int = Field(
+        default=86_400,
+        validation_alias=AliasChoices("MASJID_CACHE_TTL_SECONDS", "masjid_cache_ttl_seconds"),
+    )
 
     msg91_auth_key: Optional[str] = None
-
     msg91_widget_id: Optional[str] = None
     msg91_country_code: str = "91"
     msg91_async_req_id_wait_seconds: float = 3.0
 
     auth_session_ttl_seconds: int = Field(
         default=0,
-        description="Phone login bearer TTL in seconds. 0 = never expires.",
-        validation_alias=AliasChoices(
-            "AUTH_SESSION_TTL_SECONDS",
-            "auth_session_ttl_seconds",
-        ),
+        validation_alias=AliasChoices("AUTH_SESSION_TTL_SECONDS", "auth_session_ttl_seconds"),
     )
 
     user_store_file: str = "data/user_store.json"
 
     mongodb_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices(
-            "MONGODB_ENABLED",
-            "MONGODB",
-            "mongodb_enabled",
-        ),
+        validation_alias=AliasChoices("MONGODB_ENABLED", "MONGODB", "mongodb_enabled"),
     )
     mongodb_uri: Optional[str] = None
     mongodb_database: str = "m360"
@@ -85,7 +109,6 @@ class Settings(BaseSettings):
 
     uvicorn_workers: int = 2
     forwarded_allow_ips: str = "*"
-
     request_timeout_seconds: int = 10
 
     cors_allow_origins: Tuple[str, ...] = ("*",)
@@ -98,8 +121,36 @@ class Settings(BaseSettings):
         return bool(self.quran_client_id and self.quran_client_secret)
 
     @property
-    def masjid_module_enabled(self) -> bool:
+    def msg91_configured(self) -> bool:
+        return bool(self.msg91_auth_key and self.msg91_widget_id)
+
+    @property
+    def google_places_configured(self) -> bool:
         return bool(self.google_places_api_key)
+
+    @property
+    def quran_module_active(self) -> bool:
+        return self.quran_module_enabled and self.quran_api_configured
+
+    @property
+    def masjid_module_active(self) -> bool:
+        return self.masjid_module_enabled and self.google_places_configured
+
+    @property
+    def auth_module_active(self) -> bool:
+        return self.auth_module_enabled and self.msg91_configured
+
+    @property
+    def msg91_webhook_module_active(self) -> bool:
+        return self.msg91_webhook_module_enabled and self.auth_module_active
+
+    @property
+    def feature_flag_module_active(self) -> bool:
+        return self.feature_flag_module_enabled
+
+    @property
+    def redis_cache_module_active(self) -> bool:
+        return self.redis_cache_module_enabled and self.redis_configured
 
     @property
     def mongodb_configured(self) -> bool:
@@ -113,41 +164,45 @@ class Settings(BaseSettings):
     def project_root(self) -> Path:
         return PROJECT_ROOT
 
-    @field_validator("quran_base_url", "quran_oauth_url", mode="before")
-    @classmethod
-    def _strip_trailing_slash(cls, v: str) -> str:
-        return v.strip().rstrip("/") if isinstance(v, str) else v
-
-    @field_validator("auth_session_ttl_seconds", mode="before")
-    @classmethod
-    def _normalize_session_ttl(cls, v: object) -> int:
-        try:
-            ttl = int(v)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            return 0
-        return max(0, ttl)
-
     @property
     def auth_session_never_expires(self) -> bool:
         return self.auth_session_ttl_seconds <= 0
 
+    @field_validator("quran_base_url", "quran_oauth_url", mode="before")
+    @classmethod
+    def stripTrailingSlash(cls, value: str) -> str:
+        return value.strip().rstrip("/") if isinstance(value, str) else value
+
+    @field_validator("auth_session_ttl_seconds", mode="before")
+    @classmethod
+    def normalizeSessionTtl(cls, value: object) -> int:
+        if isinstance(value, bool):
+            return 0
+        try:
+            if value is None:
+                return 0
+            ttlSeconds = int(str(value))
+        except (TypeError, ValueError):
+            return 0
+        return max(0, ttlSeconds)
+
     @field_validator("masjid_search_radius_meters", mode="before")
     @classmethod
-    def _clamp_radius(cls, v: int) -> int:
+    def clampRadius(cls, value: int) -> int:
         try:
-            v = int(v)
+            radiusMeters = int(value)
         except (TypeError, ValueError):
             return 5000
-        return max(500, min(50_000, v))
+        return max(500, min(50_000, radiusMeters))
 
 
 def create_ssl_context() -> ssl.SSLContext:
-    ctx = ssl.create_default_context()
+    sslContext = ssl.create_default_context()
     try:
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        sslContext.minimum_version = ssl.TLSVersion.TLSv1_2
     except AttributeError:
         pass
-    return ctx
+    return sslContext
 
 
 @lru_cache(maxsize=1)

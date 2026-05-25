@@ -14,84 +14,84 @@ from app.utils.session_ttl import session_expires_in, session_never_expires
 
 class RedisUserStore(UserRepository):
     def __init__(self, client: Redis, settings: Settings) -> None:
-        self._r = client
-        self._pfx = (settings.redis_key_prefix or "m360").strip() or "m360"
+        self.redisClient = client
+        self.keyPrefix = (settings.redis_key_prefix or "m360").strip() or "m360"
 
-    def _key_phone(self, phone: str) -> str:
-        return f"{self._pfx}:user:phone:{phone}"
+    def buildPhoneKey(self, phoneNumber: str) -> str:
+        return f"{self.keyPrefix}:user:phone:{phoneNumber}"
 
-    def _key_user_id(self, user_id: str) -> str:
-        return f"{self._pfx}:user:id:{user_id}"
+    def buildUserIdKey(self, userId: str) -> str:
+        return f"{self.keyPrefix}:user:id:{userId}"
 
-    def _key_session(self, token: str) -> str:
-        return f"{self._pfx}:session:{token}"
+    def buildSessionKey(self, accessToken: str) -> str:
+        return f"{self.keyPrefix}:session:{accessToken}"
 
-    def _key_favorites(self, user_id: str) -> str:
-        return f"{self._pfx}:favorites:{user_id}"
+    def buildFavoritesKey(self, userId: str) -> str:
+        return f"{self.keyPrefix}:favorites:{userId}"
 
-    def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        raw = self._r.get(self._key_phone(phone_number))
-        if raw:
-            return json.loads(raw)
+    def ensureUser(self, phoneNumber: str) -> Dict[str, Any]:
+        rawUserPayload = self.redisClient.get(self.buildPhoneKey(phoneNumber))
+        if rawUserPayload:
+            return json.loads(rawUserPayload)
         user = {
             "user_id": str(uuid4()),
-            "phone_number": phone_number,
+            "phone_number": phoneNumber,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        blob = json.dumps(user)
-        self._r.set(self._key_phone(phone_number), blob)
-        self._r.set(self._key_user_id(user["user_id"]), blob)
+        serializedUser = json.dumps(user)
+        self.redisClient.set(self.buildPhoneKey(phoneNumber), serializedUser)
+        self.redisClient.set(self.buildUserIdKey(user["user_id"]), serializedUser)
         return user
 
-    def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
-        token = str(uuid4())
-        key = self._key_session(token)
-        if session_never_expires(ttl_seconds):
-            self._r.set(key, user_id)
+    def createSession(self, userId: str, ttlSeconds: int) -> Dict[str, Any]:
+        accessToken = str(uuid4())
+        sessionKey = self.buildSessionKey(accessToken)
+        if session_never_expires(ttlSeconds):
+            self.redisClient.set(sessionKey, userId)
         else:
-            self._r.setex(key, ttl_seconds, user_id)
-        return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
+            self.redisClient.setex(sessionKey, ttlSeconds, userId)
+        return {"access_token": accessToken, "expires_in": session_expires_in(ttlSeconds)}
 
-    def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
-        user_id = self._r.get(self._key_session(access_token))
-        if not user_id:
+    def getUserBySession(self, accessToken: str) -> Optional[Dict[str, Any]]:
+        userId = self.redisClient.get(self.buildSessionKey(accessToken))
+        if not userId:
             return None
-        raw = self._r.get(self._key_user_id(user_id))
-        if not raw:
+        rawUserPayload = self.redisClient.get(self.buildUserIdKey(userId))
+        if not rawUserPayload:
             return None
-        return json.loads(raw)
+        return json.loads(rawUserPayload)
 
-    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
-        user_id = self._r.get(self._key_session(access_token))
-        return str(user_id) if user_id else None
+    def resolveSessionUserId(self, accessToken: str) -> Optional[str]:
+        userId = self.redisClient.get(self.buildSessionKey(accessToken))
+        return str(userId) if userId else None
 
-    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
-        user_id = self.resolve_session_user_id(access_token)
-        if not user_id:
+    def refreshSession(self, accessToken: str, ttlSeconds: int) -> Optional[Dict[str, Any]]:
+        userId = self.resolveSessionUserId(accessToken)
+        if not userId:
             return None
-        if session_never_expires(ttl_seconds):
+        if session_never_expires(ttlSeconds):
             return {
-                "access_token": access_token,
-                "expires_in": session_expires_in(ttl_seconds),
+                "access_token": accessToken,
+                "expires_in": session_expires_in(ttlSeconds),
             }
-        self._r.delete(self._key_session(access_token))
-        return self.create_session(user_id, ttl_seconds)
+        self.redisClient.delete(self.buildSessionKey(accessToken))
+        return self.createSession(userId, ttlSeconds)
 
-    def list_favorites(self, user_id: str) -> List[str]:
-        raw = self._r.get(self._key_favorites(user_id))
-        if not raw:
+    def listFavorites(self, userId: str) -> List[str]:
+        rawFavoritesPayload = self.redisClient.get(self.buildFavoritesKey(userId))
+        if not rawFavoritesPayload:
             return []
-        data = json.loads(raw)
-        return list(data) if isinstance(data, list) else []
+        favoritesData = json.loads(rawFavoritesPayload)
+        return list(favoritesData) if isinstance(favoritesData, list) else []
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
-        favs = self.list_favorites(user_id)
-        if place_id not in favs:
-            favs.append(place_id)
-        self._r.set(self._key_favorites(user_id), json.dumps(favs))
-        return list(favs)
+    def addFavorite(self, userId: str, placeId: str) -> List[str]:
+        favoritePlaceIds = self.listFavorites(userId)
+        if placeId not in favoritePlaceIds:
+            favoritePlaceIds.append(placeId)
+        self.redisClient.set(self.buildFavoritesKey(userId), json.dumps(favoritePlaceIds))
+        return list(favoritePlaceIds)
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
-        favs = [p for p in self.list_favorites(user_id) if p != place_id]
-        self._r.set(self._key_favorites(user_id), json.dumps(favs))
-        return favs
+    def removeFavorite(self, userId: str, placeId: str) -> List[str]:
+        favoritePlaceIds = [place for place in self.listFavorites(userId) if place != placeId]
+        self.redisClient.set(self.buildFavoritesKey(userId), json.dumps(favoritePlaceIds))
+        return favoritePlaceIds

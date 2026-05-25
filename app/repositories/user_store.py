@@ -14,136 +14,134 @@ from app.interfaces.user_repository import UserRepository
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
-class JsonFileUserStore(UserRepository):
-    def __init__(self, file_path: str) -> None:
-        if not file_path:
+class JsonFileUserRepository(UserRepository):
+    def __init__(self, filePath: str) -> None:
+        if not filePath:
             raise ApiException(
                 "USER_STORE_FILE is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
                 code=ErrorCode.CONFIG_MISSING,
             )
-        self._path = file_path
-        self._lock = RLock()
-        self._bootstrap()
+        self.filePath = filePath
+        self.lock = RLock()
+        self.bootstrap()
 
-    def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        with self._lock:
-            data = self._read()
-            user = data["users_by_phone"].get(phone_number)
+    def ensureUser(self, phoneNumber: str) -> Dict[str, Any]:
+        with self.lock:
+            data = self.readJsonFile()
+            user = data["users_by_phone"].get(phoneNumber)
             if user is None:
                 user = {
                     "user_id": str(uuid4()),
-                    "phone_number": phone_number,
-                    "created_at": self._now_iso(),
+                    "phone_number": phoneNumber,
+                    "created_at": self.getCurrentIsoTimestamp(),
                 }
-                data["users_by_phone"][phone_number] = user
-                self._write(data)
+                data["users_by_phone"][phoneNumber] = user
+                self.writeJsonFile(data)
             return user
 
-    def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
-        with self._lock:
-            data = self._read()
+    def createSession(self, userId: str, ttlSeconds: int) -> Dict[str, Any]:
+        with self.lock:
+            data = self.readJsonFile()
             token = str(uuid4())
-            entry: Dict[str, Any] = {"user_id": user_id}
-            if not session_never_expires(ttl_seconds):
-                expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-                entry["expires_at"] = expires_at.isoformat()
+            entry: Dict[str, Any] = {"user_id": userId}
+            if not session_never_expires(ttlSeconds):
+                expiresAt = datetime.now(timezone.utc) + timedelta(seconds=ttlSeconds)
+                entry["expires_at"] = expiresAt.isoformat()
             data["sessions"][token] = entry
-            self._write(data)
-            return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
+            self.writeJsonFile(data)
+            return {"access_token": token, "expires_in": session_expires_in(ttlSeconds)}
 
-    def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            data = self._read()
-            session = data["sessions"].get(access_token)
+    def getUserBySession(self, accessToken: str) -> Optional[Dict[str, Any]]:
+        with self.lock:
+            data = self.readJsonFile()
+            session = data["sessions"].get(accessToken)
             if not session:
                 return None
-            if not self._session_is_active(session):
-                del data["sessions"][access_token]
-                self._write(data)
+            if not self.isSessionActive(session):
+                data["sessions"].pop(accessToken, None)
+                self.writeJsonFile(data)
                 return None
-            user_id = session["user_id"]
+            userId = session["user_id"]
             for user in data["users_by_phone"].values():
-                if user.get("user_id") == user_id:
+                if user.get("user_id") == userId:
                     return user
             return None
 
-    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
-        with self._lock:
-            data = self._read()
-            session = data["sessions"].get(access_token)
+    def resolveSessionUserId(self, accessToken: str) -> Optional[str]:
+        with self.lock:
+            data = self.readJsonFile()
+            session = data["sessions"].get(accessToken)
             if not session:
                 return None
-            user_id = session.get("user_id")
-            return str(user_id) if user_id else None
+            userId = session.get("user_id")
+            return str(userId) if userId else None
 
-    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            user_id = self.resolve_session_user_id(access_token)
-            if not user_id:
+    def refreshSession(self, accessToken: str, ttlSeconds: int) -> Optional[Dict[str, Any]]:
+        with self.lock:
+            userId = self.resolveSessionUserId(accessToken)
+            if not userId:
                 return None
-            if session_never_expires(ttl_seconds):
+            if session_never_expires(ttlSeconds):
                 return {
-                    "access_token": access_token,
-                    "expires_in": session_expires_in(ttl_seconds),
+                    "access_token": accessToken,
+                    "expires_in": session_expires_in(ttlSeconds),
                 }
-            data = self._read()
-            data["sessions"].pop(access_token, None)
-            self._write(data)
-        return self.create_session(user_id, ttl_seconds)
+            data = self.readJsonFile()
+            data["sessions"].pop(accessToken, None)
+            self.writeJsonFile(data)
+        return self.createSession(userId, ttlSeconds)
 
-    @staticmethod
-    def _session_is_active(session: Dict[str, Any]) -> bool:
+    def isSessionActive(self, session: Dict[str, Any]) -> bool:
         raw = session.get("expires_at")
         if not raw:
             return True
-        expires_at = datetime.fromisoformat(raw)
-        return datetime.now(timezone.utc) < expires_at
+        expiresAt = datetime.fromisoformat(raw)
+        return datetime.now(timezone.utc) < expiresAt
 
-    def list_favorites(self, user_id: str) -> List[str]:
-        with self._lock:
-            data = self._read()
-            return list(data["favorites_by_user_id"].get(user_id, []))
+    def listFavorites(self, userId: str) -> List[str]:
+        with self.lock:
+            data = self.readJsonFile()
+            return list(data["favorites_by_user_id"].get(userId, []))
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
-        with self._lock:
-            data = self._read()
-            favorites = data["favorites_by_user_id"].setdefault(user_id, [])
-            if place_id not in favorites:
-                favorites.append(place_id)
-                self._write(data)
+    def addFavorite(self, userId: str, placeId: str) -> List[str]:
+        with self.lock:
+            data = self.readJsonFile()
+            favorites = data["favorites_by_user_id"].setdefault(userId, [])
+            if placeId not in favorites:
+                favorites.append(placeId)
+                self.writeJsonFile(data)
             return list(favorites)
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
-        with self._lock:
-            data = self._read()
-            favorites = data["favorites_by_user_id"].setdefault(user_id, [])
-            data["favorites_by_user_id"][user_id] = [
-                pid for pid in favorites if pid != place_id
+    def removeFavorite(self, userId: str, placeId: str) -> List[str]:
+        with self.lock:
+            data = self.readJsonFile()
+            favorites = data["favorites_by_user_id"].setdefault(userId, [])
+            data["favorites_by_user_id"][userId] = [
+                pid for pid in favorites if pid != placeId
             ]
-            self._write(data)
-            return list(data["favorites_by_user_id"][user_id])
+            self.writeJsonFile(data)
+            return list(data["favorites_by_user_id"][userId])
 
-    @staticmethod
-    def _now_iso() -> str:
+    def getCurrentIsoTimestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    def _bootstrap(self) -> None:
-        with self._lock:
-            parent = os.path.dirname(self._path)
+    def bootstrap(self) -> None:
+        with self.lock:
+            parent = os.path.dirname(self.filePath)
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            if not os.path.exists(self._path):
-                self._write({
+            if not os.path.exists(self.filePath):
+                self.writeJsonFile({
                     "users_by_phone": {},
                     "favorites_by_user_id": {},
                     "sessions": {},
                 })
 
-    def _read(self) -> Dict[str, Any]:
-        with open(self._path, "r", encoding="utf-8") as f:
+    def readJsonFile(self) -> Dict[str, Any]:
+        with open(self.filePath, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    def _write(self, payload: Dict[str, Any]) -> None:
-        with open(self._path, "w", encoding="utf-8") as f:
+    def writeJsonFile(self, payload: Dict[str, Any]) -> None:
+        with open(self.filePath, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=True, indent=2)

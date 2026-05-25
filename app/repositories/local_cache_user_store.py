@@ -9,99 +9,97 @@ from app.interfaces.user_repository import UserRepository
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
-class LocalCacheUserStore(UserRepository):
+class InMemoryUserRepository(UserRepository):
     def __init__(self) -> None:
-        self._lock = RLock()
-        self._data: Dict[str, Any] = {
+        self.lock = RLock()
+        self.data: Dict[str, Any] = {
             "users_by_phone": {},
             "favorites_by_user_id": {},
             "sessions": {},
         }
 
-    def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        with self._lock:
-            user = self._data["users_by_phone"].get(phone_number)
+    def ensureUser(self, phoneNumber: str) -> Dict[str, Any]:
+        with self.lock:
+            user = self.data["users_by_phone"].get(phoneNumber)
             if user is None:
                 user = {
                     "user_id": str(uuid4()),
-                    "phone_number": phone_number,
-                    "created_at": self._now_iso(),
+                    "phone_number": phoneNumber,
+                    "created_at": self.getCurrentIsoTimestamp(),
                 }
-                self._data["users_by_phone"][phone_number] = user
+                self.data["users_by_phone"][phoneNumber] = user
             return user
 
-    def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
-        with self._lock:
+    def createSession(self, userId: str, ttlSeconds: int) -> Dict[str, Any]:
+        with self.lock:
             token = str(uuid4())
-            entry: Dict[str, Any] = {"user_id": user_id}
-            if not session_never_expires(ttl_seconds):
-                expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-                entry["expires_at"] = expires_at.isoformat()
-            self._data["sessions"][token] = entry
-            return {"access_token": token, "expires_in": session_expires_in(ttl_seconds)}
+            entry: Dict[str, Any] = {"user_id": userId}
+            if not session_never_expires(ttlSeconds):
+                expiresAt = datetime.now(timezone.utc) + timedelta(seconds=ttlSeconds)
+                entry["expires_at"] = expiresAt.isoformat()
+            self.data["sessions"][token] = entry
+            return {"access_token": token, "expires_in": session_expires_in(ttlSeconds)}
 
-    def get_user_by_session(self, access_token: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            session = self._data["sessions"].get(access_token)
+    def getUserBySession(self, accessToken: str) -> Optional[Dict[str, Any]]:
+        with self.lock:
+            session = self.data["sessions"].get(accessToken)
             if not session:
                 return None
-            if not self._session_is_active(session):
-                del self._data["sessions"][access_token]
+            if not self.isSessionActive(session):
+                self.data["sessions"].pop(accessToken, None)
                 return None
-            user_id = session["user_id"]
-            for user in self._data["users_by_phone"].values():
-                if user.get("user_id") == user_id:
+            userId = session["user_id"]
+            for user in self.data["users_by_phone"].values():
+                if user.get("user_id") == userId:
                     return user
             return None
 
-    def resolve_session_user_id(self, access_token: str) -> Optional[str]:
-        with self._lock:
-            session = self._data["sessions"].get(access_token)
+    def resolveSessionUserId(self, accessToken: str) -> Optional[str]:
+        with self.lock:
+            session = self.data["sessions"].get(accessToken)
             if not session:
                 return None
-            user_id = session.get("user_id")
-            return str(user_id) if user_id else None
+            userId = session.get("user_id")
+            return str(userId) if userId else None
 
-    def refresh_session(self, access_token: str, ttl_seconds: int) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            user_id = self.resolve_session_user_id(access_token)
-            if not user_id:
+    def refreshSession(self, accessToken: str, ttlSeconds: int) -> Optional[Dict[str, Any]]:
+        with self.lock:
+            userId = self.resolveSessionUserId(accessToken)
+            if not userId:
                 return None
-            if session_never_expires(ttl_seconds):
+            if session_never_expires(ttlSeconds):
                 return {
-                    "access_token": access_token,
-                    "expires_in": session_expires_in(ttl_seconds),
+                    "access_token": accessToken,
+                    "expires_in": session_expires_in(ttlSeconds),
                 }
-            del self._data["sessions"][access_token]
-        return self.create_session(user_id, ttl_seconds)
+            self.data["sessions"].pop(accessToken, None)
+        return self.createSession(userId, ttlSeconds)
 
-    @staticmethod
-    def _session_is_active(session: Dict[str, Any]) -> bool:
+    def isSessionActive(self, session: Dict[str, Any]) -> bool:
         raw = session.get("expires_at")
         if not raw:
             return True
-        expires_at = datetime.fromisoformat(raw)
-        return datetime.now(timezone.utc) < expires_at
+        expiresAt = datetime.fromisoformat(raw)
+        return datetime.now(timezone.utc) < expiresAt
 
-    def list_favorites(self, user_id: str) -> List[str]:
-        with self._lock:
-            return list(self._data["favorites_by_user_id"].get(user_id, []))
+    def listFavorites(self, userId: str) -> List[str]:
+        with self.lock:
+            return list(self.data["favorites_by_user_id"].get(userId, []))
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
-        with self._lock:
-            favorites = self._data["favorites_by_user_id"].setdefault(user_id, [])
-            if place_id not in favorites:
-                favorites.append(place_id)
+    def addFavorite(self, userId: str, placeId: str) -> List[str]:
+        with self.lock:
+            favorites = self.data["favorites_by_user_id"].setdefault(userId, [])
+            if placeId not in favorites:
+                favorites.append(placeId)
             return list(favorites)
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
-        with self._lock:
-            favorites = self._data["favorites_by_user_id"].setdefault(user_id, [])
-            self._data["favorites_by_user_id"][user_id] = [
-                pid for pid in favorites if pid != place_id
+    def removeFavorite(self, userId: str, placeId: str) -> List[str]:
+        with self.lock:
+            favorites = self.data["favorites_by_user_id"].setdefault(userId, [])
+            self.data["favorites_by_user_id"][userId] = [
+                pid for pid in favorites if pid != placeId
             ]
-            return list(self._data["favorites_by_user_id"][user_id])
+            return list(self.data["favorites_by_user_id"][userId])
 
-    @staticmethod
-    def _now_iso() -> str:
+    def getCurrentIsoTimestamp(self) -> str:
         return datetime.now(timezone.utc).isoformat()

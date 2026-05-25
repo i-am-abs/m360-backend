@@ -12,7 +12,7 @@ _request_id_ctx: Final[ContextVar[str | None]] = ContextVar(
 )
 
 _CONFIGURED: bool = False
-_LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MB
+_LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
 _LOG_BACKUP_COUNT: int = 5
 
 
@@ -26,7 +26,7 @@ def set_request_id(value: str | None) -> None:
 
 class _RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = _request_id_ctx.get() or "-"  # type: ignore[attr-defined]
+        setattr(record, "request_id", _request_id_ctx.get() or "-")
         return True
 
 

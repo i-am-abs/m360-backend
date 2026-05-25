@@ -1,0 +1,21 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from app.modules.feature_flag.domain.entities.feature_flag_entity import FeatureFlagEntity
+from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
+from app.modules.feature_flag.domain.value_objects.feature_flag_evaluation_context import (
+    FeatureFlagEvaluationContext,
+)
+
+
+class FeatureFlagEvaluationStrategyPort(ABC):
+    supportedConditionType: FeatureFlagConditionType
+
+    @abstractmethod
+    def evaluateFeatureFlag(
+            self,
+            featureFlagEntity: FeatureFlagEntity,
+            evaluationContext: FeatureFlagEvaluationContext,
+    ) -> bool:
+        pass

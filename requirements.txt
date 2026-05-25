@@ -8,3 +8,4 @@ certifi>=2024.0.0
 contextvars
 pymongo>=4.8.0,<5
 redis>=5.0,<6
+pytest>=8.0,<9

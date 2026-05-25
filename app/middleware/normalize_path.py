@@ -11,8 +11,6 @@ _MULTI_SLASH = re.compile(r"/{2,}")
 
 
 class NormalizePathMiddleware(BaseHTTPMiddleware):
-    """Collapse repeated slashes so `//api/v1/...` matches `/api/v1/...`."""
-
     async def dispatch(
             self,
             request: Request,

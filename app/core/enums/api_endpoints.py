@@ -37,3 +37,8 @@ class ApiEndpoint(Enum):
     MY_MASJIDS = "/users/me/masjids"
     MY_MASJID_ADD = "/users/me/masjids/{place_id}"
     MY_MASJID_REMOVE = "/users/me/masjids/{place_id}"
+
+    FEATURE_FLAGS = "/feature-flags"
+    FEATURE_FLAG_BY_NAME = "/feature-flags/{feature_name}"
+    FEATURE_FLAG_EVALUATE = "/feature-flags/evaluate"
+    FEATURE_FLAG_EVALUATE_BY_NAME = "/feature-flags/evaluate/{feature_name}"
