@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 class MasjidDetailsPresenter:
     @staticmethod
-    def to_view(place: Dict[str, Any]) -> Dict[str, Any]:
+    def to_view(place: Dict[str, Any], has_donations: bool = False, has_announcements: bool = False, donation_count: int = 0, announcement_count: int = 0, is_added: bool = False, saved_count: int = 0,) -> Dict[str, Any]:
         accessibility = place.get("accessibilityOptions") or {}
         parking = place.get("parkingOptions") or {}
         payment = place.get("paymentOptions") or {}
@@ -31,5 +31,11 @@ class MasjidDetailsPresenter:
                 "paid_parking_lot": parking.get("paidParkingLot"),
                 "accepts_nfc": payment.get("acceptsNfc"),
             },
+            "hasDonationsEnabled": has_donations,
+            "hasAnnouncementsEnabled": has_announcements,
+            "donationUpdatesCount": donation_count,
+            "announcementUpdatesCount": announcement_count,
+            "isAddedToMyMasjid": is_added,
+            "savedMasjidCount": saved_count,
             "raw": place,
         }

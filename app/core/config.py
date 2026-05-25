@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
 def _bootstrap_dotenv() -> None:
@@ -16,7 +16,7 @@ def _bootstrap_dotenv() -> None:
         from dotenv import load_dotenv
     except ImportError:
         return
-    env_path = _PROJECT_ROOT / ".env"
+    env_path = PROJECT_ROOT / ".env"
     if env_path.is_file():
         load_dotenv(env_path)
 
@@ -26,7 +26,7 @@ _bootstrap_dotenv()
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(_PROJECT_ROOT / ".env"),
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -111,7 +111,7 @@ class Settings(BaseSettings):
 
     @property
     def project_root(self) -> Path:
-        return _PROJECT_ROOT
+        return PROJECT_ROOT
 
     @field_validator("quran_base_url", "quran_oauth_url", mode="before")
     @classmethod

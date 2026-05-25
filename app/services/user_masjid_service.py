@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from app.core.logging import get_logger
 from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
+from app.utils.masjid import get_deterministic_masjid_metadata
 
-_log = get_logger(__name__)
 
 
 class UserMasjidService:
@@ -19,9 +18,20 @@ class UserMasjidService:
         masjids: List[Dict[str, Any]] = []
         for pid in place_ids:
             try:
-                masjids.append(self._places_reader.get_place_by_id(pid))
+                place = self._places_reader.get_place_by_id(pid)
+                if isinstance(place, dict):
+                    meta = get_deterministic_masjid_metadata(pid)
+                    place.update(meta)
+                masjids.append(place)
             except Exception:
-                masjids.append({"id": pid, "unavailable": True})
+                masjids.append({
+                    "id": pid,
+                    "unavailable": True,
+                    "hasDonationsEnabled": False,
+                    "hasAnnouncementsEnabled": False,
+                    "donationUpdatesCount": 0,
+                    "announcementUpdatesCount": 0,
+                })
         return {"count": len(masjids), "masjids": masjids}
 
     def add_my_masjid(self, user_id: str, place_id: str) -> Dict[str, Any]:

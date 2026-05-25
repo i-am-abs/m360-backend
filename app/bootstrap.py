@@ -139,8 +139,11 @@ def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
         return RedisUserStore(app.state.redis, settings)
     if settings.redis_configured:
         _log.warning(
-            "REDIS_ENABLED is true but Redis is unavailable — using in-memory user store."
+            "REDIS_ENABLED is true but Redis is unavailable — using JSON file user store."
         )
+    if settings.user_store_file:
+        from app.repositories.user_store import JsonFileUserStore
+        return JsonFileUserStore(settings.user_store_file)
     return LocalCacheUserStore()
 
 

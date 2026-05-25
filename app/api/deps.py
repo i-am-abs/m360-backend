@@ -16,9 +16,9 @@ from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
 from app.services.user_masjid_service import UserMasjidService
 
-_bearer = HTTPBearer(auto_error=False)
+bearer = HTTPBearer(auto_error=False)
 
-_QURAN_NOT_CONFIGURED = (
+QURAN_NOT_CONFIGURED = (
     "Quran Foundation API is not configured. "
     "Set QURAN_CLIENT_ID and QURAN_CLIENT_SECRET."
 )
@@ -32,7 +32,7 @@ def get_quran_oauth_service(request: Request) -> QuranOAuthService:
     svc = request.app.state.quran_oauth_service
     if svc is None:
         raise ApiException(
-            _QURAN_NOT_CONFIGURED,
+            QURAN_NOT_CONFIGURED,
             status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             code=ErrorCode.QURAN_API_NOT_CONFIGURED,
         )
@@ -43,7 +43,7 @@ def get_quran_api_client(request: Request) -> QuranApiClient:
     client = request.app.state.quran_api_client
     if client is None:
         raise ApiException(
-            _QURAN_NOT_CONFIGURED,
+            QURAN_NOT_CONFIGURED,
             status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
             code=ErrorCode.QURAN_API_NOT_CONFIGURED,
         )
@@ -67,7 +67,7 @@ def get_user_store(request: Request) -> UserRepository:
 
 
 def get_bearer_credentials(
-        credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+        credentials: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> HTTPAuthorizationCredentials:
     if credentials is None or not credentials.credentials:
         raise ApiException(
@@ -78,10 +78,7 @@ def get_bearer_credentials(
     return credentials
 
 
-def get_current_user(
-        credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-        store: UserRepository = Depends(get_user_store),
-) -> Dict[str, Any]:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), store: UserRepository = Depends(get_user_store),) -> Dict[str, Any]:
     if credentials is None or not credentials.credentials:
         raise ApiException(
             "Missing Authorization bearer token",

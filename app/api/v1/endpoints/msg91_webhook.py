@@ -7,7 +7,7 @@ from app.core.logging import get_logger
 from app.schemas.msg91_webhook import Msg91OtpWebhookPayload
 from app.utils.response import success_response
 
-_log = get_logger(__name__)
+log = get_logger(__name__)
 
 router = APIRouter(tags=["Integrations"])
 
@@ -19,9 +19,5 @@ def msg91_otp_webhook(body: Msg91OtpWebhookPayload, request: Request):
         event = (body.event or "SEND_OTP").strip().upper()
         if event in {"SEND_OTP", "OTP_SENT", "OTP SENT"}:
             store.record(body.identifier, body.request_id)
-            _log.info(
-                "MSG91 webhook %s stored requestId for identifier=%s",
-                body.event or "SEND_OTP",
-                body.identifier,
-            )
+            log.info("MSG91 webhook %s stored requestId for identifier=%s", body.event or "SEND_OTP",body.identifier,)
     return success_response({"accepted": True}, message="OK")

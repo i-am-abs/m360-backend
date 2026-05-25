@@ -5,9 +5,7 @@ import math
 from app.core.enums.geo import EarthConstant, IndiaBounds
 
 
-def haversine_meters(
-        lat1: float, lon1: float, lat2: float, lon2: float,
-) -> float:
+def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float,) -> float:
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlmb = math.radians(lon2 - lon1)
