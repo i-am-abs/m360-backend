@@ -8,13 +8,11 @@ from typing import Optional
 from httpx import Client, ConnectError, HTTPStatusError
 
 from app.core.config import Settings, create_ssl_context
-from app.core.enums.error_code import ErrorCode
-from app.core.enums.token import TokenConfig, TokenTiming
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.token_provider import TokenProvider
 
-_log = get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class OAuthTokenProvider(TokenProvider):
@@ -26,12 +24,12 @@ class OAuthTokenProvider(TokenProvider):
         self._ssl_ctx = create_ssl_context()
 
     def get_access_token(self) -> str:
-        if self._is_token_valid():
+        if self.is_token_valid():
             return self._access_token
         with self._lock:
-            if self._is_token_valid():
+            if self.is_token_valid():
                 return self._access_token
-            return self._fetch_token()
+            return self.fetch_token()
 
     def clear_token(self) -> None:
         with self._lock:
@@ -46,10 +44,10 @@ class OAuthTokenProvider(TokenProvider):
     def expiry(self) -> Optional[datetime]:
         return self._expiry
 
-    def _is_token_valid(self) -> bool:
+    def is_token_valid(self) -> bool:
         return bool(self._access_token and self._expiry and datetime.now() < self._expiry)
 
-    def _fetch_token(self) -> str:
+    def fetch_token(self) -> str:
         url = f"{self._settings.quran_oauth_url}/oauth2/token"
         try:
             with Client(
@@ -63,42 +61,39 @@ class OAuthTokenProvider(TokenProvider):
                         self._settings.quran_client_secret or "",
                     ),
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
-                    data=(
-                        f"grant_type={TokenConfig.GRANT_TYPE.value}"
-                        f"&scope={TokenConfig.SCOPE.value}"
-                    ),
+                    data=("grant_type=client_credentials &scope=content"),
                 )
                 response.raise_for_status()
 
             body = response.json()
             self._access_token = body["access_token"]
-            expires_in = body.get("expires_in", TokenTiming.EXPIRY_SECONDS.value)
+            expires_in = body.get("expires_in", 3600)
             self._expiry = datetime.now() + timedelta(
-                seconds=expires_in - TokenTiming.REFRESH_BUFFER_SECONDS.value,
+                seconds=expires_in - 30,
             )
             return self._access_token
 
         except ConnectError as exc:
-            _log.error("OAuth connection failed: %s", str(exc)[:200])
+            logger.error("OAuth connection failed: %s", str(exc)[:200])
             raise ApiException(
                 "Cannot reach Quran Foundation OAuth.",
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
-                code=ErrorCode.OAUTH_UNREACHABLE,
+                code="OAUTH_UNREACHABLE",
             ) from exc
 
         except HTTPStatusError as exc:
-            _log.error("OAuth HTTP error: %s", str(exc)[:200])
+            logger.error("OAuth HTTP error: %s", str(exc)[:200])
             raise ApiException(
                 "Failed to obtain access token.",
                 status_code=HTTPStatus.BAD_GATEWAY.value,
-                code=ErrorCode.OAUTH_FAILED,
+                code="OAUTH_FAILED",
                 provider_message=exc.response.text[:500],
             ) from exc
 
         except Exception as exc:
-            _log.error("OAuth unexpected error: %s", str(exc)[:200])
+            logger.error("OAuth unexpected error: %s", str(exc)[:200])
             raise ApiException(
                 "Failed to obtain access token.",
                 status_code=HTTPStatus.BAD_GATEWAY.value,
-                code=ErrorCode.OAUTH_FAILED,
+                code="OAUTH_FAILED",
             ) from exc

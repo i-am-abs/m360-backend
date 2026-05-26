@@ -12,29 +12,13 @@ class PlacesReader(ABC):
 
 class MasjidSearchService(PlacesReader):
     @abstractmethod
-    def search_nearby(
-            self,
-            latitude: float,
-            longitude: float,
-            radius_meters: int,
-            max_result_count: int,
-    ) -> Dict[str, Any]:
+    def search_nearby(self, latitude: float, longitude: float, radius_meters: int, max_result_count: int,) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def search_by_name(
-            self,
-            query: str,
-            max_result_count: int,
-            radius_meters: int,
-    ) -> Dict[str, Any]:
+    def search_by_name(self, query: str, max_result_count: int, radius_meters: int) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def search_by_city(
-            self,
-            city: str,
-            max_result_count: int,
-            radius_meters: int,
-    ) -> Dict[str, Any]:
+    def search_by_city(self, city: str, max_result_count: int, radius_meters: int) -> Dict[str, Any]:
         pass

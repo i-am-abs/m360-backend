@@ -10,7 +10,7 @@ from starlette.responses import Response
 
 from app.core.logging import get_logger, set_request_id
 
-_log = get_logger("http")
+logger = get_logger("http")
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -19,34 +19,30 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             request: Request,
             call_next: Callable[[Request], Response],
     ) -> Response:
-        header_rid = request.headers.get("X-Request-ID")
-        req_id = header_rid or str(uuid.uuid4())
-        set_request_id(req_id)
-        t0 = time.perf_counter()
+        requestId = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        set_request_id(requestId)
+        requestStartTime = time.perf_counter()
 
-        _log.info(
-            "request_started method=%s path=%s",
-            request.method,
-            request.url.path,
-        )
         try:
             response = await call_next(request)
         except Exception:
-            _log.exception(
+            logger.exception(
                 "request_failed method=%s path=%s",
                 request.method,
                 request.url.path,
             )
             raise
 
-        elapsed_ms = (time.perf_counter() - t0) * 1000
-        _log.info(
-            "request_finished method=%s path=%s status=%s duration_ms=%.2f",
-            request.method,
-            request.url.path,
-            response.status_code,
-            elapsed_ms,
-        )
-        response.headers["X-Request-ID"] = req_id
+        requestDurationMilliseconds = (time.perf_counter() - requestStartTime) * 1000
+        if response.status_code >= 500:
+            logger.warning(
+                "request_error method=%s path=%s status=%s duration_ms=%.2f",
+                request.method,
+                request.url.path,
+                response.status_code,
+                requestDurationMilliseconds,
+            )
+
+        response.headers["X-Request-ID"] = requestId
         set_request_id(None)
         return response

@@ -2,16 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from app.core.enums.google_places import GooglePlacesUrl, PhotoConfig
+_GOOGLE_PLACES_MEDIA_HOST = "https://places.googleapis.com/v1"
+_DEFAULT_PHOTO_MAX_HEIGHT_PX = 400
 
 
 def build_photo_media_url(api_key: str, photo_resource_name: str, max_height_px: int,) -> str:
-    base = f"{GooglePlacesUrl.MEDIA_HOST.value}/{photo_resource_name}/media"
+    base = f"{_GOOGLE_PLACES_MEDIA_HOST}/{photo_resource_name}/media"
     return f"{base}?maxHeightPx={max_height_px}&key={api_key}"
 
 
 def transform_photos_on_place(place: Dict[str, Any], api_key: str) -> None:
-    default_h = PhotoConfig.DEFAULT_MAX_HEIGHT_PX.value
+    default_h = _DEFAULT_PHOTO_MAX_HEIGHT_PX
     for photo in place.get("photos") or []:
         if not isinstance(photo, dict) or "name" not in photo:
             continue

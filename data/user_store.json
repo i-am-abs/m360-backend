@@ -1,32 +1,20 @@
 {
   "users_by_phone": {
     "919999999999": {
-      "user_id": "b95aada6-5aed-4ce1-a19e-1075b0d1cd37",
+      "user_id": "9463f18d-2d97-4d0a-b7f4-ac151f0565fc",
       "phone_number": "919999999999",
-      "created_at": "2026-05-25T16:14:19.679609+00:00"
-    },
-    "8445726929": {
-      "user_id": "8238eb6d-785d-4d07-b676-74edf916e0bb",
-      "phone_number": "8445726929",
-      "created_at": "2026-05-25T18:15:18.504381+00:00"
+      "created_at": "2026-05-25T19:08:49.936363+00:00"
     }
   },
   "favorites_by_user_id": {
-    "b95aada6-5aed-4ce1-a19e-1075b0d1cd37": [
-      "place_test_abc123"
-    ],
-    "8238eb6d-785d-4d07-b676-74edf916e0bb": [
-      "ChIJ4aUeHFwWrjsR2ZMWJ4hcqkY",
-      "ChIJU4Z_oPCkdDkRP0M9K9yY4yo"
+    "9463f18d-2d97-4d0a-b7f4-ac151f0565fc": [
+      "place_mumbai_masjid"
     ]
   },
   "sessions": {
-    "f36b54e9-0938-41f5-b26e-2d7c6b050fe3": {
-      "user_id": "b95aada6-5aed-4ce1-a19e-1075b0d1cd37",
-      "expires_at": "2026-05-25T17:14:19.679692+00:00"
-    },
-    "43e6b2c1-aa9a-4aef-b0e8-384447c12483": {
-      "user_id": "8238eb6d-785d-4d07-b676-74edf916e0bb"
+    "dc32f0ae-5b45-4989-98d1-eee81410e848": {
+      "user_id": "9463f18d-2d97-4d0a-b7f4-ac151f0565fc",
+      "expires_at": "2026-05-25T20:08:49.936450+00:00"
     }
   }
 }

@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 from httpx import Client, ConnectError, HTTPStatusError, TimeoutException
 
 from app.core.config import create_ssl_context
-from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
 from app.interfaces.http_client import HttpClient
 
@@ -18,21 +17,10 @@ class HttpxClient(HttpClient):
         self._max_retries = max_retries
         self._ssl_ctx = create_ssl_context()
 
-    def get(
-            self,
-            url: str,
-            headers: Optional[Dict[str, str]] = None,
-            params: Optional[Dict[str, Any]] = None,
-    ) -> Any:
-        return self._execute_with_retry(url, headers, params, self._max_retries)
+    def get(self, url: str, headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, Any]] = None) -> Any:
+        return self.execute_with_retry(url, headers, params, self._max_retries)
 
-    def _execute_with_retry(
-            self,
-            url: str,
-            headers: Optional[Dict[str, str]],
-            params: Optional[Dict[str, Any]],
-            retries_left: int,
-    ) -> Any:
+    def execute_with_retry(self, url: str, headers: Optional[Dict[str, str]], params: Optional[Dict[str, Any]], retries_left: int) -> Any:
         try:
             with Client(timeout=self._timeout, verify=self._ssl_ctx) as client:
                 response = client.get(url, headers=headers, params=params)
@@ -40,7 +28,7 @@ class HttpxClient(HttpClient):
                     raise ApiException(
                         "Unauthorized",
                         status_code=HTTPStatus.UNAUTHORIZED.value,
-                        code=ErrorCode.UNAUTHORIZED,
+                        code="UNAUTHORIZED",
                     )
                 response.raise_for_status()
                 return response.json()
@@ -49,7 +37,7 @@ class HttpxClient(HttpClient):
             raise ApiException(
                 "Cannot reach upstream API — check network connectivity.",
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
-                code=ErrorCode.SERVICE_UNAVAILABLE,
+                code="SERVICE_UNAVAILABLE",
             ) from exc
 
         except TimeoutException:
@@ -59,7 +47,7 @@ class HttpxClient(HttpClient):
             raise ApiException(
                 "Upstream timeout",
                 status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
-                code=ErrorCode.GATEWAY_TIMEOUT,
+                code="GATEWAY_TIMEOUT",
             )
 
         except HTTPStatusError as exc:
@@ -73,7 +61,7 @@ class HttpxClient(HttpClient):
             ) from exc
 
     @staticmethod
-    def _is_transient(status: int) -> bool:
+    def is_transient(status: int) -> bool:
         return status in (
             HTTPStatus.BAD_GATEWAY.value,
             HTTPStatus.SERVICE_UNAVAILABLE.value,

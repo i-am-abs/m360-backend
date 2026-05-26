@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.router import api_v1_router
 from app.bootstrap import bootstrap
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
+from app.core.module_registry import attachEnabledModulesToAppState, buildApiV1Router, resolveModuleActivationState
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.normalize_path import NormalizePathMiddleware
 from app.middleware.request_context import RequestContextMiddleware
@@ -16,39 +16,41 @@ from app.middleware.request_context import RequestContextMiddleware
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    moduleActivationState = resolveModuleActivationState(settings)
 
     setup_logging(
         level_name=settings.logging_level,
         logs_dir=settings.logs_dir,
     )
-    log = get_logger(__name__)
+    logger = get_logger(__name__)
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        log.info("application_startup env=%s", settings.app_env)
+    async def lifespan(application: FastAPI):
+        logger.info("application_started env=%s modules=%s",settings.app_env, ",".join(moduleActivationState.activeModuleNames()),)
         yield
-        redis_client = getattr(app.state, "redis", None)
-        if redis_client is not None:
+        redisClient = getattr(application.state, "redis", None)
+        if redisClient is not None:
             try:
-                redis_client.close()
+                redisClient.close()
             except Exception:
                 pass
-            log.info("redis_client_closed")
-        client = getattr(app.state, "mongo_client", None)
-        if client is not None:
-            client.close()
-            log.info("mongodb_client_closed")
-        log.info("application_shutdown")
+        mongoClient = getattr(application.state, "mongo_client", None)
+        if mongoClient is not None:
+            mongoClient.close()
+        logger.info("application_stopped")
+
+    docsUrl = "/docs" if settings.api_docs_enabled else None
+    redocUrl = "/redoc" if settings.api_docs_enabled else None
 
     application = FastAPI(
-        title="Quran Foundation API Wrapper",
+        title=settings.app_name,
         version="1.0.0",
-        description="FastAPI wrapper over Quran Foundation APIs with OAuth2 authentication",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=docsUrl,
+        redoc_url=redocUrl,
         lifespan=lifespan,
     )
     bootstrap(application, settings)
+    attachEnabledModulesToAppState(application, moduleActivationState)
     application.add_middleware(NormalizePathMiddleware)
     application.add_middleware(RequestContextMiddleware)
     application.add_middleware(
@@ -59,6 +61,7 @@ def create_app() -> FastAPI:
         allow_headers=list(settings.cors_allow_headers),
     )
     register_exception_handlers(application)
-    application.include_router(api_v1_router, prefix="/api/v1")
-    application.include_router(api_v1_router)
+    apiV1Router = buildApiV1Router(moduleActivationState)
+    application.include_router(apiV1Router, prefix="/api/v1")
+    application.include_router(apiV1Router)
     return application

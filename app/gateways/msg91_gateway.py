@@ -8,16 +8,26 @@ from typing import Any, Dict, Optional, Union
 from httpx import Client, ConnectError, TimeoutException
 
 from app.core.config import Settings, create_ssl_context
-from app.core.enums.error_code import ErrorCode
-from app.core.enums.msg91 import MSG91_RETRY_CHANNEL_CODE, Msg91Endpoint
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.otp_gateway import OtpGateway
 
-_log = get_logger(__name__)
+logger = get_logger(__name__)
 
-_MAX_RETRIES = 1
-_RETRY_DELAY_S = 1
+MSG91_WIDGET_BASE = "https://api.msg91.com/api/v5/widget"
+MSG91_SEND_OTP_URL = f"{MSG91_WIDGET_BASE}/sendOtp"
+MSG91_RETRY_OTP_URL = f"{MSG91_WIDGET_BASE}/retryOtp"
+MSG91_VERIFY_OTP_URL = f"{MSG91_WIDGET_BASE}/verifyOtp"
+
+MSG91_RETRY_CHANNEL_CODE: dict[str, int] = {
+    "sms": 11,
+    "voice": 4,
+    "email": 3,
+    "whatsapp": 12,
+}
+
+MAX_RETRIES = 1
+RETRY_DELAY_S = 1
 
 
 class Msg91OtpGateway(OtpGateway):
@@ -27,49 +37,40 @@ class Msg91OtpGateway(OtpGateway):
         self._timeout = settings.request_timeout_seconds
         self._ssl_ctx = create_ssl_context()
 
-        if not self._auth_key:
+        if not self.auth_key:
             raise ApiException(
                 "MSG91 auth key missing. Set MSG91_AUTH_KEY.",
                 status_code=503,
-                code=ErrorCode.CONFIG_MISSING,
+                code="CONFIG_MISSING",
             )
 
-        if not self._widget_id:
+        if not self.widget_id:
             raise ApiException(
                 "MSG91 widget ID missing. Set MSG91_WIDGET_ID.",
                 status_code=503,
-                code=ErrorCode.CONFIG_MISSING,
+                code="CONFIG_MISSING",
             )
 
     def send_otp(self, formatted_mobile: str) -> Dict[str, Any]:
         payload = {
-            "widgetId": self._widget_id,
+            "widgetId": self.widget_id,
             "identifier": formatted_mobile,
         }
-        _log.info(
-            "MSG91 sendOtp request payload=%s",
-            {
-                "widgetId": self._widget_id,
-                "identifier": formatted_mobile,
-                "authkey": self._mask_token(self._auth_key),
-            },
-        )
-
-        return self._post(
-            endpoint=Msg91Endpoint.SEND_OTP,
+        return self.post(
+            endpoint=MSG91_SEND_OTP_URL,
             payload=payload,
             error_status=HTTPStatus.BAD_GATEWAY.value,
         )
 
     def verify_otp(self, req_id: str, otp: str) -> Dict[str, Any]:
         payload = {
-            "widgetId": self._widget_id,
+            "widgetId": self.widget_id,
             "reqId": req_id,
             "otp": otp,
         }
 
-        return self._post(
-            endpoint=Msg91Endpoint.VERIFY_OTP,
+        return self.post(
+            endpoint=MSG91_VERIFY_OTP_URL,
             payload=payload,
             error_status=HTTPStatus.UNAUTHORIZED.value,
         )
@@ -79,18 +80,18 @@ class Msg91OtpGateway(OtpGateway):
             "widgetId": self._widget_id,
             "reqId": req_id,
         }
-        code = self._msg91_retry_channel_code(retry_channel)
+        code = self.msg91_retry_channel_code(retry_channel)
         if code is not None:
             payload["retryChannel"] = code
 
-        return self._post(
-            endpoint=Msg91Endpoint.RETRY_OTP,
+        return self.post(
+            endpoint=MSG91_RETRY_OTP_URL,
             payload=payload,
             error_status=HTTPStatus.BAD_GATEWAY.value,
         )
 
     @staticmethod
-    def _msg91_retry_channel_code(retry_channel: Optional[str]) -> Optional[int]:
+    def msg91_retry_channel_code(retry_channel: Optional[str]) -> Optional[int]:
         if not retry_channel:
             return None
         raw = str(retry_channel).strip()
@@ -99,14 +100,14 @@ class Msg91OtpGateway(OtpGateway):
         key = raw.lower()
         return MSG91_RETRY_CHANNEL_CODE.get(key)
 
-    def _headers(self) -> Dict[str, str]:
+    def headers(self) -> Dict[str, str]:
         return {
             "Content-Type": "application/json",
             "authkey": self._auth_key,
         }
 
     @staticmethod
-    def _normalize_response_json(body: Union[None, Dict[str, Any], list, str, Any]) -> Dict[str, Any]:
+    def normalize_response_json(body: Union[None, Dict[str, Any], list, str, Any]) -> Dict[str, Any]:
         if body is None:
             return {}
         if isinstance(body, dict):
@@ -121,22 +122,16 @@ class Msg91OtpGateway(OtpGateway):
                 parsed = json.loads(body)
             except json.JSONDecodeError:
                 return {}
-            return Msg91OtpGateway._normalize_response_json(parsed)
+            return Msg91OtpGateway.normalize_response_json(parsed)
         return {}
 
-    def _post(
-            self,
-            endpoint: Msg91Endpoint,
-            payload: Dict[str, Any],
-            error_status: int,
-            _attempt: int = 0,
-    ) -> Dict[str, Any]:
+    def post(self, endpoint: str, payload: Dict[str, Any], error_status: int, attempt: int = 0, ) -> Dict[str, Any]:
         try:
             with Client(timeout=self._timeout, verify=self._ssl_ctx) as client:
                 response = client.post(
-                    endpoint.value,
+                    endpoint,
                     json=payload,
-                    headers=self._headers(),
+                    headers=self.headers(),
                 )
                 body_raw = None
                 if response.content:
@@ -144,23 +139,16 @@ class Msg91OtpGateway(OtpGateway):
                         body_raw = response.json()
                     except ValueError:
                         body_raw = None
-                data = self._normalize_response_json(body_raw)
-                if endpoint == Msg91Endpoint.SEND_OTP:
-                    _log.info(
-                        "MSG91 sendOtp response keys=%s",
-                        list(data.keys()) if data else [],
-                    )
-
+                data = self.normalize_response_json(body_raw)
         except (ConnectError, TimeoutException) as exc:
-            if _attempt < _MAX_RETRIES:
-                _log.warning("MSG91 retry: %s", exc)
-                time.sleep(_RETRY_DELAY_S)
-                return self._post(endpoint, payload, error_status, _attempt + 1)
-
+            if attempt < MAX_RETRIES:
+                logger.warning("MSG91 retry after transport error: %s", exc)
+                time.sleep(RETRY_DELAY_S)
+                return self.post(endpoint, payload, error_status, attempt + 1)
             raise ApiException(
                 "MSG91 unreachable",
                 status_code=502,
-                code=ErrorCode.MSG91_UNREACHABLE,
+                code="MSG91_UNREACHABLE",
             ) from exc
 
         if response.status_code >= 400:
@@ -168,7 +156,7 @@ class Msg91OtpGateway(OtpGateway):
             raise ApiException(
                 msg,
                 status_code=error_status,
-                code=ErrorCode.MSG91_ERROR,
+                code="MSG91_ERROR",
                 provider_message=msg,
             )
 
@@ -180,14 +168,14 @@ class Msg91OtpGateway(OtpGateway):
                 raise ApiException(
                     "MSG91 authentication failed (418). Check MSG91_AUTH_KEY and widgetId.",
                     status_code=401,
-                    code=ErrorCode.MSG91_AUTH_FAILED,
+                    code="MSG91_AUTH_FAILED",
                     provider_message=f"{msg} (MSG91 code {code})",
                 )
 
             raise ApiException(
                 msg,
                 status_code=error_status,
-                code=ErrorCode.MSG91_ERROR,
+                code="MSG91_ERROR",
                 provider_message=msg,
             )
 

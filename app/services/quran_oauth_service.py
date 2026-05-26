@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, Tuple
 
-from app.core.enums.token import TokenConfig, TokenTiming
 from app.interfaces.token_provider import TokenProvider
 from app.schemas.auth import TokenResponse
 
@@ -16,14 +15,14 @@ class QuranOAuthService:
         if force_refresh:
             self._provider.clear_token()
         access_token = self._provider.get_access_token()
-        remaining = TokenTiming.EXPIRY_SECONDS.value
+        remaining = 3600
         if self._provider.expiry:
             remaining = int((self._provider.expiry - datetime.now()).total_seconds())
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
             expires_in=remaining,
-            scope=TokenConfig.SCOPE.value,
+            scope="content",
         )
 
     def token_status(self) -> Tuple[Dict[str, Any], str]:
