@@ -5,7 +5,6 @@ from http import HTTPStatus
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from app.core.enums.api_endpoints import ApiEndpoint
 from app.core.module_registry import resolveModuleActivationState
 from app.utils.response import success_response
 
@@ -32,7 +31,7 @@ def buildHealthPayload(request: Request) -> dict:
     }
 
 
-@router.get(ApiEndpoint.HEALTH_LIVE.value, summary="Liveness")
+@router.get("/health/live", summary="Liveness")
 def health_live():
     return JSONResponse(
         status_code=HTTPStatus.OK.value,
@@ -40,7 +39,7 @@ def health_live():
     )
 
 
-@router.get(ApiEndpoint.HEALTH_READY.value, summary="Readiness")
+@router.get("/health/ready", summary="Readiness")
 def health_ready(request: Request):
     settings = request.app.state.settings
     data = {
@@ -74,7 +73,7 @@ def health_ready(request: Request):
     return success_response(data)
 
 
-@router.get(ApiEndpoint.HEALTH.value, summary="Health check")
+@router.get("/health", summary="Health check")
 def health(request: Request):
     settings = request.app.state.settings
     data = buildHealthPayload(request)

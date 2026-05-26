@@ -6,14 +6,13 @@ from app.modules.feature_flag.application.ports.feature_flag_evaluation_strategy
     FeatureFlagEvaluationStrategyPort,
 )
 from app.modules.feature_flag.domain.entities.feature_flag_entity import FeatureFlagEntity
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
 from app.modules.feature_flag.domain.value_objects.feature_flag_evaluation_context import (
     FeatureFlagEvaluationContext,
 )
 
 
 class UserBasedEvaluationStrategy(FeatureFlagEvaluationStrategyPort):
-    supportedConditionType = FeatureFlagConditionType.USER
+    supportedConditionType = "USER"
 
     def evaluateFeatureFlag(
             self,

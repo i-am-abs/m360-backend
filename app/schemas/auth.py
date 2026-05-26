@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
-
-from app.core.enums.msg91 import RetryChannel
 
 
 class TokenRequest(BaseModel):
@@ -25,7 +23,7 @@ class PhoneLoginRequest(BaseModel):
 class OtpRetryRequest(BaseModel):
     phone_number: str
     req_id: str
-    retry_channel: Optional[RetryChannel] = None
+    retry_channel: Optional[Literal["sms", "voice", "whatsapp", "email"]] = None
 
 
 class OtpVerifyRequest(BaseModel):

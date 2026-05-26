@@ -4,22 +4,25 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
-from app.modules.feature_flag.domain.enums.feature_flag_status import FeatureFlagStatus
+from app.modules.feature_flag.domain.constants import (
+    DEFAULT_FEATURE_FLAG_STATUS,
+    normalizeFeatureFlagConditionType,
+    normalizeFeatureFlagStatus,
+)
 
 
 class FeatureFlagEntity:
     def __init__(
             self,
             featureName: str,
-            conditionType: FeatureFlagConditionType,
+            conditionType: str,
             conditionConfiguration: Dict[str, Any],
             featureFlagId: Optional[str] = None,
             displayName: Optional[str] = None,
             description: Optional[str] = None,
             globallyEnabled: bool = True,
             defaultEnabled: bool = False,
-            featureFlagStatus: FeatureFlagStatus = FeatureFlagStatus.ACTIVE,
+            featureFlagStatus: str = DEFAULT_FEATURE_FLAG_STATUS,
             createdAt: Optional[datetime] = None,
             updatedAt: Optional[datetime] = None,
     ) -> None:
@@ -36,7 +39,7 @@ class FeatureFlagEntity:
         self.updatedAt = updatedAt or self.createdAt
 
     def isActive(self) -> bool:
-        return self.featureFlagStatus == FeatureFlagStatus.ACTIVE
+        return self.featureFlagStatus == "ACTIVE"
 
     def touchUpdatedAt(self) -> None:
         self.updatedAt = datetime.now(timezone.utc)
@@ -49,9 +52,9 @@ class FeatureFlagEntity:
             "description": self.description,
             "globally_enabled": self.globallyEnabled,
             "default_enabled": self.defaultEnabled,
-            "condition_type": self.conditionType.value,
+            "condition_type": self.conditionType,
             "condition_configuration": self.conditionConfiguration,
-            "feature_flag_status": self.featureFlagStatus.value,
+            "feature_flag_status": self.featureFlagStatus,
             "created_at": self.createdAt.isoformat(),
             "updated_at": self.updatedAt.isoformat(),
         }
@@ -65,10 +68,10 @@ class FeatureFlagEntity:
             description=str(payload.get("description") or ""),
             globallyEnabled=bool(payload.get("globally_enabled", True)),
             defaultEnabled=bool(payload.get("default_enabled", False)),
-            conditionType=FeatureFlagConditionType(str(payload["condition_type"])),
+            conditionType=normalizeFeatureFlagConditionType(str(payload["condition_type"])),
             conditionConfiguration=dict(payload.get("condition_configuration") or {}),
-            featureFlagStatus=FeatureFlagStatus(
-                str(payload.get("feature_flag_status") or FeatureFlagStatus.ACTIVE.value)
+            featureFlagStatus=normalizeFeatureFlagStatus(
+                str(payload.get("feature_flag_status") or DEFAULT_FEATURE_FLAG_STATUS)
             ),
             createdAt=datetime.fromisoformat(str(payload["created_at"])),
             updatedAt=datetime.fromisoformat(str(payload["updated_at"])),

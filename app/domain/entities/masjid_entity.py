@@ -5,14 +5,7 @@ from typing import Any, Dict, Optional
 
 
 class MasjidEntity:
-    def __init__(
-            self,
-            placeId: str,
-            googlePlacePayload: Dict[str, Any],
-            createdAt: Optional[datetime] = None,
-            updatedAt: Optional[datetime] = None,
-            lastFetchedAt: Optional[datetime] = None,
-    ) -> None:
+    def __init__(self, placeId: str, googlePlacePayload: Dict[str, Any], createdAt: Optional[datetime] = None, updatedAt: Optional[datetime] = None, lastFetchedAt: Optional[datetime] = None) -> None:
         self.placeId = placeId
         self.googlePlacePayload = googlePlacePayload
         self.createdAt = createdAt or datetime.now(timezone.utc)

@@ -2,17 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+
 class MasjidDetailsPresenter:
     @staticmethod
-    def toView(
-            place: Dict[str, Any],
-            hasDonations: bool = False,
-            hasAnnouncements: bool = False,
-            donationCount: int = 0,
-            announcementCount: int = 0,
-            isAdded: bool = False,
-            savedCount: int = 0,
-    ) -> Dict[str, Any]:
+    def toView(place: Dict[str, Any], hasDonations: bool = False, hasAnnouncements: bool = False,
+               donationCount: int = 0, announcementCount: int = 0, isAdded: bool = False, savedCount: int = 0) -> Dict[
+        str, Any]:
         accessibility = place.get("accessibilityOptions") or {}
         parking = place.get("parkingOptions") or {}
         payment = place.get("paymentOptions") or {}

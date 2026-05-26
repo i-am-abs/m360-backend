@@ -4,15 +4,10 @@ from http import HTTPStatus
 from math import inf
 from typing import Any, Dict, Optional, Tuple
 
-from app.core.enums.error_code import ErrorCode
-from app.core.enums.google_places import GooglePlacesPayload
-from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.masjid_service import MasjidSearchService
 from app.repositories.google_places_client import GooglePlacesClient
 from app.utils.geo import haversine_meters, india_location_restriction_rectangle, is_point_in_india
-
-_log = get_logger(__name__)
 
 
 class GoogleMasjidSearchService(MasjidSearchService):
@@ -33,15 +28,15 @@ class GoogleMasjidSearchService(MasjidSearchService):
             raise ApiException(
                 "Masjid search is limited to India.",
                 status_code=HTTPStatus.BAD_REQUEST.value,
-                code=ErrorCode.LOCATION_OUT_OF_BOUNDS,
+                code="LOCATION_OUT_OF_BOUNDS",
             )
         data = self._client.search_nearby(
             latitude=latitude,
             longitude=longitude,
             radius_meters=radius_meters,
             max_result_count=max_result_count,
-            included_types=[GooglePlacesPayload.PLACE_TYPE_MOSQUE.value],
-            rank_preference=GooglePlacesPayload.RANK_DISTANCE.value,
+            included_types=["mosque"],
+            rank_preference="DISTANCE",
         )
         data = self._filter_to_india(data)
         return self._enrich_distance_and_sort(data, latitude, longitude)
@@ -76,8 +71,8 @@ class GoogleMasjidSearchService(MasjidSearchService):
         data = self._client.search_text(
             text_query=text_query,
             max_result_count=max_result_count,
-            included_type=GooglePlacesPayload.PLACE_TYPE_MOSQUE.value,
-            region_code=GooglePlacesPayload.REGION_INDIA.value,
+            included_type="mosque",
+            region_code="IN",
             location_restriction=india_location_restriction_rectangle(),
         )
         return self._filter_to_india(data)

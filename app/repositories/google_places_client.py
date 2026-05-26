@@ -7,17 +7,31 @@ from urllib.parse import quote, urlencode
 from httpx import Client, ConnectError, HTTPStatusError, TimeoutException
 
 from app.core.config import create_ssl_context
-from app.core.enums.error_code import ErrorCode
-from app.core.enums.google_places import (
-    GooglePlacesFieldMask,
-    GooglePlacesPayload,
-    GooglePlacesUrl,
-)
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.utils.photos import transform_photos_on_place, transform_places_in_search_response
 
 _log = get_logger(__name__)
+
+_GOOGLE_PLACES_PLACE_DETAILS_BASE = "https://places.googleapis.com/v1/places"
+_GOOGLE_PLACES_SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"
+_GOOGLE_PLACES_SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText"
+_GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+
+_FIELD_MASK_SEARCH_NEARBY = (
+    "places.id,places.name,places.displayName,places.formattedAddress,"
+    "places.location,places.photos"
+)
+_FIELD_MASK_SEARCH_TEXT = (
+    "places.id,places.name,places.displayName,places.formattedAddress,"
+    "places.location,places.photos"
+)
+_FIELD_MASK_PLACE_DETAILS = (
+    "id,displayName,formattedAddress,location,photos,name,"
+    "currentOpeningHours,regularOpeningHours,internationalPhoneNumber,"
+    "websiteUri,businessStatus,accessibilityOptions,paymentOptions,"
+    "restroom,parkingOptions"
+)
 
 
 def _normalize_place_id(place_id: str) -> str:
@@ -40,18 +54,18 @@ class GooglePlacesClient:
             raise ApiException(
                 "GOOGLE_PLACES_API_KEY is not configured.",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
-                code=ErrorCode.CONFIG_MISSING,
+                code="CONFIG_MISSING",
             )
         return self._api_key
 
     def get_place_details(self, place_id: str) -> Dict[str, Any]:
         pid = _normalize_place_id(place_id)
         encoded = quote(pid, safe="")
-        url = f"{GooglePlacesUrl.PLACE_DETAILS.value}/{encoded}"
+        url = f"{_GOOGLE_PLACES_PLACE_DETAILS_BASE}/{encoded}"
         api_key = self._require_api_key()
         headers = {
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": GooglePlacesFieldMask.PLACE_DETAILS.value,
+            "X-Goog-FieldMask": _FIELD_MASK_PLACE_DETAILS,
         }
         data = self._get_json(url, headers)
         if isinstance(data, dict):
@@ -68,7 +82,7 @@ class GooglePlacesClient:
             rank_preference: str,
     ) -> Dict[str, Any]:
         api_key = self._require_api_key()
-        headers = self._search_headers(api_key, GooglePlacesFieldMask.SEARCH_NEARBY)
+        headers = self._search_headers(api_key, _FIELD_MASK_SEARCH_NEARBY)
         body: Dict[str, Any] = {
             "includedTypes": included_types,
             "maxResultCount": max_result_count,
@@ -80,7 +94,7 @@ class GooglePlacesClient:
                 }
             },
         }
-        return self._post_json(GooglePlacesUrl.SEARCH_NEARBY.value, headers, body, api_key)
+        return self._post_json(_GOOGLE_PLACES_SEARCH_NEARBY_URL, headers, body, api_key)
 
     def search_text(
             self,
@@ -91,7 +105,7 @@ class GooglePlacesClient:
             location_restriction: Dict[str, Any],
     ) -> Dict[str, Any]:
         api_key = self._require_api_key()
-        headers = self._search_headers(api_key, GooglePlacesFieldMask.SEARCH_TEXT)
+        headers = self._search_headers(api_key, _FIELD_MASK_SEARCH_TEXT)
         body: Dict[str, Any] = {
             "textQuery": text_query,
             "includedType": included_type,
@@ -99,7 +113,7 @@ class GooglePlacesClient:
             "regionCode": region_code,
             "locationRestriction": location_restriction,
         }
-        return self._post_json(GooglePlacesUrl.SEARCH_TEXT.value, headers, body, api_key)
+        return self._post_json(_GOOGLE_PLACES_SEARCH_TEXT_URL, headers, body, api_key)
 
     def geocode(self, address: str) -> Optional[Tuple[float, float]]:
         q = (address or "").strip()
@@ -107,11 +121,11 @@ class GooglePlacesClient:
             return None
         params = {
             "address": q,
-            "components": GooglePlacesPayload.GEOCODE_COUNTRY_COMPONENT.value,
-            "region": GooglePlacesPayload.GEOCODE_REGION_BIAS.value,
+            "components": "country:IN",
+            "region": "in",
             "key": self._require_api_key(),
         }
-        url = f"{GooglePlacesUrl.GEOCODE.value}?{urlencode(params)}"
+        url = f"{_GOOGLE_GEOCODE_URL}?{urlencode(params)}"
         try:
             with Client(timeout=self._timeout, verify=self._ssl_ctx) as client:
                 response = client.get(url)
@@ -123,11 +137,11 @@ class GooglePlacesClient:
         return self._extract_coords(data)
 
     @staticmethod
-    def _search_headers(api_key: str, field_mask: GooglePlacesFieldMask) -> Dict[str, str]:
+    def _search_headers(api_key: str, field_mask: str) -> Dict[str, str]:
         return {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": api_key,
-            "X-Goog-FieldMask": field_mask.value,
+            "X-Goog-FieldMask": field_mask,
         }
 
     @staticmethod
@@ -156,13 +170,13 @@ class GooglePlacesClient:
             raise ApiException(
                 "Cannot reach Google Places API.",
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
-                code=ErrorCode.SERVICE_UNAVAILABLE,
+                code="SERVICE_UNAVAILABLE",
             ) from exc
         except TimeoutException:
             raise ApiException(
                 "Google Places API timeout",
                 status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
-                code=ErrorCode.GATEWAY_TIMEOUT,
+                code="GATEWAY_TIMEOUT",
             )
         except HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -179,13 +193,13 @@ class GooglePlacesClient:
             raise ApiException(
                 "Cannot reach Google Places API.",
                 status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
-                code=ErrorCode.SERVICE_UNAVAILABLE,
+                code="SERVICE_UNAVAILABLE",
             ) from exc
         except TimeoutException:
             raise ApiException(
                 "Google Places API timeout",
                 status_code=HTTPStatus.GATEWAY_TIMEOUT.value,
-                code=ErrorCode.GATEWAY_TIMEOUT,
+                code="GATEWAY_TIMEOUT",
             )
         except HTTPStatusError as exc:
             self._handle_http_error(exc)
@@ -196,7 +210,7 @@ class GooglePlacesClient:
             raise ApiException(
                 "Place not found",
                 status_code=HTTPStatus.NOT_FOUND.value,
-                code=ErrorCode.NOT_FOUND,
+                code="NOT_FOUND",
             ) from exc
         _log.error("Google Places error: %s", exc.response.text[:500])
         provider_msg: Optional[str] = None

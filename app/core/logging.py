@@ -7,32 +7,30 @@ from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
 from typing import Final
 
-_request_id_ctx: Final[ContextVar[str | None]] = ContextVar(
-    "request_id", default=None
-)
+request_id_ctx: Final[ContextVar[str | None]] = ContextVar("request_id", default=None)
 
-_CONFIGURED: bool = False
-_LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
-_LOG_BACKUP_COUNT: int = 5
+CONFIGURED: bool = False
+LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
+LOG_BACKUP_COUNT: int = 5
 
 
 def get_request_id() -> str | None:
-    return _request_id_ctx.get()
+    return request_id_ctx.get()
 
 
 def set_request_id(value: str | None) -> None:
-    _request_id_ctx.set(value)
+    request_id_ctx.set(value)
 
 
 class _RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        setattr(record, "request_id", _request_id_ctx.get() or "-")
+        setattr(record, "request_id", request_id_ctx.get() or "-")
         return True
 
 
 def setup_logging(level_name: str = "INFO", logs_dir: str = "logs") -> None:
-    global _CONFIGURED
-    if _CONFIGURED:
+    global CONFIGURED
+    if CONFIGURED:
         return
 
     level = getattr(logging, level_name.upper(), logging.INFO)
@@ -47,7 +45,6 @@ def setup_logging(level_name: str = "INFO", logs_dir: str = "logs") -> None:
     )
     datefmt = "%Y-%m-%dT%H:%M:%S%z"
     formatter = logging.Formatter(fmt, datefmt=datefmt)
-
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(level)
     console.setFormatter(formatter)
@@ -58,8 +55,8 @@ def setup_logging(level_name: str = "INFO", logs_dir: str = "logs") -> None:
         os.makedirs(logs_dir, exist_ok=True)
         file_handler = RotatingFileHandler(
             os.path.join(logs_dir, "m360.log"),
-            maxBytes=_LOG_FILE_MAX_BYTES,
-            backupCount=_LOG_BACKUP_COUNT,
+            maxBytes=LOG_FILE_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
         )
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(formatter)
@@ -68,8 +65,7 @@ def setup_logging(level_name: str = "INFO", logs_dir: str = "logs") -> None:
     except (OSError, PermissionError):
         root.warning("Skipping file logging — cannot write to %s", logs_dir)
 
-    _CONFIGURED = True
-
+    CONFIGURED = True
 
 def get_logger(name: str | None = None) -> logging.Logger:
     base = "m360"

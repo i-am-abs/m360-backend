@@ -3,7 +3,6 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Dict, List, Optional
 
-from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
 from app.modules.feature_flag.application.dto.feature_flag_dto import (
     FeatureFlagCreateRequestDto,
@@ -54,7 +53,7 @@ class FeatureFlagManagementService:
             raise ApiException(
                 f"Feature flag '{createRequest.feature_name}' already exists.",
                 status_code=HTTPStatus.CONFLICT.value,
-                code=ErrorCode.FEATURE_FLAG_ALREADY_EXISTS,
+                code="FEATURE_FLAG_ALREADY_EXISTS",
             )
 
         featureFlagEntity = FeatureFlagEntity(
@@ -82,7 +81,7 @@ class FeatureFlagManagementService:
             raise ApiException(
                 f"Feature flag '{normalizedFeatureName}' was not found.",
                 status_code=HTTPStatus.NOT_FOUND.value,
-                code=ErrorCode.FEATURE_FLAG_NOT_FOUND,
+                code="FEATURE_FLAG_NOT_FOUND",
             )
 
         if updateRequest.display_name is not None:
@@ -112,7 +111,7 @@ class FeatureFlagManagementService:
             raise ApiException(
                 f"Feature flag '{normalizedFeatureName}' was not found.",
                 status_code=HTTPStatus.NOT_FOUND.value,
-                code=ErrorCode.FEATURE_FLAG_NOT_FOUND,
+                code="FEATURE_FLAG_NOT_FOUND",
             )
         self.featureFlagCacheByName.pop(normalizedFeatureName, None)
 
@@ -123,7 +122,7 @@ class FeatureFlagManagementService:
             raise ApiException(
                 f"Feature flag '{normalizedFeatureName}' was not found.",
                 status_code=HTTPStatus.NOT_FOUND.value,
-                code=ErrorCode.FEATURE_FLAG_NOT_FOUND,
+                code="FEATURE_FLAG_NOT_FOUND",
             )
         return self.toResponseDto(featureFlagEntity)
 

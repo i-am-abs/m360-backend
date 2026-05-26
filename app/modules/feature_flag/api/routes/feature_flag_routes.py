@@ -4,7 +4,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.core.enums.api_endpoints import ApiEndpoint
 from app.modules.feature_flag.api.controllers.feature_flag_controller import FeatureFlagController
 from app.modules.feature_flag.application.dto.feature_flag_dto import (
     FeatureFlagCreateRequestDto,
@@ -22,14 +21,14 @@ def get_feature_flag_controller(request: Request) -> FeatureFlagController:
     )
 
 
-@router.get(ApiEndpoint.FEATURE_FLAGS.value, summary="List all feature flags")
+@router.get("/feature-flags", summary="List all feature flags")
 def list_feature_flags(
         controller: FeatureFlagController = Depends(get_feature_flag_controller),
 ):
     return success_response(controller.listAllFeatureFlags())
 
 
-@router.get(ApiEndpoint.FEATURE_FLAG_BY_NAME.value, summary="Get feature flag by name")
+@router.get("/feature-flags/{feature_name}", summary="Get feature flag by name")
 def get_feature_flag_by_name(
         feature_name: str,
         controller: FeatureFlagController = Depends(get_feature_flag_controller),
@@ -37,7 +36,7 @@ def get_feature_flag_by_name(
     return success_response(controller.getFeatureFlagByName(feature_name))
 
 
-@router.post(ApiEndpoint.FEATURE_FLAGS.value, summary="Create feature flag")
+@router.post("/feature-flags", summary="Create feature flag")
 def create_feature_flag(
         createRequest: FeatureFlagCreateRequestDto,
         controller: FeatureFlagController = Depends(get_feature_flag_controller),
@@ -48,7 +47,7 @@ def create_feature_flag(
     )
 
 
-@router.put(ApiEndpoint.FEATURE_FLAG_BY_NAME.value, summary="Update feature flag")
+@router.put("/feature-flags/{feature_name}", summary="Update feature flag")
 def update_feature_flag(
         feature_name: str,
         updateRequest: FeatureFlagUpdateRequestDto,
@@ -60,7 +59,7 @@ def update_feature_flag(
     )
 
 
-@router.delete(ApiEndpoint.FEATURE_FLAG_BY_NAME.value, summary="Delete feature flag")
+@router.delete("/feature-flags/{feature_name}", summary="Delete feature flag")
 def delete_feature_flag(
         feature_name: str,
         controller: FeatureFlagController = Depends(get_feature_flag_controller),
@@ -71,7 +70,7 @@ def delete_feature_flag(
     )
 
 
-@router.post(ApiEndpoint.FEATURE_FLAG_EVALUATE.value, summary="Evaluate feature flag")
+@router.post("/feature-flags/evaluate", summary="Evaluate feature flag")
 def evaluate_feature_flag(
         evaluationRequest: FeatureFlagEvaluationRequestDto,
         controller: FeatureFlagController = Depends(get_feature_flag_controller),
@@ -79,7 +78,7 @@ def evaluate_feature_flag(
     return success_response(controller.evaluateFeatureFlag(evaluationRequest))
 
 
-@router.get(ApiEndpoint.FEATURE_FLAG_EVALUATE_BY_NAME.value, summary="Evaluate feature flag (query)")
+@router.get("/feature-flags/evaluate/{feature_name}", summary="Evaluate feature flag (query)")
 def evaluate_feature_flag_by_query(
         feature_name: str,
         latitude: Optional[float] = Query(default=None, ge=-90.0, le=90.0),

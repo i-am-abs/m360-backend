@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from app.modules.feature_flag.application.ports.feature_flag_evaluation_strategy_port import (
     FeatureFlagEvaluationStrategyPort,
 )
+from app.modules.feature_flag.domain.constants import normalizeFeatureFlagConditionType
 from app.modules.feature_flag.domain.entities.feature_flag_entity import FeatureFlagEntity
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
 from app.modules.feature_flag.domain.value_objects.feature_flag_evaluation_context import (
     FeatureFlagEvaluationContext,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.modules.feature_flag.infrastructure.factories.feature_flag_evaluation_strategy_factory import (
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class CompositeEvaluationStrategy(FeatureFlagEvaluationStrategyPort):
-    supportedConditionType = FeatureFlagConditionType.COMPOSITE
+    supportedConditionType = "COMPOSITE"
 
     def __init__(self, evaluationStrategyFactory: FeatureFlagEvaluationStrategyFactory) -> None:
         self.evaluationStrategyFactory = evaluationStrategyFactory
@@ -66,7 +65,7 @@ class CompositeEvaluationStrategy(FeatureFlagEvaluationStrategyPort):
         return FeatureFlagEntity(
             featureFlagId=parentFeatureFlagEntity.featureFlagId,
             featureName=parentFeatureFlagEntity.featureName,
-            conditionType=FeatureFlagConditionType(str(nestedCondition["condition_type"])),
+            conditionType=normalizeFeatureFlagConditionType(nestedCondition["condition_type"]),
             conditionConfiguration=dict(nestedCondition.get("condition_configuration") or {}),
             defaultEnabled=parentFeatureFlagEntity.defaultEnabled,
             globallyEnabled=parentFeatureFlagEntity.globallyEnabled,

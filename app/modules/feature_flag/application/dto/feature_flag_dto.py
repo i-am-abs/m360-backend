@@ -4,8 +4,13 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
-from app.modules.feature_flag.domain.enums.feature_flag_status import FeatureFlagStatus
+from app.modules.feature_flag.domain.constants import (
+    DEFAULT_FEATURE_FLAG_STATUS,
+    normalizeFeatureFlagConditionType,
+    normalizeFeatureFlagStatus,
+    normalizeOptionalFeatureFlagConditionType,
+    normalizeOptionalFeatureFlagStatus,
+)
 
 
 class GeofenceRegionRequestDto(BaseModel):
@@ -22,9 +27,9 @@ class FeatureFlagCreateRequestDto(BaseModel):
     description: Optional[str] = Field(default="", max_length=1024)
     globally_enabled: bool = True
     default_enabled: bool = False
-    condition_type: FeatureFlagConditionType
+    condition_type: str
     condition_configuration: Dict[str, Any] = Field(default_factory=dict)
-    feature_flag_status: FeatureFlagStatus = FeatureFlagStatus.ACTIVE
+    feature_flag_status: str = DEFAULT_FEATURE_FLAG_STATUS
 
     @field_validator("feature_name")
     @classmethod
@@ -34,6 +39,16 @@ class FeatureFlagCreateRequestDto(BaseModel):
             raise ValueError("feature_name must not be blank")
         return normalizedName
 
+    @field_validator("condition_type", mode="before")
+    @classmethod
+    def validateConditionType(cls, value: Any) -> str:
+        return normalizeFeatureFlagConditionType(value)
+
+    @field_validator("feature_flag_status", mode="before")
+    @classmethod
+    def validateFeatureFlagStatus(cls, value: Any) -> str:
+        return normalizeFeatureFlagStatus(value)
+
 
 class FeatureFlagUpdateRequestDto(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -42,9 +57,19 @@ class FeatureFlagUpdateRequestDto(BaseModel):
     description: Optional[str] = Field(default=None, max_length=1024)
     globally_enabled: Optional[bool] = None
     default_enabled: Optional[bool] = None
-    condition_type: Optional[FeatureFlagConditionType] = None
+    condition_type: Optional[str] = None
     condition_configuration: Optional[Dict[str, Any]] = None
-    feature_flag_status: Optional[FeatureFlagStatus] = None
+    feature_flag_status: Optional[str] = None
+
+    @field_validator("condition_type", mode="before")
+    @classmethod
+    def validateOptionalConditionType(cls, value: Any) -> Optional[str]:
+        return normalizeOptionalFeatureFlagConditionType(value)
+
+    @field_validator("feature_flag_status", mode="before")
+    @classmethod
+    def validateOptionalFeatureFlagStatus(cls, value: Any) -> Optional[str]:
+        return normalizeOptionalFeatureFlagStatus(value)
 
 
 class FeatureFlagEvaluationRequestDto(BaseModel):
@@ -70,9 +95,9 @@ class FeatureFlagResponseDto(BaseModel):
     description: str
     globally_enabled: bool
     default_enabled: bool
-    condition_type: FeatureFlagConditionType
+    condition_type: str
     condition_configuration: Dict[str, Any]
-    feature_flag_status: FeatureFlagStatus
+    feature_flag_status: str
     created_at: str
     updated_at: str
 

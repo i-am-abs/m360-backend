@@ -5,7 +5,6 @@ from typing import Dict, List
 from app.modules.feature_flag.application.ports.feature_flag_evaluation_strategy_port import (
     FeatureFlagEvaluationStrategyPort,
 )
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
 from app.modules.feature_flag.infrastructure.strategies.environment_based_evaluation_strategy import (
     EnvironmentBasedEvaluationStrategy,
 )
@@ -29,12 +28,11 @@ from app.modules.feature_flag.infrastructure.strategies.user_based_evaluation_st
 class FeatureFlagEvaluationStrategyFactory:
     def __init__(self) -> None:
         self.compositeEvaluationStrategy = None
-        self.strategyRegistryByConditionType: Dict[
-            FeatureFlagConditionType,
-            FeatureFlagEvaluationStrategyPort,
-        ] = self.buildStrategyRegistry()
+        self.strategyRegistryByConditionType: Dict[str, FeatureFlagEvaluationStrategyPort] = (
+            self.buildStrategyRegistry()
+        )
 
-    def buildStrategyRegistry(self) -> Dict[FeatureFlagConditionType, FeatureFlagEvaluationStrategyPort]:
+    def buildStrategyRegistry(self) -> Dict[str, FeatureFlagEvaluationStrategyPort]:
         from app.modules.feature_flag.infrastructure.strategies.composite_evaluation_strategy import (
             CompositeEvaluationStrategy,
         )
@@ -56,11 +54,11 @@ class FeatureFlagEvaluationStrategyFactory:
 
     def resolveStrategy(
             self,
-            conditionType: FeatureFlagConditionType,
+            conditionType: str,
     ) -> FeatureFlagEvaluationStrategyPort:
         evaluationStrategy = self.strategyRegistryByConditionType.get(conditionType)
         if evaluationStrategy is None:
-            raise ValueError(f"No evaluation strategy registered for condition type '{conditionType.value}'.")
+            raise ValueError(f"No evaluation strategy registered for condition type '{conditionType}'.")
         return evaluationStrategy
 
     def registerStrategy(

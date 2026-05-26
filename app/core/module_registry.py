@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List
-
+from app.api.v1.endpoints import auth, feature_flags, health, masjid, msg91_webhook, quran
 from fastapi import APIRouter, FastAPI
 
 from app.core.config import Settings
@@ -23,12 +23,15 @@ class ModuleActivationState:
         activeModules: List[str] = ["health"]
         if self.authModuleActive:
             activeModules.append("auth")
+
         if self.msg91WebhookModuleActive:
             activeModules.append("msg91_webhook")
+
         if self.quranModuleActive:
             activeModules.append("quran")
         if self.masjidModuleActive:
             activeModules.append("masjid")
+
         if self.featureFlagModuleActive:
             activeModules.append("feature_flags")
         return activeModules
@@ -50,18 +53,21 @@ def resolveModuleActivationState(settings: Settings) -> ModuleActivationState:
 
 
 def buildApiV1Router(moduleActivationState: ModuleActivationState) -> APIRouter:
-    from app.api.v1.endpoints import auth, feature_flags, health, masjid, msg91_webhook, quran
-
     apiRouter = APIRouter()
     apiRouter.include_router(health.router)
+
     if moduleActivationState.authModuleActive:
         apiRouter.include_router(auth.router)
+
     if moduleActivationState.msg91WebhookModuleActive:
         apiRouter.include_router(msg91_webhook.router)
+
     if moduleActivationState.quranModuleActive:
         apiRouter.include_router(quran.router)
+
     if moduleActivationState.masjidModuleActive:
         apiRouter.include_router(masjid.router)
+
     if moduleActivationState.featureFlagModuleActive:
         apiRouter.include_router(feature_flags.router)
     return apiRouter

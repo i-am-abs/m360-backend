@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import zlib
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional
 
 from app.core.logging import get_logger
 from app.domain.entities.masjid_entity import MasjidEntity
+from app.exceptions.base import ApiException
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
@@ -16,6 +18,8 @@ _log = get_logger(__name__)
 
 
 class UserMasjidService:
+    MAX_SAVED_MASJIDS = 3
+
     def __init__(
             self,
             userRepository: UserRepository,
@@ -48,6 +52,13 @@ class UserMasjidService:
         return {"count": len(masjids), "masjids": masjids}
 
     def addMyMasjid(self, userId: str, placeId: str) -> Dict[str, Any]:
+        favorites = self.userRepository.listFavorites(userId)
+        if placeId not in favorites and len(favorites) >= self.MAX_SAVED_MASJIDS:
+            raise ApiException(
+                "You are not allowed to save more than 3 masjids at a time.",
+                status_code=HTTPStatus.BAD_REQUEST.value,
+                code="MASJID_SAVE_LIMIT_EXCEEDED",
+            )
         if self.masjidRepository is not None:
             self.ensureMasjidPersisted(placeId)
         favorites = self.userRepository.addFavorite(userId, placeId)

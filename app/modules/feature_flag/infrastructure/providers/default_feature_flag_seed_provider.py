@@ -4,7 +4,6 @@ from typing import List
 
 from app.modules.feature_flag.application.ports.feature_flag_repository_port import FeatureFlagRepositoryPort
 from app.modules.feature_flag.domain.entities.feature_flag_entity import FeatureFlagEntity
-from app.modules.feature_flag.domain.enums.feature_flag_condition_type import FeatureFlagConditionType
 
 
 class DefaultFeatureFlagSeedProvider:
@@ -19,7 +18,7 @@ class DefaultFeatureFlagSeedProvider:
                 displayName="Masjid Search",
                 description="Enables nearby masjid search within configured geofence regions.",
                 defaultEnabled=False,
-                conditionType=FeatureFlagConditionType.LOCATION,
+                conditionType="LOCATION",
                 conditionConfiguration={
                     "allowed_geofence_regions": [
                         {
@@ -35,7 +34,7 @@ class DefaultFeatureFlagSeedProvider:
                 displayName="Donations",
                 description="Enables donation capabilities for masjids in configured geofence regions.",
                 defaultEnabled=False,
-                conditionType=FeatureFlagConditionType.LOCATION,
+                conditionType="LOCATION",
                 conditionConfiguration={
                     "allowed_geofence_regions": [
                         {
@@ -51,7 +50,7 @@ class DefaultFeatureFlagSeedProvider:
                 displayName="Announcements",
                 description="Enables announcement capabilities for masjids in configured geofence regions.",
                 defaultEnabled=False,
-                conditionType=FeatureFlagConditionType.LOCATION,
+                conditionType="LOCATION",
                 conditionConfiguration={
                     "allowed_geofence_regions": [
                         {

@@ -3,16 +3,11 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from app.core.enums.error_code import ErrorCode
-from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
 from app.interfaces.otp_gateway import OtpGateway
 from app.interfaces.phone_validator import PhoneValidator
 from app.interfaces.user_repository import UserRepository
-from app.utils.session_ttl import session_never_expires
-
-log = get_logger(__name__)
 
 
 class PhoneAuthService:
@@ -52,10 +47,9 @@ class PhoneAuthService:
             raise ApiException(
                 "OTP provider did not return request ID",
                 status_code=HTTPStatus.BAD_GATEWAY.value,
-                code=ErrorCode.MSG91_ERROR,
+                code="MSG91_ERROR",
                 provider_message=str(data.get("errors") or data.get("message") or data),
             )
-        log.info("OTP sent for %s | reqId=%s", phoneNumber, reqId)
         return {"phone_number": phoneNumber, "req_id": reqId, "provider_response": data}
 
     def retryOtp(
@@ -65,7 +59,6 @@ class PhoneAuthService:
             retryChannel: Optional[str] = None,
     ) -> Dict[str, Any]:
         data = self.otpGateway.retry_otp(reqId, retryChannel)
-        log.info("OTP retry for %s | reqId=%s | channel=%s", phoneNumber, reqId, retryChannel)
         return {"phone_number": phoneNumber, "req_id": reqId, "provider_response": data}
 
     def verifyOtp(self, phoneNumber: str, reqId: str, otp: str) -> Dict[str, Any]:
@@ -74,7 +67,6 @@ class PhoneAuthService:
         self.assertVerificationSuccess(data)
         user = self.userRepository.ensureUser(phoneNumber)
         session = self.userRepository.createSession(user["user_id"], self.sessionTtlSeconds)
-        log.info("OTP verified for %s | userId=%s", phoneNumber, user["user_id"])
         return {
             "user": user,
             "auth": self.getAuthPayload(session),
@@ -86,20 +78,15 @@ class PhoneAuthService:
             raise ApiException(
                 "Invalid or expired access token",
                 status_code=HTTPStatus.UNAUTHORIZED.value,
-                code=ErrorCode.AUTH_INVALID_TOKEN,
+                code="AUTH_INVALID_TOKEN",
             )
         user = self.userRepository.getUserBySession(session["access_token"])
         if not user:
             raise ApiException(
                 "Invalid or expired access token",
                 status_code=HTTPStatus.UNAUTHORIZED.value,
-                code=ErrorCode.AUTH_INVALID_TOKEN,
+                code="AUTH_INVALID_TOKEN",
             )
-        log.info(
-            "Access token refreshed for userId=%s (never_expires=%s)",
-            user["user_id"],
-            session_never_expires(self.sessionTtlSeconds),
-        )
         return {"user": user, "auth": self.getAuthPayload(session)}
 
     def getAuthPayload(self, session: Dict[str, Any]) -> Dict[str, Any]:
@@ -184,6 +171,6 @@ class PhoneAuthService:
             raise ApiException(
                 "OTP verification failed",
                 status_code=HTTPStatus.UNAUTHORIZED.value,
-                code=ErrorCode.OTP_INVALID,
+                code="OTP_INVALID",
                 provider_message=(data or {}).get("message"),
             )

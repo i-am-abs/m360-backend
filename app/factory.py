@@ -22,28 +22,22 @@ def create_app() -> FastAPI:
         level_name=settings.logging_level,
         logs_dir=settings.logs_dir,
     )
-    log = get_logger(__name__)
+    logger = get_logger(__name__)
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        log.info(
-            "application_startup env=%s active_modules=%s",
-            settings.app_env,
-            ",".join(moduleActivationState.activeModuleNames()),
-        )
+    async def lifespan(application: FastAPI):
+        logger.info("application_started env=%s modules=%s",settings.app_env, ",".join(moduleActivationState.activeModuleNames()),)
         yield
-        redisClient = getattr(app.state, "redis", None)
+        redisClient = getattr(application.state, "redis", None)
         if redisClient is not None:
             try:
                 redisClient.close()
             except Exception:
                 pass
-            log.info("redis_client_closed")
-        mongoClient = getattr(app.state, "mongo_client", None)
+        mongoClient = getattr(application.state, "mongo_client", None)
         if mongoClient is not None:
             mongoClient.close()
-            log.info("mongodb_client_closed")
-        log.info("application_shutdown")
+        logger.info("application_stopped")
 
     docsUrl = "/docs" if settings.api_docs_enabled else None
     redocUrl = "/redoc" if settings.api_docs_enabled else None

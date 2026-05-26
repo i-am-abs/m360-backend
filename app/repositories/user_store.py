@@ -8,7 +8,6 @@ from threading import RLock
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
 from app.interfaces.user_repository import UserRepository
 from app.utils.session_ttl import session_expires_in, session_never_expires
@@ -20,7 +19,7 @@ class JsonFileUserRepository(UserRepository):
             raise ApiException(
                 "USER_STORE_FILE is not configured",
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR.value,
-                code=ErrorCode.CONFIG_MISSING,
+                code="CONFIG_MISSING",
             )
         self.filePath = filePath
         self.lock = RLock()

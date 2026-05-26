@@ -5,7 +5,6 @@ from typing import Optional
 from pymongo.database import Database
 
 from app.core.config import Settings
-from app.core.logging import get_logger
 from app.modules.feature_flag.application.ports.feature_flag_repository_port import FeatureFlagRepositoryPort
 from app.modules.feature_flag.application.services.feature_flag_management_service import (
     FeatureFlagManagementService,
@@ -26,9 +25,6 @@ from app.modules.feature_flag.infrastructure.repositories.mongo_feature_flag_rep
     MongoFeatureFlagRepository,
 )
 
-_log = get_logger(__name__)
-
-
 class FeatureFlagModuleConfiguration:
     def __init__(self, settings: Settings, mongoDatabase: Optional[Database] = None) -> None:
         self.settings = settings
@@ -48,9 +44,7 @@ class FeatureFlagModuleConfiguration:
     ) -> FeatureFlagManagementService:
         repository = featureFlagRepository or self.createFeatureFlagRepository()
         seedProvider = DefaultFeatureFlagSeedProvider()
-        seededCount = seedProvider.seedFeatureFlagsIfEmpty(repository)
-        if seededCount > 0:
-            _log.info("Seeded %s default feature flag(s).", seededCount)
+        seedProvider.seedFeatureFlagsIfEmpty(repository)
 
         managementService = FeatureFlagManagementService(
             featureFlagRepository=repository,

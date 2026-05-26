@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from app.core.enums.api_endpoints import ApiEndpoint
 from app.services.quran.base_service import BaseQuranService
 
 
@@ -32,12 +31,12 @@ def _verse_params(
 class VerseService(BaseQuranService):
     def by_chapter(self, chapter_id: int, **kwargs: Any) -> Any:
         return self._get(
-            f"{ApiEndpoint.CONTENT_API_V4.value}/verses/by_chapter/{chapter_id}",
+            f"/content/api/v4/verses/by_chapter/{chapter_id}",
             _verse_params(**kwargs),
         )
 
     def by_juz(self, juz_id: int, **kwargs: Any) -> Any:
         return self._get(
-            f"{ApiEndpoint.CONTENT_API_V4.value}/verses/by_juz/{juz_id}",
+            f"/content/api/v4/verses/by_juz/{juz_id}",
             _verse_params(**kwargs),
         )
