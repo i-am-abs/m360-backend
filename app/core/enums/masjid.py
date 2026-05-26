@@ -8,3 +8,7 @@ class MasjidQueryDefault(int, Enum):
     NEARBY_MAX_RESULTS = 10
     TEXT_SEARCH_MAX_RESULTS = 10
     BY_CITY_MAX_RESULTS = 20
+
+
+class MasjidSaveLimit(int, Enum):
+    MAX_FAVORITES = 3

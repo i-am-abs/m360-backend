@@ -25,7 +25,7 @@ def _error_body(
         "error": {
             "code": code,
             "message": message,
-            "exact_message_from_service_provider": provider_message,
+            # "exact_message_from_service_provider": provider_message,
         },
     }
 
@@ -80,7 +80,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "error": {
                     "code": ErrorCode.VALIDATION_ERROR.value,
                     "message": "Invalid request payload",
-                    "exact_message_from_service_provider": None,
+                    # "exact_message_from_service_provider": None,
                     "fields": fields,
                 },
             },

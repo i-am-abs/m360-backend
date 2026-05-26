@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any, Dict, List
 
+from app.core.enums.masjid import MasjidSaveLimit
+from app.exceptions.base import ApiException
 from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
 from app.utils.masjid import get_deterministic_masjid_metadata
+
+
+_MASJID_SAVE_LIMIT_MESSAGE = (
+    "You are not allowed to save more than 3 masjids at a time."
+)
 
 
 
@@ -35,6 +43,15 @@ class UserMasjidService:
         return {"count": len(masjids), "masjids": masjids}
 
     def add_my_masjid(self, user_id: str, place_id: str) -> Dict[str, Any]:
+        favorites = self._store.list_favorites(user_id)
+        if (
+            place_id not in favorites
+            and len(favorites) >= MasjidSaveLimit.MAX_FAVORITES.value
+        ):
+            raise ApiException(
+                _MASJID_SAVE_LIMIT_MESSAGE,
+                status_code=HTTPStatus.BAD_REQUEST.value,
+            )
         favorites = self._store.add_favorite(user_id, place_id)
         return {"place_id": place_id, "favorite_place_ids": favorites}
 

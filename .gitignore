@@ -7,9 +7,10 @@ venv/
 .docker/
 logs/
 .dockerignore
-*.swp
-*.swo
+.DS_Store
 .env
 .env.*
+*.swp
+*.swo
 *.log
-.DS_Store
+*.pyc
