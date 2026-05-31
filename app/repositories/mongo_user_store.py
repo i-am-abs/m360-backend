@@ -9,6 +9,8 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from app.interfaces.user_repository import UserRepository
+from app.repositories.user_store_helpers import merge_favorite_place_ids, pick_primary_user, resolve_canonical_phone
+from app.utils.phone import phone_lookup_variants
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
@@ -27,23 +29,58 @@ class MongoUserStore(UserRepository):
         self._favorites.create_index([("user_id", ASCENDING)], unique=True)
 
     def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        doc = self._users.find_one({"phone_number": phone_number})
-        if doc:
-            return self._as_user_dict(doc)
-        user_id = str(uuid4())
-        payload = {
-            "user_id": user_id,
-            "phone_number": phone_number,
-            "created_at": self._now_iso(),
-        }
-        try:
-            self._users.insert_one(payload)
-        except DuplicateKeyError:
-            doc = self._users.find_one({"phone_number": phone_number})
-            if doc:
-                return self._as_user_dict(doc)
-            raise
-        return payload
+        canonical_phone = resolve_canonical_phone(phone_number)
+        variants = phone_lookup_variants(canonical_phone)
+        docs = list(self._users.find({"phone_number": {"$in": variants}}))
+        if not docs:
+            user_id = str(uuid4())
+            payload = {
+                "user_id": user_id,
+                "phone_number": canonical_phone,
+                "created_at": self._now_iso(),
+            }
+            try:
+                self._users.insert_one(payload)
+            except DuplicateKeyError:
+                doc = self._users.find_one({"phone_number": canonical_phone})
+                if doc:
+                    return self._as_user_dict(doc)
+                raise
+            return payload
+
+        matches = [(str(doc["phone_number"]), self._as_user_dict(doc)) for doc in docs]
+        primary_key, primary_user, duplicates = pick_primary_user(matches)
+        primary_user_id = str(primary_user["user_id"])
+        favorite_lists = [self.list_favorites(primary_user_id)]
+        duplicate_user_ids: list[str] = []
+        for _dup_key, dup_user in duplicates:
+            dup_user_id = str(dup_user.get("user_id") or "")
+            if not dup_user_id:
+                continue
+            duplicate_user_ids.append(dup_user_id)
+            favorite_lists.append(self.list_favorites(dup_user_id))
+
+        merged_favorites = merge_favorite_place_ids(*favorite_lists)
+        if merged_favorites:
+            self._favorites.update_one(
+                {"user_id": primary_user_id},
+                {
+                    "$set": {"place_ids": merged_favorites},
+                    "$setOnInsert": {"user_id": primary_user_id},
+                },
+                upsert=True,
+            )
+        for dup_user_id in duplicate_user_ids:
+            self._favorites.delete_one({"user_id": dup_user_id})
+            self._users.delete_one({"user_id": dup_user_id})
+
+        if primary_user.get("phone_number") != canonical_phone:
+            self._users.update_one(
+                {"user_id": primary_user_id},
+                {"$set": {"phone_number": canonical_phone}},
+            )
+            primary_user["phone_number"] = canonical_phone
+        return primary_user
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         token = str(uuid4())

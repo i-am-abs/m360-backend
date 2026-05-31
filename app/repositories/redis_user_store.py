@@ -9,6 +9,12 @@ from redis import Redis
 
 from app.core.config import Settings
 from app.interfaces.user_repository import UserRepository
+from app.repositories.user_store_helpers import (
+    merge_favorite_place_ids,
+    pick_primary_user,
+    resolve_canonical_phone,
+)
+from app.utils.phone import phone_lookup_variants
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
@@ -30,18 +36,55 @@ class RedisUserStore(UserRepository):
         return f"{self._pfx}:favorites:{user_id}"
 
     def ensure_user(self, phone_number: str) -> Dict[str, Any]:
-        raw = self._r.get(self._key_phone(phone_number))
-        if raw:
-            return json.loads(raw)
-        user = {
-            "user_id": str(uuid4()),
-            "phone_number": phone_number,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        blob = json.dumps(user)
-        self._r.set(self._key_phone(phone_number), blob)
-        self._r.set(self._key_user_id(user["user_id"]), blob)
-        return user
+        canonical_phone = resolve_canonical_phone(phone_number)
+        matches: list[tuple[str, Dict[str, Any]]] = []
+        for variant in phone_lookup_variants(canonical_phone):
+            raw = self._r.get(self._key_phone(variant))
+            if not raw:
+                continue
+            user = json.loads(raw)
+            user_id = str(user.get("user_id") or "")
+            if any(existing[1].get("user_id") == user_id for existing in matches):
+                continue
+            matches.append((variant, user))
+
+        if not matches:
+            user = {
+                "user_id": str(uuid4()),
+                "phone_number": canonical_phone,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            blob = json.dumps(user)
+            self._r.set(self._key_phone(canonical_phone), blob)
+            self._r.set(self._key_user_id(user["user_id"]), blob)
+            return user
+
+        primary_key, primary_user, duplicates = pick_primary_user(matches)
+        primary_user_id = str(primary_user["user_id"])
+        favorite_lists = [self.list_favorites(primary_user_id)]
+        for dup_key, dup_user in duplicates:
+            dup_user_id = str(dup_user.get("user_id") or "")
+            if dup_user_id:
+                favorite_lists.append(self.list_favorites(dup_user_id))
+                self._r.delete(self._key_favorites(dup_user_id))
+                self._r.delete(self._key_user_id(dup_user_id))
+            if dup_key != canonical_phone:
+                self._r.delete(self._key_phone(dup_key))
+
+        merged_favorites = merge_favorite_place_ids(*favorite_lists)
+        if merged_favorites:
+            self._r.set(
+                self._key_favorites(primary_user_id),
+                json.dumps(merged_favorites),
+            )
+
+        if primary_key != canonical_phone:
+            self._r.delete(self._key_phone(primary_key))
+        primary_user["phone_number"] = canonical_phone
+        blob = json.dumps(primary_user)
+        self._r.set(self._key_phone(canonical_phone), blob)
+        self._r.set(self._key_user_id(primary_user_id), blob)
+        return primary_user
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         token = str(uuid4())

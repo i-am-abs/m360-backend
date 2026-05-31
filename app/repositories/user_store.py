@@ -11,6 +11,7 @@ from uuid import uuid4
 from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
 from app.interfaces.user_repository import UserRepository
+from app.repositories.user_store_helpers import find_matching_users, merge_favorite_place_ids, pick_primary_user, resolve_canonical_phone
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
@@ -27,18 +28,45 @@ class JsonFileUserStore(UserRepository):
         self._bootstrap()
 
     def ensure_user(self, phone_number: str) -> Dict[str, Any]:
+        canonical_phone = resolve_canonical_phone(phone_number)
         with self._lock:
             data = self._read()
-            user = data["users_by_phone"].get(phone_number)
-            if user is None:
+            matches = find_matching_users(data["users_by_phone"], canonical_phone)
+            if not matches:
                 user = {
                     "user_id": str(uuid4()),
-                    "phone_number": phone_number,
+                    "phone_number": canonical_phone,
                     "created_at": self._now_iso(),
                 }
-                data["users_by_phone"][phone_number] = user
+                data["users_by_phone"][canonical_phone] = user
                 self._write(data)
-            return user
+                return user
+
+            primary_key, primary_user, duplicates = pick_primary_user(matches)
+            primary_user_id = str(primary_user["user_id"])
+            favorite_lists = [
+                data["favorites_by_user_id"].get(primary_user_id, []),
+            ]
+            for dup_key, dup_user in duplicates:
+                dup_user_id = str(dup_user.get("user_id") or "")
+                if dup_user_id:
+                    favorite_lists.append(
+                        data["favorites_by_user_id"].get(dup_user_id, []),
+                    )
+                    data["favorites_by_user_id"].pop(dup_user_id, None)
+                if dup_key != canonical_phone:
+                    data["users_by_phone"].pop(dup_key, None)
+
+            merged_favorites = merge_favorite_place_ids(*favorite_lists)
+            if merged_favorites:
+                data["favorites_by_user_id"][primary_user_id] = merged_favorites
+
+            if primary_key != canonical_phone:
+                data["users_by_phone"].pop(primary_key, None)
+            primary_user["phone_number"] = canonical_phone
+            data["users_by_phone"][canonical_phone] = primary_user
+            self._write(data)
+            return primary_user
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         with self._lock:

@@ -16,15 +16,7 @@ log = get_logger(__name__)
 
 
 class PhoneAuthService:
-    def __init__(
-            self,
-            store: UserRepository,
-            otp_gateway: OtpGateway,
-            phone_validator: PhoneValidator,
-            session_ttl_seconds: int,
-            msg91_pending: Optional[Msg91PendingReqIdStore] = None,
-            msg91_async_req_id_wait_seconds: float = 0.0,
-    ) -> None:
+    def __init__(self, store: UserRepository, otp_gateway: OtpGateway, phone_validator: PhoneValidator, session_ttl_seconds: int, msg91_pending: Optional[Msg91PendingReqIdStore] = None, msg91_async_req_id_wait_seconds: float = 0.0,) -> None:
         self._store = store
         self._otp_gateway = otp_gateway
         self._phone_validator = phone_validator
@@ -38,11 +30,7 @@ class PhoneAuthService:
             self._msg91_pending.discard_identifier(formatted)
         data = self._otp_gateway.send_otp(formatted)
         req_id = self._extract_req_id(data)
-        if (
-                not req_id
-                and self._msg91_pending is not None
-                and self._msg91_async_wait > 0
-        ):
+        if not req_id and self._msg91_pending is not None and self._msg91_async_wait > 0:
             req_id = self._msg91_pending.wait_for(
                 formatted,
                 total_seconds=self._msg91_async_wait,
@@ -58,21 +46,16 @@ class PhoneAuthService:
         log.info("OTP sent for %s | reqId=%s", phone_number, req_id)
         return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
 
-    def retry_otp(
-            self,
-            phone_number: str,
-            req_id: str,
-            retry_channel: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def retry_otp(self, phone_number: str, req_id: str, retry_channel: Optional[str] = None) -> Dict[str, Any]:
         data = self._otp_gateway.retry_otp(req_id, retry_channel)
         log.info("OTP retry for %s | reqId=%s | channel=%s", phone_number, req_id, retry_channel)
         return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
 
     def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
-        self._phone_validator.validate_and_format(phone_number)
+        formatted_phone = self._phone_validator.validate_and_format(phone_number)
         data = self._otp_gateway.verify_otp(req_id, otp)
         self._assert_verification_success(data)
-        user = self._store.ensure_user(phone_number)
+        user = self._store.ensure_user(formatted_phone)
         session = self._store.create_session(user["user_id"], self._session_ttl)
         log.info("OTP verified for %s | userId=%s", phone_number, user["user_id"])
         return {
