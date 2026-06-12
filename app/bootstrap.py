@@ -19,6 +19,7 @@ from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
 from app.repositories.google_places_client import GooglePlacesClient
 from app.repositories.local_cache_user_store import LocalCacheUserStore
+from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
@@ -112,6 +113,16 @@ def _create_masjid_search_service(
             settings.redis_key_prefix,
         )
     return inner
+
+
+def _create_masjid_store(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> "MongoMasjidStore | NoOpMasjidStore":
+    """Return a ``MongoMasjidStore`` when MongoDB is configured, else a no-op stub."""
+    if settings.mongodb_configured and mongo_client is not None:
+        return MongoMasjidStore(mongo_client.get_database(settings.mongodb_database))
+    return NoOpMasjidStore()
 
 
 def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
@@ -215,6 +226,11 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.user_masjid_service = UserMasjidService(
         store=user_store,
         places_reader=masjid_search,
+    )
+
+    # Masjid committee / amenities store (MongoDB when available, no-op otherwise)
+    app.state.masjid_store = _create_masjid_store(
+        settings, app.state.mongo_client
     )
 
     mode = app.state.user_store_backend

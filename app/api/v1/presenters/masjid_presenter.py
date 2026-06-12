@@ -1,11 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class MasjidDetailsPresenter:
     @staticmethod
-    def to_view(place: Dict[str, Any], has_donations: bool = False, has_announcements: bool = False, donation_count: int = 0, announcement_count: int = 0, is_added: bool = False, saved_count: int = 0,) -> Dict[str, Any]:
+    def to_view(
+        place: Dict[str, Any],
+        has_donations: bool = False,
+        has_announcements: bool = False,
+        donation_count: int = 0,
+        announcement_count: int = 0,
+        is_added: bool = False,
+        saved_count: int = 0,
+        committee_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         accessibility = place.get("accessibilityOptions") or {}
         parking = place.get("parkingOptions") or {}
         payment = place.get("paymentOptions") or {}
@@ -37,5 +46,13 @@ class MasjidDetailsPresenter:
             "announcementUpdatesCount": announcement_count,
             "isAddedToMyMasjid": is_added,
             "savedMasjidCount": saved_count,
+            # Committee section -----------------------------------------------
+            # has_committee: True when a committee record exists in our DB.
+            # details:       Full committee document (timings, amenities, etc.)
+            #                or None when no committee has been registered.
+            "committee": {
+                "has_committee": committee_data is not None,
+                "details": committee_data,
+            },
             "raw": place,
         }

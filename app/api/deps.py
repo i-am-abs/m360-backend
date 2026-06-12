@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.config import Settings
 from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
+from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.phone_auth_service import PhoneAuthService
@@ -64,6 +65,10 @@ def get_phone_auth_service(request: Request) -> PhoneAuthService:
 
 def get_user_store(request: Request) -> UserRepository:
     return request.app.state.user_store
+
+
+def get_masjid_store(request: Request) -> MasjidRepository:
+    return request.app.state.masjid_store
 
 
 def get_bearer_credentials(
