@@ -43,13 +43,14 @@ class PhoneAuthService:
                 code=ErrorCode.MSG91_ERROR,
                 provider_message=str(data.get("errors") or data.get("message") or data),
             )
-        log.info("OTP sent for %s | reqId=%s", phone_number, req_id)
-        return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
+        log.info("OTP sent for %s | reqId=%s", formatted, req_id)
+        return {"phone_number": formatted, "req_id": req_id, "provider_response": data}
 
     def retry_otp(self, phone_number: str, req_id: str, retry_channel: Optional[str] = None) -> Dict[str, Any]:
+        formatted = self._phone_validator.validate_and_format(phone_number)
         data = self._otp_gateway.retry_otp(req_id, retry_channel)
-        log.info("OTP retry for %s | reqId=%s | channel=%s", phone_number, req_id, retry_channel)
-        return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
+        log.info("OTP retry for %s | reqId=%s | channel=%s", formatted, req_id, retry_channel)
+        return {"phone_number": formatted, "req_id": req_id, "provider_response": data}
 
     def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
         formatted_phone = self._phone_validator.validate_and_format(phone_number)
@@ -57,7 +58,8 @@ class PhoneAuthService:
         self._assert_verification_success(data)
         user = self._store.ensure_user(formatted_phone)
         session = self._store.create_session(user["user_id"], self._session_ttl)
-        log.info("OTP verified for %s | userId=%s", phone_number, user["user_id"])
+        user["phone_number"] = formatted_phone
+        log.info("OTP verified for %s | userId=%s", formatted_phone, user["user_id"])
         return {
             "user": user,
             "auth": self._auth_payload(session),

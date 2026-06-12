@@ -32,7 +32,11 @@ class RedisUserStore(UserRepository):
     def _key_session(self, token: str) -> str:
         return f"{self._pfx}:session:{token}"
 
-    def _key_favorites(self, user_id: str) -> str:
+    def _key_favorites(self, phone: str) -> str:
+        canonical = resolve_canonical_phone(phone)
+        return f"{self._pfx}:favorites:phone:{canonical}"
+
+    def _key_legacy_favorites(self, user_id: str) -> str:
         return f"{self._pfx}:favorites:{user_id}"
 
     def ensure_user(self, phone_number: str) -> Dict[str, Any]:
@@ -61,22 +65,20 @@ class RedisUserStore(UserRepository):
 
         primary_key, primary_user, duplicates = pick_primary_user(matches)
         primary_user_id = str(primary_user["user_id"])
-        favorite_lists = [self.list_favorites(primary_user_id)]
+        favorite_lists = [self.list_favorites(canonical_phone)]
         for dup_key, dup_user in duplicates:
             dup_user_id = str(dup_user.get("user_id") or "")
             if dup_user_id:
-                favorite_lists.append(self.list_favorites(dup_user_id))
-                self._r.delete(self._key_favorites(dup_user_id))
+                favorite_lists.append(self._list_legacy_favorites(dup_user_id))
+                self._r.delete(self._key_legacy_favorites(dup_user_id))
                 self._r.delete(self._key_user_id(dup_user_id))
             if dup_key != canonical_phone:
                 self._r.delete(self._key_phone(dup_key))
 
         merged_favorites = merge_favorite_place_ids(*favorite_lists)
         if merged_favorites:
-            self._r.set(
-                self._key_favorites(primary_user_id),
-                json.dumps(merged_favorites),
-            )
+            self._r.set(self._key_favorites(canonical_phone), json.dumps(merged_favorites))
+        self._r.delete(self._key_legacy_favorites(primary_user_id))
 
         if primary_key != canonical_phone:
             self._r.delete(self._key_phone(primary_key))
@@ -120,21 +122,63 @@ class RedisUserStore(UserRepository):
         self._r.delete(self._key_session(access_token))
         return self.create_session(user_id, ttl_seconds)
 
-    def list_favorites(self, user_id: str) -> List[str]:
-        raw = self._r.get(self._key_favorites(user_id))
+    def _list_legacy_favorites(self, user_id: str) -> List[str]:
+        raw = self._r.get(self._key_legacy_favorites(user_id))
         if not raw:
             return []
         data = json.loads(raw)
         return list(data) if isinstance(data, list) else []
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
-        favs = self.list_favorites(user_id)
+    def _migrate_favorites_for_phone(self, phone_number: str) -> List[str]:
+        phone = resolve_canonical_phone(phone_number)
+        raw = self._r.get(self._key_favorites(phone))
+        if raw:
+            data = json.loads(raw)
+            return list(data) if isinstance(data, list) else []
+
+        favorite_lists: List[List[str]] = []
+        legacy_keys: list[str] = []
+        for variant in phone_lookup_variants(phone):
+            user_raw = self._r.get(self._key_phone(variant))
+            if not user_raw:
+                continue
+            user = json.loads(user_raw)
+            user_id = str(user.get("user_id") or "")
+            if not user_id:
+                continue
+            legacy = self._list_legacy_favorites(user_id)
+            if legacy:
+                favorite_lists.append(legacy)
+                legacy_keys.append(self._key_legacy_favorites(user_id))
+
+        if not favorite_lists:
+            return []
+
+        merged = merge_favorite_place_ids(*favorite_lists)
+        self._r.set(self._key_favorites(phone), json.dumps(merged))
+        for key in legacy_keys:
+            self._r.delete(key)
+        return merged
+
+    def list_favorites(self, phone_number: str) -> List[str]:
+        from app.core.enums.masjid import MasjidSaveLimit
+
+        favorites = self._migrate_favorites_for_phone(phone_number)
+        max_favorites = MasjidSaveLimit.MAX_FAVORITES.value
+        if len(favorites) <= max_favorites:
+            return favorites
+        favorites = favorites[:max_favorites]
+        self._r.set(self._key_favorites(phone_number), json.dumps(favorites))
+        return favorites
+
+    def add_favorite(self, phone_number: str, place_id: str) -> List[str]:
+        favs = self.list_favorites(phone_number)
         if place_id not in favs:
             favs.append(place_id)
-        self._r.set(self._key_favorites(user_id), json.dumps(favs))
+        self._r.set(self._key_favorites(phone_number), json.dumps(favs))
         return list(favs)
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
-        favs = [p for p in self.list_favorites(user_id) if p != place_id]
-        self._r.set(self._key_favorites(user_id), json.dumps(favs))
+    def remove_favorite(self, phone_number: str, place_id: str) -> List[str]:
+        favs = [p for p in self.list_favorites(phone_number) if p != place_id]
+        self._r.set(self._key_favorites(phone_number), json.dumps(favs))
         return favs

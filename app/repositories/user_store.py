@@ -11,7 +11,15 @@ from uuid import uuid4
 from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
 from app.interfaces.user_repository import UserRepository
-from app.repositories.user_store_helpers import find_matching_users, merge_favorite_place_ids, pick_primary_user, resolve_canonical_phone
+from app.repositories.user_store_helpers import (
+    find_matching_users,
+    list_favorites_for_phone,
+    merge_favorite_place_ids,
+    pick_primary_user,
+    prepare_favorites_by_phone,
+    resolve_canonical_phone,
+    set_favorites_for_phone,
+)
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
 
@@ -43,23 +51,23 @@ class JsonFileUserStore(UserRepository):
                 return user
 
             primary_key, primary_user, duplicates = pick_primary_user(matches)
-            primary_user_id = str(primary_user["user_id"])
             favorite_lists = [
-                data["favorites_by_user_id"].get(primary_user_id, []),
+                list_favorites_for_phone(data, canonical_phone),
             ]
             for dup_key, dup_user in duplicates:
                 dup_user_id = str(dup_user.get("user_id") or "")
                 if dup_user_id:
                     favorite_lists.append(
-                        data["favorites_by_user_id"].get(dup_user_id, []),
+                        list(data.get("favorites_by_user_id", {}).get(dup_user_id, [])),
                     )
-                    data["favorites_by_user_id"].pop(dup_user_id, None)
                 if dup_key != canonical_phone:
                     data["users_by_phone"].pop(dup_key, None)
 
             merged_favorites = merge_favorite_place_ids(*favorite_lists)
+            prepare_favorites_by_phone(data)
             if merged_favorites:
-                data["favorites_by_user_id"][primary_user_id] = merged_favorites
+                set_favorites_for_phone(data, canonical_phone, merged_favorites)
+            data["favorites_by_user_id"] = {}
 
             if primary_key != canonical_phone:
                 data["users_by_phone"].pop(primary_key, None)
@@ -128,29 +136,34 @@ class JsonFileUserStore(UserRepository):
         expires_at = datetime.fromisoformat(raw)
         return datetime.now(timezone.utc) < expires_at
 
-    def list_favorites(self, user_id: str) -> List[str]:
+    def list_favorites(self, phone_number: str) -> List[str]:
         with self._lock:
             data = self._read()
-            return list(data["favorites_by_user_id"].get(user_id, []))
+            favorites = list_favorites_for_phone(data, phone_number)
+            if prepare_favorites_by_phone(data):
+                self._write(data)
+            return favorites
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def add_favorite(self, phone_number: str, place_id: str) -> List[str]:
         with self._lock:
             data = self._read()
-            favorites = data["favorites_by_user_id"].setdefault(user_id, [])
+            favorites = list_favorites_for_phone(data, phone_number)
             if place_id not in favorites:
                 favorites.append(place_id)
+                set_favorites_for_phone(data, phone_number, favorites)
                 self._write(data)
-            return list(favorites)
+            return favorites
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def remove_favorite(self, phone_number: str, place_id: str) -> List[str]:
         with self._lock:
             data = self._read()
-            favorites = data["favorites_by_user_id"].setdefault(user_id, [])
-            data["favorites_by_user_id"][user_id] = [
-                pid for pid in favorites if pid != place_id
+            favorites = [
+                pid for pid in list_favorites_for_phone(data, phone_number)
+                if pid != place_id
             ]
+            set_favorites_for_phone(data, phone_number, favorites)
             self._write(data)
-            return list(data["favorites_by_user_id"][user_id])
+            return favorites
 
     @staticmethod
     def _now_iso() -> str:
@@ -164,6 +177,7 @@ class JsonFileUserStore(UserRepository):
             if not os.path.exists(self._path):
                 self._write({
                     "users_by_phone": {},
+                    "favorites_by_phone": {},
                     "favorites_by_user_id": {},
                     "sessions": {},
                 })

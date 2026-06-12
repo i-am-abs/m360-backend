@@ -93,8 +93,7 @@ def get_masjid_details(place_id: str, current_user: Dict[str, Any] = Depends(get
     place = svc.get_place_by_id(place_id)
     pid = place.get("id") or place_id
     meta = get_deterministic_masjid_metadata(pid)
-    user_id = current_user["user_id"]
-    favorites = store.list_favorites(user_id)
+    favorites = store.list_favorites(current_user["phone_number"])
     is_added = pid in favorites
     saved_count = len(favorites)
     return success_response(
@@ -113,16 +112,16 @@ def get_masjid_details(place_id: str, current_user: Dict[str, Any] = Depends(get
 @router.get(ApiEndpoint.MY_MASJIDS.value, summary="List my favourite masjids")
 def list_my_masjids(current_user: Dict[str, Any] = Depends(get_current_user),
                     svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.list_my_masjids(current_user["user_id"]))
+    return success_response(svc.list_my_masjids(current_user))
 
 
 @router.post(ApiEndpoint.MY_MASJID_ADD.value, summary="Add masjid to favourites")
 def add_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                   svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.add_my_masjid(current_user["user_id"], place_id), message="Masjid added")
+    return success_response(svc.add_my_masjid(current_user, place_id), message="Masjid added")
 
 
 @router.delete(ApiEndpoint.MY_MASJID_REMOVE.value, summary="Remove from favourites")
 def remove_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                      svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.remove_my_masjid(current_user["user_id"], place_id), message="Masjid removed")
+    return success_response(svc.remove_my_masjid(current_user, place_id), message="Masjid removed")

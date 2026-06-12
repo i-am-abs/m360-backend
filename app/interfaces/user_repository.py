@@ -26,13 +26,13 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    def list_favorites(self, user_id: str) -> List[str]:
+    def list_favorites(self, phone_number: str) -> List[str]:
         pass
 
     @abstractmethod
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def add_favorite(self, phone_number: str, place_id: str) -> List[str]:
         pass
 
     @abstractmethod
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def remove_favorite(self, phone_number: str, place_id: str) -> List[str]:
         pass
