@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import certifi
 from typing import Optional
 
 from fastapi import FastAPI
@@ -134,6 +135,7 @@ def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
         client = MongoClient(
             settings.mongodb_uri,
             serverSelectionTimeoutMS=10_000,
+            tlsCAFile=certifi.where(),
         )
         try:
             client.admin.command("ping")
