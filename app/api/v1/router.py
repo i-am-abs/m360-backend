@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admins,
     auth,
+    broadcasts,
+    fcm,
     features,
     health,
     internal,
@@ -26,3 +28,5 @@ api_v1_router.include_router(admins.router)
 api_v1_router.include_router(verification_requests.router)
 api_v1_router.include_router(uploads.router)
 api_v1_router.include_router(internal.router)
+api_v1_router.include_router(fcm.router)
+api_v1_router.include_router(broadcasts.router)

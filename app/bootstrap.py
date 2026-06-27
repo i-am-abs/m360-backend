@@ -29,6 +29,16 @@ from app.repositories.mongo_audit_log_store import MongoAuditLogStore, NoOpAudit
 from app.repositories.mongo_masjid_listing_store import MongoMasjidListingStore, NoOpMasjidListingStore
 from app.repositories.r2_upload_provider import R2UploadProvider, StubR2UploadProvider
 from app.repositories.mux_upload_provider import MuxUploadProvider, StubMuxUploadProvider
+from app.repositories.mongo_fcm_token_store import MongoFcmTokenStore, NoOpFcmTokenStore
+from app.repositories.mongo_masjid_follow_store import (
+    MongoMasjidFollowStore,
+    NoOpMasjidFollowStore,
+)
+from app.repositories.mongo_broadcast_store import MongoBroadcastStore, NoOpBroadcastStore
+from app.repositories.fcm_notification_sender import (
+    FcmNotificationSender,
+    StubNotificationSender,
+)
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
@@ -44,6 +54,8 @@ from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.internal_timings_service import InternalTimingsService
+from app.services.notification_service import NotificationService
+from app.services.broadcast_service import BroadcastService
 from app.services.rate_limiter import (
     InMemoryRateLimitBackend,
     RateLimiter,
@@ -259,6 +271,48 @@ def _create_upload_service(settings: Settings) -> UploadService:
     return UploadService([image_provider, video_provider])
 
 
+def _create_broadcast_stores(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> dict:
+    """Create Mongo-backed broadcast stores or no-op fallbacks."""
+    if settings.mongodb_configured and mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        return {
+            "fcm_token_store": MongoFcmTokenStore(db),
+            "follow_store": MongoMasjidFollowStore(db),
+            "broadcast_store": MongoBroadcastStore(db),
+        }
+    return {
+        "fcm_token_store": NoOpFcmTokenStore(),
+        "follow_store": NoOpMasjidFollowStore(),
+        "broadcast_store": NoOpBroadcastStore(),
+    }
+
+
+def _create_notification_sender(settings: Settings):
+    """Return an FCM sender when configured, else a logging stub."""
+    if settings.fcm_configured:
+        try:
+            sender = FcmNotificationSender(settings.firebase_credentials_file or "")
+            _log.info(
+                "FCM enabled — Firebase initialised from %s.",
+                settings.firebase_credentials_file,
+            )
+            return sender
+        except Exception as exc:  # pragma: no cover - depends on firebase-admin/runtime
+            _log.warning(
+                "FCM configured but Firebase init failed (%s) — using stub sender.",
+                exc,
+            )
+            return StubNotificationSender()
+    _log.warning(
+        "FCM disabled — push notifications will be logged only. "
+        "Set FCM_ENABLED=true and FIREBASE_CREDENTIALS_FILE to enable."
+    )
+    return StubNotificationSender()
+
+
 def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
     _init_redis(app, settings)
@@ -366,6 +420,27 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         redis_client=app.state.redis,
         cache_ttl_seconds=settings.internal_timings_cache_ttl_seconds,
         cache_key_prefix=settings.redis_key_prefix,
+    )
+
+    # Broadcast / push-notification stack ------------------------------------
+    broadcast_stores = _create_broadcast_stores(settings, app.state.mongo_client)
+    app.state.fcm_token_store = broadcast_stores["fcm_token_store"]
+    app.state.masjid_follow_store = broadcast_stores["follow_store"]
+    app.state.broadcast_store = broadcast_stores["broadcast_store"]
+
+    notification_sender = _create_notification_sender(settings)
+    app.state.notification_sender = notification_sender
+    app.state.notification_service = NotificationService(
+        broadcast_stores["fcm_token_store"],
+        broadcast_stores["follow_store"],
+        notification_sender,
+    )
+    app.state.broadcast_service = BroadcastService(
+        broadcast_stores["broadcast_store"],
+        app.state.notification_service,
+        platform["audit_store"],
+        rbac,
+        default_page_size=settings.broadcast_default_page_size,
     )
 
     app.state.rate_limiter = _create_rate_limiter(settings, app.state.redis)

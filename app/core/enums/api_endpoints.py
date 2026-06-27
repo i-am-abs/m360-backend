@@ -55,3 +55,9 @@ class ApiEndpoint(Enum):
     MASJID_AMENITIES = "/masjids/{place_id}/amenities"
 
     INTERNAL_MASJID_TIMINGS = "/internal/masjids/{place_id}/timings"
+
+    # Broadcast / push notifications
+    FCM_TOKENS = "/fcm/tokens"
+    MASJID_FOLLOW = "/masjids/{place_id}/follow"
+    MASJID_BROADCASTS = "/masjids/{place_id}/broadcasts"
+    INTERNAL_MASJID_BROADCAST = "/internal/masjids/{place_id}/broadcast"

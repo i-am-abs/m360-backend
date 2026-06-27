@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from typing import Optional
-
-import httpx
 
 from app.core.config import Settings
 from app.interfaces.upload_provider import UploadProvider
 from app.utils.structured_log import log_event
 
+# Cloudflare R2 speaks the S3 API but REQUIRES AWS Signature V4 signing.
+# We use boto3 (imported lazily) so signing is handled correctly; plain HTTP
+# Basic auth does NOT work against R2.
+
 
 class R2UploadProvider(UploadProvider):
-    """Upload images to Cloudflare R2 via S3-compatible API."""
+    """Upload images to Cloudflare R2 via the S3-compatible API (SigV4)."""
 
     _IMAGE_TYPES = {
         "image/jpeg",
@@ -20,13 +21,31 @@ class R2UploadProvider(UploadProvider):
         "image/png",
         "image/webp",
         "image/gif",
+        "image/heic",
     }
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._client = None  # lazily created boto3 S3 client
 
     def supports(self, content_type: str) -> bool:
         return content_type.lower() in self._IMAGE_TYPES
+
+    def _s3_client(self):
+        if self._client is not None:
+            return self._client
+        import boto3
+        from botocore.config import Config
+
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=self._settings.r2_endpoint_url,
+            aws_access_key_id=self._settings.r2_access_key_id,
+            aws_secret_access_key=self._settings.r2_secret_access_key,
+            region_name="auto",
+            config=Config(signature_version="s3v4"),
+        )
+        return self._client
 
     def upload(
         self,
@@ -38,7 +57,13 @@ class R2UploadProvider(UploadProvider):
             raise RuntimeError("R2 upload is not configured")
 
         key = self._build_key(filename)
-        url = self._put_object(key, file_bytes, content_type)
+        self._s3_client().put_object(
+            Bucket=self._settings.r2_bucket_name,
+            Key=key,
+            Body=file_bytes,
+            ContentType=content_type,
+        )
+        url = self._public_url(key)
         log_event(
             "upload.r2",
             "upload_success",
@@ -53,25 +78,12 @@ class R2UploadProvider(UploadProvider):
         digest = hashlib.sha256(f"{filename}:{uuid.uuid4()}".encode()).hexdigest()[:16]
         return f"uploads/images/{digest}.{suffix}"
 
-    def _put_object(self, key: str, body: bytes, content_type: str) -> str:
-        endpoint = self._settings.r2_endpoint_url.rstrip("/")
-        bucket = self._settings.r2_bucket_name
+    def _public_url(self, key: str) -> str:
         public_base = (self._settings.r2_public_base_url or "").rstrip("/")
-        upload_url = f"{endpoint}/{bucket}/{key}"
-
-        headers = {
-            "Content-Type": content_type,
-            "Content-Length": str(len(body)),
-        }
-        auth = (self._settings.r2_access_key_id or "", self._settings.r2_secret_access_key or "")
-
-        with httpx.Client(timeout=self._settings.request_timeout_seconds) as client:
-            response = client.put(upload_url, content=body, headers=headers, auth=auth)
-            response.raise_for_status()
-
         if public_base:
             return f"{public_base}/{key}"
-        return upload_url
+        endpoint = (self._settings.r2_endpoint_url or "").rstrip("/")
+        return f"{endpoint}/{self._settings.r2_bucket_name}/{key}"
 
 
 class StubR2UploadProvider(UploadProvider):

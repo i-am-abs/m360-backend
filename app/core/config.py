@@ -108,6 +108,13 @@ class Settings(BaseSettings):
     upload_max_image_bytes: int = 10 * 1024 * 1024
     upload_max_video_bytes: int = 200 * 1024 * 1024
 
+    fcm_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("FCM_ENABLED", "fcm_enabled"),
+    )
+    firebase_credentials_file: Optional[str] = None
+    broadcast_default_page_size: int = Field(default=20, ge=1, le=100)
+
     rate_limit_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("RATE_LIMIT_ENABLED", "rate_limit_enabled"),
@@ -153,6 +160,14 @@ class Settings(BaseSettings):
     @property
     def mux_configured(self) -> bool:
         return bool(self.mux_token_id and self.mux_token_secret)
+
+    @property
+    def fcm_configured(self) -> bool:
+        return bool(
+            self.fcm_enabled
+            and self.firebase_credentials_file
+            and self.firebase_credentials_file.strip()
+        )
 
     @property
     def internal_api_configured(self) -> bool:

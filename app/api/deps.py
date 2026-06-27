@@ -13,11 +13,13 @@ from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.admin_service import AdminService
+from app.services.broadcast_service import BroadcastService
 from app.services.feature_flag_service import FeatureFlagService
 from app.services.internal_timings_service import InternalTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
+from app.services.notification_service import NotificationService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
@@ -147,6 +149,14 @@ def get_masjid_amenities_service(request: Request) -> MasjidAmenitiesService:
 
 def get_internal_timings_service(request: Request) -> InternalTimingsService:
     return request.app.state.internal_timings_service
+
+
+def get_notification_service(request: Request) -> NotificationService:
+    return request.app.state.notification_service
+
+
+def get_broadcast_service(request: Request) -> BroadcastService:
+    return request.app.state.broadcast_service
 
 
 def verify_internal_api_key(
