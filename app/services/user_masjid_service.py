@@ -10,7 +10,6 @@ from app.interfaces.user_repository import UserRepository
 from app.repositories.user_store_helpers import resolve_canonical_phone
 from app.utils.masjid import get_deterministic_masjid_metadata
 
-
 _MASJID_SAVE_LIMIT_MESSAGE = (
     "You are not allowed to save more than 3 masjids at a time."
 )
@@ -51,8 +50,8 @@ class UserMasjidService:
         phone_number = self._phone_number(user)
         favorites = self._store.list_favorites(phone_number)
         if (
-            place_id not in favorites
-            and len(favorites) >= MasjidSaveLimit.MAX_FAVORITES.value
+                place_id not in favorites
+                and len(favorites) >= MasjidSaveLimit.MAX_FAVORITES.value
         ):
             raise ApiException(
                 _MASJID_SAVE_LIMIT_MESSAGE,

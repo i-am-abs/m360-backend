@@ -19,5 +19,5 @@ def msg91_otp_webhook(body: Msg91OtpWebhookPayload, request: Request):
         event = (body.event or "SEND_OTP").strip().upper()
         if event in {"SEND_OTP", "OTP_SENT", "OTP SENT"}:
             store.record(body.identifier, body.request_id)
-            log.info("MSG91 webhook %s stored requestId for identifier=%s", body.event or "SEND_OTP",body.identifier,)
+            log.info("MSG91 webhook %s stored requestId for identifier=%s", body.event or "SEND_OTP", body.identifier, )
     return success_response({"accepted": True}, message="OK")

@@ -37,3 +37,27 @@ class ApiEndpoint(Enum):
     MY_MASJIDS = "/users/me/masjids"
     MY_MASJID_ADD = "/users/me/masjids/{place_id}"
     MY_MASJID_REMOVE = "/users/me/masjids/{place_id}"
+
+    FEATURES = "/features"
+
+    ADMINS_REGISTER = "/admins/register"
+    ADMINS_LIST = "/admins"
+    ADMINS_STATUS = "/admins/{admin_id}/status"
+
+    VERIFICATION_REQUESTS = "/verification-requests"
+    VERIFICATION_REQUEST_STATUS = "/verification-requests/{request_id}/status"
+    ROLES = "/roles"
+
+    UPLOADS = "/uploads"
+
+    MASJIDS_LIST = "/masjids"
+    MASJID_TIMINGS = "/masjids/{place_id}/timings"
+    MASJID_AMENITIES = "/masjids/{place_id}/amenities"
+
+    INTERNAL_MASJID_TIMINGS = "/internal/masjids/{place_id}/timings"
+
+    # Broadcast / push notifications
+    FCM_TOKENS = "/fcm/tokens"
+    MASJID_FOLLOW = "/masjids/{place_id}/follow"
+    MASJID_BROADCASTS = "/masjids/{place_id}/broadcasts"
+    INTERNAL_MASJID_BROADCAST = "/internal/masjids/{place_id}/broadcast"

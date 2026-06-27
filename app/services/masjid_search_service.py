@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from math import inf
 from typing import Any, Dict, Optional, Tuple
+
+from math import inf
 
 from app.core.enums.error_code import ErrorCode
 from app.core.enums.google_places import GooglePlacesPayload
