@@ -260,6 +260,16 @@ def _create_rate_limiter(
 
 
 def _create_upload_service(settings: Settings) -> UploadService:
+    log = get_logger("bootstrap")
+    if settings.r2_configured:
+        log.info(
+            "R2 upload enabled bucket=%s endpoint=%s public_base=%s",
+            settings.r2_bucket_name,
+            settings.r2_endpoint_url,
+            settings.r2_public_base_url or "(none)",
+        )
+    else:
+        log.warning("R2 upload not configured — image uploads use stub provider")
     image_provider = (
         R2UploadProvider(settings) if settings.r2_configured else StubR2UploadProvider()
     )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from http import HTTPStatus
 
 from app.core.config import Settings
 from app.interfaces.upload_provider import UploadProvider
@@ -47,16 +48,52 @@ class R2UploadProvider(UploadProvider):
             filename: str,
             content_type: str,
     ) -> str:
-        if not self._settings.r2_configured:
-            raise RuntimeError("R2 upload is not configured")
+        from botocore.exceptions import ClientError
 
+        from app.core.enums.error_code import ErrorCode
+        from app.exceptions.base import ApiException
+
+        if not self._settings.r2_configured:
+            raise ApiException(
+                "R2 upload is not configured",
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+                code=ErrorCode.UPLOAD_NOT_CONFIGURED,
+            )
+
+        bucket = self._settings.r2_bucket_name or ""
         key = self._build_key(filename)
-        self._s3_client().put_object(
-            Bucket=self._settings.r2_bucket_name,
-            Key=key,
-            Body=file_bytes,
-            ContentType=content_type,
-        )
+        try:
+            self._s3_client().put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=file_bytes,
+                ContentType=content_type,
+            )
+        except ClientError as exc:
+            error_code = exc.response.get("Error", {}).get("Code", "")
+            provider_msg = exc.response.get("Error", {}).get("Message", str(exc))
+            if error_code in {"NoSuchBucket", "NotFound"}:
+                raise ApiException(
+                    f"R2 bucket '{bucket}' does not exist. Create it in Cloudflare R2 "
+                    f"or set R2_BUCKET_NAME to your existing bucket name.",
+                    status_code=HTTPStatus.BAD_GATEWAY.value,
+                    code=ErrorCode.BAD_GATEWAY,
+                    provider_message=provider_msg,
+                ) from exc
+            if error_code in {"AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"}:
+                raise ApiException(
+                    "R2 credentials or permissions are invalid for this bucket.",
+                    status_code=HTTPStatus.BAD_GATEWAY.value,
+                    code=ErrorCode.BAD_GATEWAY,
+                    provider_message=provider_msg,
+                ) from exc
+            raise ApiException(
+                "Image upload to R2 failed.",
+                status_code=HTTPStatus.BAD_GATEWAY.value,
+                code=ErrorCode.BAD_GATEWAY,
+                provider_message=provider_msg,
+            ) from exc
+
         url = self._public_url(key)
         log_event(
             "upload.r2",
@@ -64,6 +101,7 @@ class R2UploadProvider(UploadProvider):
             resource_id=key,
             content_type=content_type,
             size_bytes=len(file_bytes),
+            bucket=bucket,
         )
         return url
 
