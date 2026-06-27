@@ -16,15 +16,13 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class BroadcastService:
-    """Masjid broadcast feed: admins create messages, users read them."""
-
     def __init__(
-        self,
-        broadcast_store: BroadcastRepository,
-        notification_service: NotificationService,
-        audit_store: AuditLogRepository,
-        rbac: RbacService,
-        default_page_size: int = 20,
+            self,
+            broadcast_store: BroadcastRepository,
+            notification_service: NotificationService,
+            audit_store: AuditLogRepository,
+            rbac: RbacService,
+            default_page_size: int = 20,
     ) -> None:
         self._broadcast_store = broadcast_store
         self._notifications = notification_service
@@ -33,10 +31,10 @@ class BroadcastService:
         self._default_page_size = default_page_size
 
     def create_broadcast(
-        self,
-        place_id: str,
-        body: BroadcastCreateRequest,
-        current_user: Dict[str, Any],
+            self,
+            place_id: str,
+            body: BroadcastCreateRequest,
+            current_user: Dict[str, Any],
     ) -> BroadcastDeliveryResult:
         user = self._rbac.require_masjid_admin(current_user, place_id)
 
@@ -83,11 +81,11 @@ class BroadcastService:
         )
 
     def list_broadcasts(
-        self,
-        place_id: str,
-        *,
-        limit: Optional[int] = None,
-        before_id: Optional[int] = None,
+            self,
+            place_id: str,
+            *,
+            limit: Optional[int] = None,
+            before_id: Optional[int] = None,
     ) -> BroadcastPage:
         page_size = self._clamp_limit(limit)
         items, has_more = self._broadcast_store.list_by_masjid(
@@ -107,9 +105,9 @@ class BroadcastService:
         return BroadcastPage(items=models, next_cursor=next_cursor, has_more=has_more)
 
     def notify_followers_internal(
-        self,
-        place_id: str,
-        broadcast_id: str,
+            self,
+            place_id: str,
+            broadcast_id: str,
     ) -> BroadcastDeliveryResult:
         doc = self._broadcast_store.get_by_id(broadcast_id)
         caption = (doc or {}).get("caption", "New masjid update")

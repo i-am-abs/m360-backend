@@ -7,33 +7,33 @@ from typing import Any, Dict, List, Optional
 class AdminRepository(ABC):
     @abstractmethod
     def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Insert a new admin registration."""
+        pass
 
     @abstractmethod
     def get_by_id(self, admin_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch admin by id."""
+        pass
 
     @abstractmethod
     def get_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
-        """Fetch admin by phone."""
+        pass
 
     @abstractmethod
     def list_all(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """List admins, optionally filtered by status."""
+        pass
 
     @abstractmethod
     def update_status(
-        self,
-        admin_id: str,
-        status: str,
-        *,
-        updated_by: Optional[str] = None,
+            self,
+            admin_id: str,
+            status: str,
+            *,
+            updated_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Update registration status and return updated document."""
+        pass
 
     def link_user(self, admin_id: str, user_id: str) -> Optional[Dict[str, Any]]:
-        """Associate an approved admin with a user account."""
+        pass
 
     @abstractmethod
     def list_by_user_id(self, user_id: str) -> List[Dict[str, Any]]:
-        """Return masjid admin assignments for a user."""
+        pass

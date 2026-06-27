@@ -5,35 +5,27 @@ from typing import Dict, List, Tuple
 from app.interfaces.notification_sender import NotificationSender
 from app.utils.structured_log import log_event
 
-# FCM multicast accepts at most 500 tokens per request.
 _FCM_BATCH_SIZE = 500
 
 
 class FcmNotificationSender(NotificationSender):
-    """Sends push notifications via Firebase Cloud Messaging.
-
-    firebase-admin is imported lazily so the app can boot without the package
-    or credentials when FCM is disabled.
-    """
-
     def __init__(self, credentials_file: str) -> None:
         import firebase_admin
         from firebase_admin import credentials
 
-        if not firebase_admin._apps:  # type: ignore[attr-defined]
+        if not firebase_admin._apps:
             cred = credentials.Certificate(credentials_file)
             firebase_admin.initialize_app(cred)
-        # Cache the messaging module for reuse.
         from firebase_admin import messaging
 
         self._messaging = messaging
 
     def send_to_tokens(
-        self,
-        tokens: List[str],
-        title: str,
-        body: str,
-        data: Dict[str, str] | None = None,
+            self,
+            tokens: List[str],
+            title: str,
+            body: str,
+            data: Dict[str, str] | None = None,
     ) -> Tuple[int, int, List[str]]:
         unique_tokens = list(dict.fromkeys(t for t in tokens if t))
         if not unique_tokens:
@@ -78,14 +70,12 @@ class FcmNotificationSender(NotificationSender):
 
 
 class StubNotificationSender(NotificationSender):
-    """No-op sender used when FCM is not configured (logs only)."""
-
     def send_to_tokens(
-        self,
-        tokens: List[str],
-        title: str,
-        body: str,
-        data: Dict[str, str] | None = None,
+            self,
+            tokens: List[str],
+            title: str,
+            body: str,
+            data: Dict[str, str] | None = None,
     ) -> Tuple[int, int, List[str]]:
         unique = [t for t in tokens if t]
         log_event(

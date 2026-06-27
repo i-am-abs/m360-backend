@@ -153,7 +153,6 @@ def _create_masjid_store(
         settings: Settings,
         mongo_client: Optional[MongoClient],
 ) -> "MongoMasjidStore | NoOpMasjidStore":
-    """Return a ``MongoMasjidStore`` when MongoDB is configured, else a no-op stub."""
     if settings.mongodb_configured and mongo_client is not None:
         return MongoMasjidStore(mongo_client.get_database(settings.mongodb_database))
     return NoOpMasjidStore()
@@ -214,7 +213,6 @@ def _create_platform_stores(
         settings: Settings,
         mongo_client: Optional[MongoClient],
 ) -> dict:
-    """Create Mongo-backed platform stores or no-op fallbacks."""
     if settings.mongodb_configured and mongo_client is not None:
         db = mongo_client.get_database(settings.mongodb_database)
         return {
@@ -275,7 +273,6 @@ def _create_broadcast_stores(
         settings: Settings,
         mongo_client: Optional[MongoClient],
 ) -> dict:
-    """Create Mongo-backed broadcast stores or no-op fallbacks."""
     if settings.mongodb_configured and mongo_client is not None:
         db = mongo_client.get_database(settings.mongodb_database)
         return {
@@ -291,7 +288,6 @@ def _create_broadcast_stores(
 
 
 def _create_notification_sender(settings: Settings):
-    """Return an FCM sender when configured, else a logging stub."""
     if settings.fcm_configured:
         try:
             sender = FcmNotificationSender(settings.firebase_credentials_file or "")
@@ -300,7 +296,7 @@ def _create_notification_sender(settings: Settings):
                 settings.firebase_credentials_file,
             )
             return sender
-        except Exception as exc:  # pragma: no cover - depends on firebase-admin/runtime
+        except Exception as exc:
             _log.warning(
                 "FCM configured but Firebase init failed (%s) — using stub sender.",
                 exc,
@@ -367,8 +363,6 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         store=user_store,
         places_reader=masjid_search,
     )
-
-    # Masjid committee / amenities store (MongoDB when available, no-op otherwise)
     app.state.masjid_store = _create_masjid_store(
         settings, app.state.mongo_client
     )
@@ -422,7 +416,6 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         cache_key_prefix=settings.redis_key_prefix,
     )
 
-    # Broadcast / push-notification stack ------------------------------------
     broadcast_stores = _create_broadcast_stores(settings, app.state.mongo_client)
     app.state.fcm_token_store = broadcast_stores["fcm_token_store"]
     app.state.masjid_follow_store = broadcast_stores["follow_store"]

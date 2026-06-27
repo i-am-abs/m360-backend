@@ -7,16 +7,16 @@ from typing import List
 class MasjidFollowRepository(ABC):
     @abstractmethod
     def follow(self, user_id: str, masjid_id: str) -> None:
-        """Record that a user follows a masjid (idempotent)."""
+        pass
 
     @abstractmethod
     def unfollow(self, user_id: str, masjid_id: str) -> None:
-        """Remove a follow relationship."""
+        pass
 
     @abstractmethod
     def is_following(self, user_id: str, masjid_id: str) -> bool:
-        """Return True when the user follows the masjid."""
+        pass
 
     @abstractmethod
     def list_follower_user_ids(self, masjid_id: str) -> List[str]:
-        """Return all user ids following a masjid."""
+        pass

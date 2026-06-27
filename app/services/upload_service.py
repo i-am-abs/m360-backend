@@ -12,8 +12,6 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class UploadService:
-    """Factory that routes uploads to the correct provider by content type."""
-
     _MAX_IMAGE_BYTES = 10 * 1024 * 1024
     _MAX_VIDEO_BYTES = 200 * 1024 * 1024
 
@@ -21,10 +19,10 @@ class UploadService:
         self._providers = providers
 
     def upload(
-        self,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+            self,
+            file_bytes: bytes,
+            filename: str,
+            content_type: str,
     ) -> UploadResponse:
         media_type = self._detect_media_type(content_type)
         self._validate_size(media_type, len(file_bytes))
@@ -38,10 +36,10 @@ class UploadService:
             )
 
         with log_timing(
-            "upload",
-            "upload",
-            content_type=content_type,
-            size_bytes=len(file_bytes),
+                "upload",
+                "upload",
+                content_type=content_type,
+                size_bytes=len(file_bytes),
         ):
             url = provider.upload(file_bytes, filename, content_type)
 

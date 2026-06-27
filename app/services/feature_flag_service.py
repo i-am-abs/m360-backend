@@ -19,14 +19,12 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class FeatureFlagService:
-    """Resolve location-based feature flags using ordered strategies."""
-
     def __init__(
-        self,
-        store: FeatureFlagRepository,
-        redis_client: Optional[Redis] = None,
-        cache_ttl_seconds: int = 300,
-        cache_key_prefix: str = "m360",
+            self,
+            store: FeatureFlagRepository,
+            redis_client: Optional[Redis] = None,
+            cache_ttl_seconds: int = 300,
+            cache_key_prefix: str = "m360",
     ) -> None:
         self._store = store
         self._redis = redis_client

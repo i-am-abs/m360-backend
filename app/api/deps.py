@@ -93,7 +93,8 @@ def get_bearer_credentials(
     return credentials
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), store: UserRepository = Depends(get_user_store),) -> Dict[str, Any]:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer),
+                     store: UserRepository = Depends(get_user_store), ) -> Dict[str, Any]:
     if credentials is None or not credentials.credentials:
         raise ApiException(
             "Missing Authorization bearer token",

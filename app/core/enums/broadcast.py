@@ -4,8 +4,6 @@ from enum import Enum
 
 
 class BroadcastMessageType(str, Enum):
-    """Type of broadcast message sent by a masjid committee."""
-
     VIDEO = "video"
     TEXT = "text"
     ANNOUNCEMENT = "announcement"

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.enums.masjid_amenity import Amenity

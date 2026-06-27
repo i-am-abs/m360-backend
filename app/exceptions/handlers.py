@@ -25,7 +25,6 @@ def _error_body(
         "error": {
             "code": code,
             "message": message,
-            # "exact_message_from_service_provider": provider_message,
         },
     }
 

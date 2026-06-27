@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable
 
 from app.core.enums.error_code import ErrorCode
 from app.core.enums.role import UserRole
@@ -11,8 +11,6 @@ from app.utils.structured_log import log_event
 
 
 class RbacService:
-    """Role-based access control for masjid admin operations."""
-
     def __init__(self, admin_store: AdminRepository) -> None:
         self._admin_store = admin_store
 
@@ -37,9 +35,9 @@ class RbacService:
         return UserRole.USER.value
 
     def require_roles(
-        self,
-        user: Dict[str, Any],
-        allowed_roles: Iterable[str],
+            self,
+            user: Dict[str, Any],
+            allowed_roles: Iterable[str],
     ) -> Dict[str, Any]:
         role = self.resolve_user_role(user)
         user_id = user.get("user_id")
@@ -59,9 +57,9 @@ class RbacService:
         return {**user, "role": role}
 
     def require_masjid_admin(
-        self,
-        user: Dict[str, Any],
-        place_id: str,
+            self,
+            user: Dict[str, Any],
+            place_id: str,
     ) -> Dict[str, Any]:
         user_with_role = self.require_roles(
             user,

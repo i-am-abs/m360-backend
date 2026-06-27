@@ -12,11 +12,11 @@ from app.utils.structured_log import log_event, log_timing
 
 class MasjidListingService:
     def __init__(
-        self,
-        admin_store: AdminRepository,
-        listing_store: MasjidListingRepository,
-        search_service: MasjidSearchService,
-        user_store: UserRepository,
+            self,
+            admin_store: AdminRepository,
+            listing_store: MasjidListingRepository,
+            search_service: MasjidSearchService,
+            user_store: UserRepository,
     ) -> None:
         self._admin_store = admin_store
         self._listing_store = listing_store
@@ -66,9 +66,9 @@ class MasjidListingService:
         try:
             place = self._search_service.get_place_by_id(place_id)
             return (
-                place.get("displayName", {}).get("text")
-                or place.get("name")
-                or place_id
+                    place.get("displayName", {}).get("text")
+                    or place.get("name")
+                    or place_id
             )
         except Exception:
             return place_id

@@ -10,7 +10,7 @@ from app.interfaces.feature_flag_repository import FeatureFlagRepository
 class FeatureResolutionStrategy(ABC):
     @abstractmethod
     def resolve(self, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Return a feature-flag document or None when this strategy cannot resolve."""
+        pass
 
 
 class LocationKeyStrategy(FeatureResolutionStrategy):

@@ -11,8 +11,6 @@ from app.interfaces.audit_log_repository import AuditLogRepository
 
 
 class MongoAuditLogStore(AuditLogRepository):
-    """Collection: ``audit_logs``"""
-
     _COLLECTION = "audit_logs"
 
     def __init__(self, db: Database) -> None:
@@ -43,11 +41,11 @@ class MongoAuditLogStore(AuditLogRepository):
         self._col.insert_one(payload)
 
     def list_by_resource(
-        self,
-        resource_type: str,
-        resource_id: str,
-        *,
-        limit: int = 50,
+            self,
+            resource_type: str,
+            resource_id: str,
+            *,
+            limit: int = 50,
     ) -> List[Dict[str, Any]]:
         docs = (
             self._col.find({
@@ -65,10 +63,10 @@ class NoOpAuditLogStore(AuditLogRepository):
         pass
 
     def list_by_resource(
-        self,
-        resource_type: str,
-        resource_id: str,
-        *,
-        limit: int = 50,
+            self,
+            resource_type: str,
+            resource_id: str,
+            *,
+            limit: int = 50,
     ) -> List[Dict[str, Any]]:
         return []

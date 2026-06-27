@@ -16,7 +16,9 @@ log = get_logger(__name__)
 
 
 class PhoneAuthService:
-    def __init__(self, store: UserRepository, otp_gateway: OtpGateway, phone_validator: PhoneValidator, session_ttl_seconds: int, msg91_pending: Optional[Msg91PendingReqIdStore] = None, msg91_async_req_id_wait_seconds: float = 0.0,) -> None:
+    def __init__(self, store: UserRepository, otp_gateway: OtpGateway, phone_validator: PhoneValidator,
+                 session_ttl_seconds: int, msg91_pending: Optional[Msg91PendingReqIdStore] = None,
+                 msg91_async_req_id_wait_seconds: float = 0.0, ) -> None:
         self._store = store
         self._otp_gateway = otp_gateway
         self._phone_validator = phone_validator

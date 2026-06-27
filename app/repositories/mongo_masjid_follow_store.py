@@ -10,12 +10,6 @@ from app.interfaces.masjid_follow_repository import MasjidFollowRepository
 
 
 class MongoMasjidFollowStore(MasjidFollowRepository):
-    """Collection: ``masjid_follows`` — which user follows which masjid.
-
-    Separate from favourites (which is capped at 3); follows are unlimited and
-    used purely for broadcast notification fan-out.
-    """
-
     _COLLECTION = "masjid_follows"
 
     def __init__(self, db: Database) -> None:

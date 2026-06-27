@@ -10,13 +10,6 @@ from app.interfaces.fcm_token_repository import FcmTokenRepository
 
 
 class MongoFcmTokenStore(FcmTokenRepository):
-    """Collection: ``fcm_tokens`` — maps device tokens to users.
-
-    Document shape::
-
-        { "token": str, "user_id": str, "platform": str | None, "updated_at": str }
-    """
-
     _COLLECTION = "fcm_tokens"
 
     def __init__(self, db: Database) -> None:

@@ -7,12 +7,12 @@ from typing import List
 class FcmTokenRepository(ABC):
     @abstractmethod
     def register(self, user_id: str, token: str, platform: str | None = None) -> None:
-        """Create or update an FCM device token for a user."""
+        pass
 
     @abstractmethod
     def list_tokens_for_users(self, user_ids: List[str]) -> List[str]:
-        """Return all device tokens belonging to the given users."""
+        pass
 
     @abstractmethod
     def remove(self, token: str) -> None:
-        """Remove a token (e.g. after FCM reports it invalid)."""
+        pass

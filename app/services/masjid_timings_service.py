@@ -11,38 +11,38 @@ from app.utils.structured_log import log_event, log_timing
 
 class MasjidTimingsService:
     def __init__(
-        self,
-        masjid_store: MasjidRepository,
-        audit_store: AuditLogRepository,
-        rbac: RbacService,
+            self,
+            masjid_store: MasjidRepository,
+            audit_store: AuditLogRepository,
+            rbac: RbacService,
     ) -> None:
         self._masjid_store = masjid_store
         self._audit_store = audit_store
         self._rbac = rbac
 
     def create_timings(
-        self,
-        place_id: str,
-        body: MasjidTimingsRequest,
-        current_user: Dict[str, Any],
+            self,
+            place_id: str,
+            body: MasjidTimingsRequest,
+            current_user: Dict[str, Any],
     ) -> Dict[str, Any]:
         return self._save_timings(place_id, body, current_user, action="timings_created")
 
     def update_timings(
-        self,
-        place_id: str,
-        body: MasjidTimingsRequest,
-        current_user: Dict[str, Any],
+            self,
+            place_id: str,
+            body: MasjidTimingsRequest,
+            current_user: Dict[str, Any],
     ) -> Dict[str, Any]:
         return self._save_timings(place_id, body, current_user, action="timings_updated")
 
     def _save_timings(
-        self,
-        place_id: str,
-        body: MasjidTimingsRequest,
-        current_user: Dict[str, Any],
-        *,
-        action: str,
+            self,
+            place_id: str,
+            body: MasjidTimingsRequest,
+            current_user: Dict[str, Any],
+            *,
+            action: str,
     ) -> Dict[str, Any]:
         user = self._rbac.require_masjid_admin(current_user, place_id)
         timings = [item.model_dump() for item in body.timings]

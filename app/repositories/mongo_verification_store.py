@@ -11,8 +11,6 @@ from app.interfaces.verification_repository import VerificationRepository
 
 
 class MongoVerificationStore(VerificationRepository):
-    """Collection: ``verification_requests``"""
-
     _COLLECTION = "verification_requests"
 
     def __init__(self, db: Database) -> None:
@@ -53,11 +51,11 @@ class MongoVerificationStore(VerificationRepository):
         return [self._public(doc) for doc in docs]
 
     def update_status(
-        self,
-        request_id: str,
-        status: str,
-        *,
-        updated_by: Optional[str] = None,
+            self,
+            request_id: str,
+            status: str,
+            *,
+            updated_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         update: Dict[str, Any] = {
             "$set": {
@@ -94,10 +92,10 @@ class NoOpVerificationStore(VerificationRepository):
         return []
 
     def update_status(
-        self,
-        request_id: str,
-        status: str,
-        *,
-        updated_by: Optional[str] = None,
+            self,
+            request_id: str,
+            status: str,
+            *,
+            updated_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         return None

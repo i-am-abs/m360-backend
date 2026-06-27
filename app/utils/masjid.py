@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import zlib
 from typing import Any, Dict
+
+import zlib
+
 
 def get_deterministic_masjid_metadata(place_id: str) -> Dict[str, Any]:
     h = zlib.crc32((place_id or "").encode("utf-8"))

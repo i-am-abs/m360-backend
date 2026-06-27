@@ -12,8 +12,6 @@ from app.interfaces.admin_repository import AdminRepository
 
 
 class MongoAdminStore(AdminRepository):
-    """Collection: ``admins``"""
-
     _COLLECTION = "admins"
 
     def __init__(self, db: Database) -> None:
@@ -67,11 +65,11 @@ class MongoAdminStore(AdminRepository):
         return [self._public(doc) for doc in docs]
 
     def update_status(
-        self,
-        admin_id: str,
-        status: str,
-        *,
-        updated_by: Optional[str] = None,
+            self,
+            admin_id: str,
+            status: str,
+            *,
+            updated_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         update: Dict[str, Any] = {
             "$set": {
@@ -126,11 +124,11 @@ class NoOpAdminStore(AdminRepository):
         return []
 
     def update_status(
-        self,
-        admin_id: str,
-        status: str,
-        *,
-        updated_by: Optional[str] = None,
+            self,
+            admin_id: str,
+            status: str,
+            *,
+            updated_by: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         return None
 

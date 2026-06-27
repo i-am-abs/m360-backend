@@ -12,7 +12,6 @@ from app.core.enums.error_code import ErrorCode
 from app.services.rate_limiter import RateLimiter
 from app.utils.structured_log import log_event
 
-
 _HEALTH_PATHS = {
     "/health",
     "/health/live",
@@ -29,9 +28,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._rate_limiter = rate_limiter
 
     async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable[[Request], Response],
+            self,
+            request: Request,
+            call_next: Callable[[Request], Response],
     ) -> Response:
         if self._rate_limiter is None:
             return await call_next(request)

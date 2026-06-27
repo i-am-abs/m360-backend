@@ -14,7 +14,6 @@ from app.schemas.verification import (
     VerificationRequestCreate,
     VerificationRequestResponse,
 )
-from app.schemas.verification_status import VerificationStatusUpdate
 from app.utils.structured_log import log_event, log_timing
 
 
@@ -25,9 +24,9 @@ class VerificationService:
     }
 
     def __init__(
-        self,
-        verification_store: VerificationRepository,
-        audit_store: AuditLogRepository,
+            self,
+            verification_store: VerificationRepository,
+            audit_store: AuditLogRepository,
     ) -> None:
         self._verification_store = verification_store
         self._audit_store = audit_store
@@ -40,9 +39,9 @@ class VerificationService:
         return RolesResponse(roles=roles)
 
     def create_request(
-        self,
-        body: VerificationRequestCreate,
-        current_user: Dict[str, Any],
+            self,
+            body: VerificationRequestCreate,
+            current_user: Dict[str, Any],
     ) -> VerificationRequestResponse:
         user_id = current_user.get("user_id")
         if not user_id:
@@ -77,10 +76,10 @@ class VerificationService:
         return self._to_response(stored)
 
     def update_status(
-        self,
-        request_id: str,
-        status: str,
-        current_user: Dict[str, Any],
+            self,
+            request_id: str,
+            status: str,
+            current_user: Dict[str, Any],
     ) -> VerificationRequestResponse:
         from app.core.enums.role import UserRole
 

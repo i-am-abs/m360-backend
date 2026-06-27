@@ -10,8 +10,6 @@ from app.interfaces.masjid_listing_repository import MasjidListingRepository
 
 
 class MongoMasjidListingStore(MasjidListingRepository):
-    """Collection: ``masjid_listings``"""
-
     _COLLECTION = "masjid_listings"
 
     def __init__(self, db: Database) -> None:

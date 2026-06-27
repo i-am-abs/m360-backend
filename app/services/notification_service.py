@@ -9,13 +9,11 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class NotificationService:
-    """Owns device-token registration, masjid follows, and fan-out delivery."""
-
     def __init__(
-        self,
-        token_store: FcmTokenRepository,
-        follow_store: MasjidFollowRepository,
-        sender: NotificationSender,
+            self,
+            token_store: FcmTokenRepository,
+            follow_store: MasjidFollowRepository,
+            sender: NotificationSender,
     ) -> None:
         self._token_store = token_store
         self._follow_store = follow_store
@@ -37,17 +35,12 @@ class NotificationService:
         return self._follow_store.is_following(user_id, masjid_id)
 
     def notify_followers(
-        self,
-        masjid_id: str,
-        title: str,
-        body: str,
-        data: Dict[str, str] | None = None,
+            self,
+            masjid_id: str,
+            title: str,
+            body: str,
+            data: Dict[str, str] | None = None,
     ) -> Tuple[int, int, int]:
-        """Fan a notification out to every follower of a masjid.
-
-        Returns ``(recipients, sent, failed)``. Best-effort: failures are logged
-        and invalid tokens pruned, never raised to the caller.
-        """
         with log_timing("broadcast", "fanout", resource_id=masjid_id):
             user_ids = self._follow_store.list_follower_user_ids(masjid_id)
             tokens = self._token_store.list_tokens_for_users(user_ids)

@@ -7,14 +7,8 @@ from app.core.config import Settings
 from app.interfaces.upload_provider import UploadProvider
 from app.utils.structured_log import log_event
 
-# Cloudflare R2 speaks the S3 API but REQUIRES AWS Signature V4 signing.
-# We use boto3 (imported lazily) so signing is handled correctly; plain HTTP
-# Basic auth does NOT work against R2.
-
 
 class R2UploadProvider(UploadProvider):
-    """Upload images to Cloudflare R2 via the S3-compatible API (SigV4)."""
-
     _IMAGE_TYPES = {
         "image/jpeg",
         "image/jpg",
@@ -26,7 +20,7 @@ class R2UploadProvider(UploadProvider):
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client = None  # lazily created boto3 S3 client
+        self._client = None
 
     def supports(self, content_type: str) -> bool:
         return content_type.lower() in self._IMAGE_TYPES
@@ -48,10 +42,10 @@ class R2UploadProvider(UploadProvider):
         return self._client
 
     def upload(
-        self,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+            self,
+            file_bytes: bytes,
+            filename: str,
+            content_type: str,
     ) -> str:
         if not self._settings.r2_configured:
             raise RuntimeError("R2 upload is not configured")
@@ -87,16 +81,14 @@ class R2UploadProvider(UploadProvider):
 
 
 class StubR2UploadProvider(UploadProvider):
-    """Fallback when R2 is not configured (dev/test)."""
-
     def supports(self, content_type: str) -> bool:
         return content_type.lower().startswith("image/")
 
     def upload(
-        self,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+            self,
+            file_bytes: bytes,
+            filename: str,
+            content_type: str,
     ) -> str:
         digest = hashlib.sha256(file_bytes).hexdigest()[:12]
         return f"https://placeholder.r2.local/uploads/{digest}/{filename}"

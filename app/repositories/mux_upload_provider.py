@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-from typing import Optional
 
 import httpx
 
@@ -11,8 +10,6 @@ from app.utils.structured_log import log_event
 
 
 class MuxUploadProvider(UploadProvider):
-    """Upload videos to Mux via direct upload API."""
-
     _VIDEO_TYPES = {
         "video/mp4",
         "video/quicktime",
@@ -27,10 +24,10 @@ class MuxUploadProvider(UploadProvider):
         return content_type.lower() in self._VIDEO_TYPES
 
     def upload(
-        self,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+            self,
+            file_bytes: bytes,
+            filename: str,
+            content_type: str,
     ) -> str:
         if not self._settings.mux_configured:
             raise RuntimeError("Mux upload is not configured")
@@ -100,9 +97,9 @@ class StubMuxUploadProvider(UploadProvider):
         return content_type.lower().startswith("video/")
 
     def upload(
-        self,
-        file_bytes: bytes,
-        filename: str,
-        content_type: str,
+            self,
+            file_bytes: bytes,
+            filename: str,
+            content_type: str,
     ) -> str:
         return f"https://placeholder.mux.local/videos/{filename}"

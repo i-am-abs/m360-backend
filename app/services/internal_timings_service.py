@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from redis import Redis
 
@@ -12,14 +12,12 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class InternalTimingsService:
-    """High-frequency read path with Redis caching."""
-
     def __init__(
-        self,
-        masjid_store: MasjidRepository,
-        redis_client: Optional[Redis] = None,
-        cache_ttl_seconds: int = 60,
-        cache_key_prefix: str = "m360",
+            self,
+            masjid_store: MasjidRepository,
+            redis_client: Optional[Redis] = None,
+            cache_ttl_seconds: int = 60,
+            cache_key_prefix: str = "m360",
     ) -> None:
         self._masjid_store = masjid_store
         self._redis = redis_client

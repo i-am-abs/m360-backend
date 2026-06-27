@@ -11,12 +11,6 @@ from app.interfaces.broadcast_repository import BroadcastRepository
 
 
 class MongoBroadcastStore(BroadcastRepository):
-    """Collection: ``broadcasts`` — masjid broadcast feed.
-
-    Each broadcast carries a per-masjid monotonic ``seq`` so the client can
-    page "older" messages using the last seen ``seq`` as a cursor.
-    """
-
     _COLLECTION = "broadcasts"
     _COUNTERS = "counters"
 
@@ -62,11 +56,11 @@ class MongoBroadcastStore(BroadcastRepository):
         return self._public(payload)
 
     def list_by_masjid(
-        self,
-        masjid_id: str,
-        *,
-        limit: int,
-        before_seq: Optional[int] = None,
+            self,
+            masjid_id: str,
+            *,
+            limit: int,
+            before_seq: Optional[int] = None,
     ) -> Tuple[List[Dict[str, Any]], bool]:
         query: Dict[str, Any] = {"masjid_id": masjid_id}
         if before_seq is not None:
@@ -100,11 +94,11 @@ class NoOpBroadcastStore(BroadcastRepository):
         raise RuntimeError("Broadcast store unavailable — enable MongoDB")
 
     def list_by_masjid(
-        self,
-        masjid_id: str,
-        *,
-        limit: int,
-        before_seq: Optional[int] = None,
+            self,
+            masjid_id: str,
+            *,
+            limit: int,
+            before_seq: Optional[int] = None,
     ) -> Tuple[List[Dict[str, Any]], bool]:
         return [], False
 

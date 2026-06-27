@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
 from pymongo import ASCENDING, DESCENDING
 from pymongo.database import Database
@@ -11,8 +10,6 @@ from app.interfaces.feature_flag_repository import FeatureFlagRepository
 
 
 class MongoFeatureFlagStore(FeatureFlagRepository):
-    """Collection: ``feature_flag_locations``"""
-
     _COLLECTION = "feature_flag_locations"
     _DEFAULT_KEY = "*"
 
@@ -63,9 +60,9 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
         return self._public(doc) if doc else None
 
     def find_by_coordinates(
-        self,
-        latitude: float,
-        longitude: float,
+            self,
+            latitude: float,
+            longitude: float,
     ) -> Optional[Dict[str, Any]]:
         candidates = list(self._col.find({
             "enabled": True,
@@ -78,10 +75,10 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
         return None
 
     def find_by_region(
-        self,
-        country: Optional[str],
-        state: Optional[str],
-        city: Optional[str],
+            self,
+            country: Optional[str],
+            state: Optional[str],
+            city: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         queries = []
         if country and state and city:
@@ -101,8 +98,8 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
     def _point_in_bounds(lat: float, lng: float, bounds: Dict[str, Any]) -> bool:
         try:
             return (
-                float(bounds["lat_min"]) <= lat <= float(bounds["lat_max"])
-                and float(bounds["lng_min"]) <= lng <= float(bounds["lng_max"])
+                    float(bounds["lat_min"]) <= lat <= float(bounds["lat_max"])
+                    and float(bounds["lng_min"]) <= lng <= float(bounds["lng_max"])
             )
         except (KeyError, TypeError, ValueError):
             return False
@@ -124,16 +121,16 @@ class NoOpFeatureFlagStore(FeatureFlagRepository):
         return None
 
     def find_by_coordinates(
-        self,
-        latitude: float,
-        longitude: float,
+            self,
+            latitude: float,
+            longitude: float,
     ) -> Optional[Dict[str, Any]]:
         return None
 
     def find_by_region(
-        self,
-        country: Optional[str],
-        state: Optional[str],
-        city: Optional[str],
+            self,
+            country: Optional[str],
+            state: Optional[str],
+            city: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         return None

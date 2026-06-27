@@ -14,7 +14,5 @@ logs/
 *.swo
 *.log
 *.pyc
-
-# Firebase service account credentials (contains private key)
 *firebase-adminsdk*.json
 project-*-firebase-adminsdk-*.json

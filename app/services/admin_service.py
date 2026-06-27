@@ -16,20 +16,20 @@ from app.utils.structured_log import log_event, log_timing
 
 class AdminService:
     def __init__(
-        self,
-        admin_store: AdminRepository,
-        audit_store: AuditLogRepository,
-        rbac: RbacService,
+            self,
+            admin_store: AdminRepository,
+            audit_store: AuditLogRepository,
+            rbac: RbacService,
     ) -> None:
         self._admin_store = admin_store
         self._audit_store = audit_store
         self._rbac = rbac
 
     def register(
-        self,
-        request: AdminRegisterRequest,
-        *,
-        current_user: Optional[Dict[str, Any]] = None,
+            self,
+            request: AdminRegisterRequest,
+            *,
+            current_user: Optional[Dict[str, Any]] = None,
     ) -> AdminResponse:
         with log_timing("admin", "register", phone=request.phone):
             if request.role == UserRole.SUPER_ADMIN:
@@ -75,10 +75,10 @@ class AdminService:
         return self._to_response(stored)
 
     def list_admins(
-        self,
-        current_user: Dict[str, Any],
-        *,
-        status: Optional[str] = None,
+            self,
+            current_user: Dict[str, Any],
+            *,
+            status: Optional[str] = None,
     ) -> List[AdminResponse]:
         self._rbac.require_roles(
             current_user,
@@ -88,10 +88,10 @@ class AdminService:
         return [self._to_response(doc) for doc in docs]
 
     def update_status(
-        self,
-        admin_id: str,
-        body: AdminStatusUpdateRequest,
-        current_user: Dict[str, Any],
+            self,
+            admin_id: str,
+            body: AdminStatusUpdateRequest,
+            current_user: Dict[str, Any],
     ) -> AdminResponse:
         self._rbac.require_roles(current_user, {UserRole.SUPER_ADMIN.value})
 

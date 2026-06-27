@@ -4,7 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from threading import Lock
-from typing import Deque, Dict, Optional, Tuple
+from typing import Deque, Dict, Tuple
 
 from redis import Redis
 
@@ -14,12 +14,12 @@ from app.utils.structured_log import log_event
 class RateLimitBackend(ABC):
     @abstractmethod
     def check_and_increment(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int,
+            self,
+            key: str,
+            limit: int,
+            window_seconds: int,
     ) -> Tuple[bool, int]:
-        """Return (allowed, retry_after_seconds)."""
+        pass
 
 
 class RedisRateLimitBackend(RateLimitBackend):
@@ -28,10 +28,10 @@ class RedisRateLimitBackend(RateLimitBackend):
         self._prefix = key_prefix
 
     def check_and_increment(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int,
+            self,
+            key: str,
+            limit: int,
+            window_seconds: int,
     ) -> Tuple[bool, int]:
         redis_key = f"{self._prefix}:ratelimit:{key}"
         try:
@@ -52,17 +52,15 @@ class RedisRateLimitBackend(RateLimitBackend):
 
 
 class InMemoryRateLimitBackend(RateLimitBackend):
-    """Process-local sliding window — use Redis in multi-worker deployments."""
-
     def __init__(self) -> None:
         self._hits: Dict[str, Deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
     def check_and_increment(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int,
+            self,
+            key: str,
+            limit: int,
+            window_seconds: int,
     ) -> Tuple[bool, int]:
         now = time.monotonic()
         cutoff = now - window_seconds
@@ -80,12 +78,12 @@ class InMemoryRateLimitBackend(RateLimitBackend):
 
 class RateLimiter:
     def __init__(
-        self,
-        backend: RateLimitBackend,
-        *,
-        default_limit: int,
-        auth_limit: int,
-        window_seconds: int = 60,
+            self,
+            backend: RateLimitBackend,
+            *,
+            default_limit: int,
+            auth_limit: int,
+            window_seconds: int = 60,
     ) -> None:
         self._backend = backend
         self._default_limit = default_limit
@@ -114,9 +112,9 @@ class RateLimiter:
     def _is_auth_path(path: str) -> bool:
         normalized = path.rstrip("/")
         return (
-            "/auth/" in normalized
-            or normalized.endswith("/auth")
-            or "/auth/phone/" in normalized
+                "/auth/" in normalized
+                or normalized.endswith("/auth")
+                or "/auth/phone/" in normalized
         )
 
     @staticmethod
