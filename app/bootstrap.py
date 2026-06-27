@@ -22,12 +22,34 @@ from app.repositories.local_cache_user_store import LocalCacheUserStore
 from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
+from app.repositories.mongo_feature_flag_store import MongoFeatureFlagStore, NoOpFeatureFlagStore
+from app.repositories.mongo_admin_store import MongoAdminStore, NoOpAdminStore
+from app.repositories.mongo_verification_store import MongoVerificationStore, NoOpVerificationStore
+from app.repositories.mongo_audit_log_store import MongoAuditLogStore, NoOpAuditLogStore
+from app.repositories.mongo_masjid_listing_store import MongoMasjidListingStore, NoOpMasjidListingStore
+from app.repositories.r2_upload_provider import R2UploadProvider, StubR2UploadProvider
+from app.repositories.mux_upload_provider import MuxUploadProvider, StubMuxUploadProvider
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
 from app.services.user_masjid_service import UserMasjidService
+from app.services.feature_flag_service import FeatureFlagService
+from app.services.rbac_service import RbacService
+from app.services.admin_service import AdminService
+from app.services.verification_service import VerificationService
+from app.services.upload_service import UploadService
+from app.services.masjid_listing_service import MasjidListingService
+from app.services.masjid_timings_service import MasjidTimingsService
+from app.services.masjid_amenities_service import MasjidAmenitiesService
+from app.services.internal_timings_service import InternalTimingsService
+from app.services.rate_limiter import (
+    InMemoryRateLimitBackend,
+    RateLimiter,
+    RedisRateLimitBackend,
+)
+from app.utils.auth_session_policy import resolve_session_ttl_seconds
 from app.utils.phone import IndiaPhoneValidator
 
 _log = get_logger(__name__)
@@ -167,10 +189,74 @@ def _create_phone_auth_service(
         store=user_store,
         otp_gateway=Msg91OtpGateway(settings),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
-        session_ttl_seconds=settings.auth_session_ttl_seconds,
+        session_ttl_seconds=resolve_session_ttl_seconds(
+            settings.auth_session_ttl_seconds,
+            force_infinite=settings.auth_force_infinite_sessions,
+        ),
         msg91_pending=msg91_pending,
         msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
     )
+
+
+def _create_platform_stores(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> dict:
+    """Create Mongo-backed platform stores or no-op fallbacks."""
+    if settings.mongodb_configured and mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        return {
+            "feature_flag_store": MongoFeatureFlagStore(db),
+            "admin_store": MongoAdminStore(db),
+            "verification_store": MongoVerificationStore(db),
+            "audit_store": MongoAuditLogStore(db),
+            "listing_store": MongoMasjidListingStore(db),
+        }
+    return {
+        "feature_flag_store": NoOpFeatureFlagStore(),
+        "admin_store": NoOpAdminStore(),
+        "verification_store": NoOpVerificationStore(),
+        "audit_store": NoOpAuditLogStore(),
+        "listing_store": NoOpMasjidListingStore(),
+    }
+
+
+def _create_rate_limiter(
+        settings: Settings,
+        redis_client: Optional[Redis],
+) -> Optional[RateLimiter]:
+    if not settings.rate_limit_enabled:
+        return None
+
+    if redis_client is not None:
+        backend = RedisRateLimitBackend(redis_client, settings.redis_key_prefix)
+        _log.info(
+            "Rate limiting enabled (redis) default=%s/min auth=%s/min",
+            settings.rate_limit_requests_per_minute,
+            settings.rate_limit_auth_requests_per_minute,
+        )
+    else:
+        backend = InMemoryRateLimitBackend()
+        _log.warning(
+            "Rate limiting uses in-memory backend — enable Redis for multi-worker accuracy."
+        )
+
+    return RateLimiter(
+        backend,
+        default_limit=settings.rate_limit_requests_per_minute,
+        auth_limit=settings.rate_limit_auth_requests_per_minute,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
+
+
+def _create_upload_service(settings: Settings) -> UploadService:
+    image_provider = (
+        R2UploadProvider(settings) if settings.r2_configured else StubR2UploadProvider()
+    )
+    video_provider = (
+        MuxUploadProvider(settings) if settings.mux_configured else StubMuxUploadProvider()
+    )
+    return UploadService([image_provider, video_provider])
 
 
 def bootstrap(app: FastAPI, settings: Settings) -> None:
@@ -233,12 +319,64 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         settings, app.state.mongo_client
     )
 
+    platform = _create_platform_stores(settings, app.state.mongo_client)
+    app.state.feature_flag_store = platform["feature_flag_store"]
+    app.state.admin_store = platform["admin_store"]
+    app.state.verification_store = platform["verification_store"]
+    app.state.audit_store = platform["audit_store"]
+    app.state.listing_store = platform["listing_store"]
+
+    rbac = RbacService(platform["admin_store"])
+    app.state.rbac_service = rbac
+
+    app.state.feature_flag_service = FeatureFlagService(
+        platform["feature_flag_store"],
+        redis_client=app.state.redis,
+        cache_ttl_seconds=settings.api_get_cache_ttl_seconds,
+        cache_key_prefix=settings.redis_key_prefix,
+    )
+    app.state.admin_service = AdminService(
+        platform["admin_store"],
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.verification_service = VerificationService(
+        platform["verification_store"],
+        platform["audit_store"],
+    )
+    app.state.upload_service = _create_upload_service(settings)
+    app.state.masjid_listing_service = MasjidListingService(
+        platform["admin_store"],
+        platform["listing_store"],
+        masjid_search,
+        user_store,
+    )
+    app.state.masjid_timings_service = MasjidTimingsService(
+        app.state.masjid_store,
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.masjid_amenities_service = MasjidAmenitiesService(
+        app.state.masjid_store,
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.internal_timings_service = InternalTimingsService(
+        app.state.masjid_store,
+        redis_client=app.state.redis,
+        cache_ttl_seconds=settings.internal_timings_cache_ttl_seconds,
+        cache_key_prefix=settings.redis_key_prefix,
+    )
+
+    app.state.rate_limiter = _create_rate_limiter(settings, app.state.redis)
+
     mode = app.state.user_store_backend
     _log.info(
         "Bootstrap complete — persistence=%s — api_response_cache=%s — "
-        "auth_session_ttl_seconds=%s (never_expires=%s) — all services wired.",
+        "auth_session_ttl_seconds=%s (never_expires=%s, force_infinite=%s) — all services wired.",
         mode,
         app.state.api_response_cache,
         settings.auth_session_ttl_seconds,
         settings.auth_session_never_expires,
+        settings.auth_force_infinite_sessions,
     )

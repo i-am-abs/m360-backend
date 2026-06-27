@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class MasjidRepository(ABC):
@@ -52,3 +52,27 @@ class MasjidRepository(ABC):
         Returns the stored document (with ``created_at`` / ``updated_at``
         populated).
         """
+
+    @abstractmethod
+    def get_timings(self, place_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Return prayer timings for *place_id*, or ``None`` if not set."""
+
+    @abstractmethod
+    def update_timings(
+        self,
+        place_id: str,
+        timings: List[Dict[str, Any]],
+        *,
+        updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Replace prayer timings for *place_id*."""
+
+    @abstractmethod
+    def update_amenities(
+        self,
+        place_id: str,
+        amenities: List[str],
+        *,
+        updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Replace amenities list for *place_id*."""
