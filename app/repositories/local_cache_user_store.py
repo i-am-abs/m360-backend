@@ -134,6 +134,18 @@ class LocalCacheUserStore(UserRepository):
             ]
             return list(self._data["favorites_by_user_id"][user_id])
 
+    def block_user(self, user_id: str) -> None:
+        pass
+
+    def unblock_user(self, user_id: str) -> None:
+        pass
+
+    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+        return {"users": [], "total": 0}
+
+    def search_users(self, query: str) -> List[Dict[str, Any]]:
+        return []
+
     @staticmethod
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()

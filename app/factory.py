@@ -60,5 +60,16 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(application)
     application.include_router(api_v1_router, prefix="/api/v1")
-    application.include_router(api_v1_router)
+
+    if settings.admin_panel_enabled:
+        from fastapi.staticfiles import StaticFiles
+        from app.web.router import router as admin_router
+
+        application.mount(
+            "/admin/static",
+            StaticFiles(directory="app/web/static"),
+            name="admin_static",
+        )
+        application.include_router(admin_router)
+
     return application

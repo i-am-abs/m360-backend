@@ -1,0 +1,99 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Dashboard{% endblock %}
+{% block title %}Dashboard — Muslim360 Admin{% endblock %}
+
+{% block page_content %}
+{% set active_nav = 'dashboard' %}
+
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+  {% set stats_items = [
+    ('Total Users', stats.total_users or 0, 'users', 'bg-blue-50 text-blue-700 border-blue-200', 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z'),
+    ('Total Claims', stats.total_claims or 0, 'claims', 'bg-amber-50 text-amber-700 border-amber-200', 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
+    ('Registered Masjids', stats.total_masjids or 0, 'masjids', 'bg-emerald-50 text-emerald-700 border-emerald-200', 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z'),
+    ('Total Donations', stats.total_donations or 0, 'donations', 'bg-purple-50 text-purple-700 border-purple-200', 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'),
+  ] %}
+
+  {% for label, value, icon, colors, icon_path in stats_items %}
+    <div class="rounded-xl border {{ colors }} bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium opacity-70">{{ label }}</p>
+          <p class="mt-1 text-3xl font-bold tracking-tight">{{ value }}</p>
+        </div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-lg {{ colors.split(' ')[0] }}">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <!-- Recent Claims -->
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-100 px-6 py-4">
+      <h3 class="text-base font-semibold text-gray-900">Recent Claims</h3>
+    </div>
+    <div class="p-6">
+      {% if recent_claims %}
+        <ul class="divide-y divide-gray-100">
+          {% for claim in recent_claims %}
+            <li class="py-3 first:pt-0 last:pb-0">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">{{ claim.name or 'Unnamed' }}</p>
+                  <p class="text-xs text-gray-500">{{ claim.email }}</p>
+                </div>
+                <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                  {{ claim.status or 'pending' }}
+                </span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="py-12 text-center">
+          <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="mt-3 text-sm text-gray-500">No claims yet</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Users -->
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-100 px-6 py-4">
+      <h3 class="text-base font-semibold text-gray-900">Recent Users</h3>
+    </div>
+    <div class="p-6">
+      {% if recent_users %}
+        <ul class="divide-y divide-gray-100">
+          {% for user in recent_users %}
+            <li class="py-3 first:pt-0 last:pb-0">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
+                    {{ (user.phone_number[0] if user.phone_number else '?') }}
+                  </span>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">{{ user.phone_number }}</p>
+                    <p class="text-xs text-gray-500 font-mono">{{ user.user_id[:12] if user.user_id else '' }}…</p>
+                  </div>
+                </div>
+                <span class="text-xs text-gray-400">{{ user.created_at[:10] if user.created_at else '' }}</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="py-12 text-center">
+          <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+          <p class="mt-3 text-sm text-gray-500">No users yet</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

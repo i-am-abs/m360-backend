@@ -37,3 +37,44 @@ class ApiEndpoint(Enum):
     MY_MASJIDS = "/users/me/masjids"
     MY_MASJID_ADD = "/users/me/masjids/{place_id}"
     MY_MASJID_REMOVE = "/users/me/masjids/{place_id}"
+
+    # Masjid entity (Phase 1)
+    MASJID_LIST = "/masjids"
+    MASJID_GET = "/masjids/{masjid_id}"
+    MASJID_SYNC = "/masjids/sync"
+    MASJID_UPDATE = "/masjids/{masjid_id}"
+    MASJID_UPDATE_FACILITIES = "/masjids/{masjid_id}/facilities"
+    MASJID_UPDATE_TIMINGS = "/masjids/{masjid_id}/timings"
+    MASJID_COMMITTEE_ADD = "/masjids/{masjid_id}/committee"
+    MASJID_COMMITTEE_REMOVE = "/masjids/{masjid_id}/committee/{user_id}"
+
+    # Claims (Phase 2)
+    CLAIM_SUBMIT = "/masjids/{masjid_id}/claim"
+    CLAIM_STATUS = "/masjids/{masjid_id}/claim/status"
+    ADMIN_CLAIMS_LIST = "/admin/claims"
+    ADMIN_CLAIM_GET = "/admin/claims/{claim_id}"
+    ADMIN_CLAIM_APPROVE = "/admin/claims/{claim_id}/approve"
+    ADMIN_CLAIM_REJECT = "/admin/claims/{claim_id}/reject"
+    ADMIN_CLAIM_STATS = "/admin/claims/stats"
+
+    # Broadcast (Phase 3)
+    BROADCAST_LIST = "/masjids/{masjid_id}/broadcast"
+    BROADCAST_POST = "/masjids/{masjid_id}/broadcast"
+    BROADCAST_DELETE = "/broadcast/{message_id}"
+    BROADCAST_REACT = "/broadcast/{message_id}/react"
+    FOLLOW_MASJID = "/masjids/{masjid_id}/follow"
+    UNFOLLOW_MASJID = "/masjids/{masjid_id}/follow"
+    FOLLOW_STATUS = "/masjids/{masjid_id}/follow/status"
+    FOLLOWER_COUNT = "/masjids/{masjid_id}/followers/count"
+
+    # Donations (Phase 4)
+    CAMPAIGN_CREATE = "/masjids/{masjid_id}/campaigns"
+    CAMPAIGN_LIST = "/masjids/{masjid_id}/campaigns"
+    CAMPAIGN_GET = "/campaigns/{campaign_id}"
+    CAMPAIGN_UPDATE = "/campaigns/{campaign_id}"
+    CAMPAIGN_CANCEL = "/campaigns/{campaign_id}"
+    DONATION_INITIATE = "/campaigns/{campaign_id}/donate"
+    DONATION_STATUS = "/donations/{donation_id}/status"
+    DONATION_HISTORY = "/donations/history"
+    PAYMENT_WEBHOOK = "/webhooks/payment"
+    CAMPAIGN_DONORS = "/campaigns/{campaign_id}/donors"

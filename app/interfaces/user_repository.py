@@ -36,3 +36,19 @@ class UserRepository(ABC):
     @abstractmethod
     def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
         pass
+
+    @abstractmethod
+    def block_user(self, user_id: str) -> None:
+        ...
+
+    @abstractmethod
+    def unblock_user(self, user_id: str) -> None:
+        ...
+
+    @abstractmethod
+    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+        ...
+
+    @abstractmethod
+    def search_users(self, query: str) -> List[Dict[str, Any]]:
+        ...

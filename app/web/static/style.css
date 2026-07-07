@@ -1,0 +1,32 @@
+/* HTMX loading indicator */
+.htmx-indicator {
+  display: none;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
+/* Smooth fade-in for page transitions */
+.htmx-added {
+  opacity: 0;
+  transition: opacity 0.15s ease-in;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Form transition */
+input:focus {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Sidebar transitions */
+[class*="x-transition"] {
+  pointer-events: none;
+}

@@ -158,10 +158,39 @@ class MongoUserStore(UserRepository):
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    def block_user(self, user_id: str) -> None:
+        self._users.update_one(
+            {"user_id": user_id},
+            {"$set": {"blocked_at": self._now_iso()}},
+        )
+
+    def unblock_user(self, user_id: str) -> None:
+        self._users.update_one(
+            {"user_id": user_id},
+            {"$set": {"blocked_at": None}},
+        )
+
+    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+        cursor = self._users.find({}).sort("created_at", -1).skip(skip).limit(limit)
+        users = [self._as_user_dict(doc) for doc in cursor]
+        total = self._users.count_documents({})
+        return {"users": users, "total": total}
+
+    def search_users(self, query: str) -> List[Dict[str, Any]]:
+        docs = self._users.find({
+            "$or": [
+                {"phone_number": {"$regex": query, "$options": "i"}},
+                {"user_id": {"$regex": query, "$options": "i"}},
+            ]
+        }).limit(20)
+        return [self._as_user_dict(doc) for doc in docs]
+
     @staticmethod
     def _as_user_dict(doc: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "user_id": doc["user_id"],
             "phone_number": doc["phone_number"],
             "created_at": doc["created_at"],
+            "blocked_at": doc.get("blocked_at"),
+            "global_role": doc.get("global_role"),
         }

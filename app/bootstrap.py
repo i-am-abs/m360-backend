@@ -19,9 +19,20 @@ from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
 from app.repositories.google_places_client import GooglePlacesClient
 from app.repositories.local_cache_user_store import LocalCacheUserStore
+from app.repositories.mongo_broadcast_repository import MongoBroadcastRepository
+from app.repositories.mongo_claim_repository import MongoClaimRepository
+from app.repositories.mongo_donation_repository import MongoDonationRepository
+from app.repositories.mongo_follower_repository import MongoFollowerRepository
+from app.repositories.mongo_masjid_repository import MongoMasjidRepository
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
+from app.services.broadcast_service import BroadcastService
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
+from app.services.claim_service import ClaimService
+from app.services.connection_manager import ConnectionManager
+from app.services.donation_service import DonationService
+from app.services.follower_service import FollowerService
+from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
@@ -216,6 +227,44 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         store=user_store,
         places_reader=masjid_search,
     )
+
+    app.state.connection_manager = ConnectionManager()
+
+    mongo_client = getattr(app.state, "mongo_client", None)
+    if mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        masjid_repo = MongoMasjidRepository(db)
+        claim_repo = MongoClaimRepository(db)
+        broadcast_repo = MongoBroadcastRepository(db)
+        follower_repo = MongoFollowerRepository(db)
+        donation_repo = MongoDonationRepository(db)
+
+        app.state.masjid_entity_service = MasjidEntityService(
+            masjid_repo=masjid_repo,
+            google_places=app.state.masjid_search_service,
+        )
+        app.state.claim_service = ClaimService(
+            claim_repo=claim_repo,
+            masjid_repo=masjid_repo,
+        )
+        app.state.broadcast_service = BroadcastService(
+            broadcast_repo=broadcast_repo,
+            follower_repo=follower_repo,
+        )
+        app.state.follower_service = FollowerService(
+            follower_repo=follower_repo,
+        )
+        app.state.donation_service = DonationService(
+            donation_repo=donation_repo,
+            broadcast_service=app.state.broadcast_service,
+        )
+    else:
+        _log.warning("MongoDB not available — masjid entity, claims, broadcast, and donation features disabled.")
+        app.state.masjid_entity_service = None
+        app.state.claim_service = None
+        app.state.broadcast_service = None
+        app.state.follower_service = None
+        app.state.donation_service = None
 
     mode = app.state.user_store_backend
     _log.info(

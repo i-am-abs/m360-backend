@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Muslim360 Admin{% endblock %}
+{% block content %}
+<div class="flex min-h-full flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="flex justify-center">
+      <span class="text-5xl">🕌</span>
+    </div>
+    <h2 class="mt-4 text-center text-3xl font-extrabold tracking-tight text-gray-900">Muslim360</h2>
+    <p class="mt-1 text-center text-sm text-gray-500">Admin panel — sign in with your credentials</p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white px-6 py-8 shadow-lg ring-1 ring-gray-900/5 sm:rounded-xl">
+      {% if error %}
+        <div class="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200" role="alert">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+            <span>{{ error }}</span>
+          </div>
+        </div>
+      {% endif %}
+
+      <form class="space-y-5" action="/admin/login" method="POST" onsubmit="this.querySelector('button[type=submit]').disabled=true; this.querySelector('.btn-text').classList.add('hidden'); this.querySelector('.btn-loading').classList.remove('hidden');">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+          <div class="mt-1">
+            <input id="email" name="email" type="email" autocomplete="email" required
+                   class="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none text-sm transition">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <div class="mt-1">
+            <input id="password" name="password" type="password" autocomplete="current-password" required
+                   class="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none text-sm transition">
+          </div>
+        </div>
+
+        <button type="submit"
+                class="flex w-full items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition disabled:opacity-60 disabled:cursor-not-allowed">
+          <span class="btn-text flex items-center gap-2">Sign in</span>
+          <span class="btn-loading hidden flex items-center gap-2">
+            <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Signing in…
+          </span>
+        </button>
+      </form>
+
+      <p class="mt-6 text-center text-xs text-gray-400">&copy; 2026 Muslim360. All rights reserved.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
