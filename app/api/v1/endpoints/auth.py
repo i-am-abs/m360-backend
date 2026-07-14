@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.responses import JSONResponse
 
@@ -57,8 +57,16 @@ def retry_phone_otp(request: OtpRetryRequest, svc: PhoneAuthService = Depends(ge
 
 
 @router.post(ApiEndpoint.AUTH_PHONE_VERIFY_OTP.value, summary="Verify OTP")
-def verify_phone_otp(request: OtpVerifyRequest, svc: PhoneAuthService = Depends(get_phone_auth_service),) -> JSONResponse:
+def verify_phone_otp(
+    request: OtpVerifyRequest,
+    svc: PhoneAuthService = Depends(get_phone_auth_service),
+    fastapi_request: Request = None,
+) -> JSONResponse:
     data = svc.verify_otp(request.phone_number, request.req_id, request.otp)
+    if fastapi_request and request.fcm_token:
+        fcm = getattr(fastapi_request.app.state, "fcm_service", None)
+        if fcm:
+            fcm.store_token(data["user"]["user_id"], request.fcm_token)
     return success_response(data, message="OTP verified")
 
 

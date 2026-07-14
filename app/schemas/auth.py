@@ -32,3 +32,4 @@ class OtpVerifyRequest(BaseModel):
     phone_number: str
     req_id: str
     otp: str
+    fcm_token: str = ""

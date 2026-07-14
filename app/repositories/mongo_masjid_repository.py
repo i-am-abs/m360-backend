@@ -284,14 +284,19 @@ class MongoMasjidRepository(MasjidRepository):
             "phone": member.get("phone"),
             "image": member.get("image"),
         }
+        filter_q = (
+            {"_id": ObjectId(masjid_id)}
+            if ObjectId.is_valid(masjid_id)
+            else {"$or": [{"place_id": masjid_id}, {"id": masjid_id}]}
+        )
         self._masjids.update_one(
-            {"_id": ObjectId(masjid_id)},
+            filter_q,
             {
                 "$push": {"management.committee": member_obj},
                 "$set": {"management.is_claimed": True, "meta.updated_at": self._now_iso()},
             },
         )
-        doc = self._masjids.find_one({"_id": ObjectId(masjid_id)})
+        doc = self._masjids.find_one(filter_q)
         return self._as_dict(doc) if doc else {}
 
     def remove_committee_member(self, masjid_id: str, user_id: str) -> dict:

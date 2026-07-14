@@ -1,0 +1,279 @@
+{% extends "admin_base.html" %}
+{% block page_title %}{{ masjid.name if masjid else 'Masjid Not Found' }}{% endblock %}
+{% block title %}{{ masjid.name if masjid else 'Not Found' }} — Muslim360 Admin{% endblock %}
+
+{% block page_content %}
+{% set active_nav = 'masjids' %}
+
+<div class="mb-6">
+  <a href="/admin/masjids" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Masjids</a>
+</div>
+
+{% if flash %}
+{% for cat, msg in flash %}
+<div class="mb-6 rounded-lg px-4 py-3 text-sm {% if cat == 'success' %}bg-green-50 text-green-700 border border-green-200{% else %}bg-red-50 text-red-700 border border-red-200{% endif %}" role="alert">
+  <div class="flex items-center gap-2">
+    {% if cat == 'success' %}
+    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    {% else %}
+    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+    {% endif %}
+    <span>{{ msg }}</span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if not_found or not masjid %}
+<div class="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+  <p class="text-gray-500 text-lg">Masjid not found</p>
+</div>
+{% else %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+  <!-- LEFT COLUMN -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <!-- Basic Info -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm" x-data="{ editing: false }">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Basic Information</h3>
+        <button @click="editing = !editing" class="text-xs font-semibold text-primary-600 hover:text-primary-800" x-text="editing ? 'Cancel' : 'Edit'"></button>
+      </div>
+      <div class="p-6 space-y-3 text-sm" x-show="!editing">
+        <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="font-medium text-gray-900">{{ masjid.name }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Arabic Name</span><span class="text-gray-700" dir="rtl">{{ masjid.name_arabic or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Place ID</span><span class="font-mono text-xs text-gray-400">{{ masjid.place_id }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Address</span><span class="text-gray-700 text-right max-w-xs">{{ masjid.address or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">City</span><span class="text-gray-700">{{ masjid.city or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">State</span><span class="text-gray-700">{{ masjid.state or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Latitude</span><span class="font-mono text-xs text-gray-500">{{ masjid.location.coordinates[1] if masjid.location and masjid.location.coordinates else '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Longitude</span><span class="font-mono text-xs text-gray-500">{{ masjid.location.coordinates[0] if masjid.location and masjid.location.coordinates else '—' }}</span></div>
+        {% if masjid.location and masjid.location.coordinates %}
+        <div class="pt-2 border-t border-gray-100">
+          <a href="https://www.google.com/maps/dir/?api=1&destination={{ masjid.location.coordinates[1] }},{{ masjid.location.coordinates[0] }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-800">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+            Open in Google Maps
+          </a>
+        </div>
+        {% endif %}
+      </div>
+      <form method="post" action="/admin/masjids/{{ masjid.id }}/update" x-show="editing" class="p-6 border-t border-gray-100 bg-gray-50/50 space-y-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Name</label><input name="name" value="{{ masjid.name }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Arabic Name</label><input name="name_arabic" value="{{ masjid.name_arabic or '' }}" dir="rtl" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Address</label><input name="address" value="{{ masjid.address or '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-medium text-gray-600 mb-1">City</label><input name="city" value="{{ masjid.city or '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+          <div><label class="block text-xs font-medium text-gray-600 mb-1">State</label><input name="state" value="{{ masjid.state or '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-medium text-gray-600 mb-1">Latitude</label><input name="lat" value="{{ masjid.location.coordinates[1] if masjid.location and masjid.location.coordinates else '' }}" step="any" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500" placeholder="18.9545"></div>
+          <div><label class="block text-xs font-medium text-gray-600 mb-1">Longitude</label><input name="lng" value="{{ masjid.location.coordinates[0] if masjid.location and masjid.location.coordinates else '' }}" step="any" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500" placeholder="72.8332"></div>
+        </div>
+        <div class="flex gap-2 pt-2"><button type="submit" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 shadow-sm">Save Changes</button></div>
+      </form>
+    </div>
+
+    <!-- Contact -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm" x-data="{ editing: false }">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Contact</h3>
+        <button @click="editing = !editing" class="text-xs font-semibold text-primary-600 hover:text-primary-800" x-text="editing ? 'Cancel' : 'Edit'"></button>
+      </div>
+      <div class="p-6 space-y-3 text-sm" x-show="!editing">
+        <div class="flex justify-between"><span class="text-gray-500">Phone</span><span class="font-mono text-gray-700">{{ masjid.contact.phone if masjid.contact and masjid.contact.phone else '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Email</span><span class="text-gray-700">{{ masjid.contact.email if masjid.contact and masjid.contact.email else '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Website</span><span class="text-gray-700 truncate max-w-[200px]">{{ masjid.contact.website if masjid.contact and masjid.contact.website else '—' }}</span></div>
+      </div>
+      <form method="post" action="/admin/masjids/{{ masjid.id }}/update" x-show="editing" class="p-6 border-t border-gray-100 bg-gray-50/50 space-y-3">
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Phone</label><input name="phone" value="{{ masjid.contact.phone if masjid.contact else '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Email</label><input name="email" value="{{ masjid.contact.email if masjid.contact else '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div><label class="block text-xs font-medium text-gray-600 mb-1">Website</label><input name="website" value="{{ masjid.contact.website if masjid.contact else '' }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div class="flex gap-2 pt-2"><button type="submit" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 shadow-sm">Save Changes</button></div>
+      </form>
+    </div>
+
+    <!-- Management -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Management</h3>
+      </div>
+      <div class="p-6 space-y-3 text-sm">
+        <div class="flex justify-between"><span class="text-gray-500">Status</span>
+          <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border {{ 'bg-green-50 text-green-700 border-green-200' if masjid.management and masjid.management.is_claimed else 'bg-yellow-50 text-yellow-700 border-yellow-200' }}">
+            <span class="h-1.5 w-1.5 rounded-full {{ 'bg-green-500' if masjid.management and masjid.management.is_claimed else 'bg-yellow-500' }}"></span>
+            {{ 'Claimed' if masjid.management and masjid.management.is_claimed else 'Unclaimed' }}
+          </span>
+        </div>
+        <div class="flex justify-between"><span class="text-gray-500">Committee Members</span><span class="font-semibold">{{ masjid.management.committee|length if masjid.management and masjid.management.committee else 0 }}</span></div>
+      </div>
+      {% if masjid.management and masjid.management.committee %}
+      <div class="border-t border-gray-100">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-xs text-gray-400 border-b border-gray-50"><th class="px-6 py-3 font-medium">Name</th><th class="px-6 py-3 font-medium">Role</th><th class="px-6 py-3 font-medium">Phone</th><th class="px-6 py-3 font-medium"></th></tr></thead>
+          <tbody class="divide-y divide-gray-50">
+          {% for member in masjid.management.committee %}
+          <tr class="hover:bg-gray-50/50">
+            <td class="px-6 py-3 text-gray-900">{{ member.name or member.user_id[:12] }}</td>
+            <td class="px-6 py-3 text-gray-500">{{ member.role }}</td>
+            <td class="px-6 py-3 font-mono text-xs text-gray-400">{{ member.phone or '—' }}</td>
+            <td class="px-6 py-3 text-right">
+              <form method="post" action="/admin/masjids/{{ masjid.id }}/committee/{{ member.user_id }}/remove" hx-post="/admin/masjids/{{ masjid.id }}/committee/{{ member.user_id }}/remove" hx-confirm="Remove {{ member.name or 'this member' }} from committee?" hx-target="body">
+                <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <div class="border-t border-gray-100 px-6 py-4 bg-gray-50/50">
+        <div x-data="{ adding: false }">
+          <button @click="adding = !adding" class="text-xs font-semibold text-primary-600 hover:text-primary-800" x-text="adding ? 'Cancel' : '+ Add Member'"></button>
+          <form method="post" action="/admin/masjids/{{ masjid.id }}/committee/add" x-show="adding" class="mt-3 space-y-2">
+            <input name="member_name" placeholder="Full name" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:ring-2 focus:ring-primary-500">
+            <div class="grid grid-cols-2 gap-2">
+              <select name="member_role" class="rounded-lg border border-gray-300 px-3 py-2 text-xs focus:ring-2 focus:ring-primary-500">
+                <option value="Imam">Imam</option>
+                <option value="President">President</option>
+                <option value="Treasurer">Treasurer</option>
+                <option value="Secretary">Secretary</option>
+                <option value="General Member">General Member</option>
+              </select>
+              <input name="user_phone" placeholder="User phone (links to app user)" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-primary-500">
+            </div>
+            <p class="text-xs text-gray-400">Enter the user's phone number to link them as an app committee member. If not found, a standalone member will be created.</p>
+            <button type="submit" class="rounded-lg bg-primary-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-primary-700">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claims on this Masjid -->
+    {% if claims %}
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Claims ({{ claims|length }})</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-xs text-gray-400 border-b border-gray-50"><th class="px-6 py-3 font-medium">User</th><th class="px-6 py-3 font-medium">Role</th><th class="px-6 py-3 font-medium">Status</th><th class="px-6 py-3 font-medium">Date</th></tr></thead>
+          <tbody class="divide-y divide-gray-50">
+          {% for c in claims %}
+          <tr class="hover:bg-gray-50/50">
+            <td class="px-6 py-3 text-gray-700 font-mono text-xs">{{ c.user_id[:16] }}…</td>
+            <td class="px-6 py-3 text-gray-700">{{ c.claimed_role }}</td>
+            <td class="px-6 py-3">
+              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border
+                {% if c.status == 'approved' %}bg-green-50 text-green-700 border-green-200
+                {% elif c.status == 'rejected' %}bg-red-50 text-red-700 border-red-200
+                {% else %}bg-yellow-50 text-yellow-700 border-yellow-200{% endif %}">
+                {{ c.status }}
+              </span>
+            </td>
+            <td class="px-6 py-3 text-gray-400 text-xs">{{ c.created_at[:10] if c.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="space-y-6">
+
+    <!-- Prayer Timings -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm" x-data="{ editing: false }">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Prayer Timings</h3>
+        <button @click="editing = !editing" class="text-xs font-semibold text-primary-600 hover:text-primary-800" x-text="editing ? 'Cancel' : 'Edit'"></button>
+      </div>
+      <div class="p-6 space-y-2 text-sm" x-show="!editing">
+        {% set prayers = {'fajr': 'Fajr', 'dhuhr': 'Dhuhr', 'asr': 'Asr', 'maghrib': 'Maghrib', 'isha': 'Isha'} %}
+        {% for key, label in prayers.items() %}
+        <div class="flex items-center justify-between py-1.5">
+          <span class="text-gray-600 font-medium">{{ label }}</span>
+          <span class="font-mono text-gray-900 bg-gray-50 px-3 py-1 rounded-md text-xs">{{ masjid.timings.get(key, '—') if masjid.timings else '—' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <form method="post" action="/admin/masjids/{{ masjid.id }}/update-timings" x-show="editing" class="p-6 border-t border-gray-100 bg-gray-50/50 space-y-3">
+        <p class="text-xs text-gray-400 mb-1">24-hour format (HH:MM)</p>
+        {% for key, label in prayers.items() %}
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">{{ label }}</label>
+          <input name="{{ key }}" value="{{ masjid.timings.get(key, '') if masjid.timings else '' }}" placeholder="HH:MM" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500">
+        </div>
+        {% endfor %}
+        <div class="flex gap-2 pt-2"><button type="submit" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 shadow-sm">Save Timings</button></div>
+      </form>
+    </div>
+
+    <!-- Facilities -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm" x-data="{ editing: false }">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Facilities</h3>
+        <button @click="editing = !editing" class="text-xs font-semibold text-primary-600 hover:text-primary-800" x-text="editing ? 'Cancel' : 'Edit'"></button>
+      </div>
+      <div class="p-6 space-y-1 text-sm" x-show="!editing">
+        {% set facility_labels = {'car_parking': 'Car Parking', 'two_wheeler_parking': 'Two Wheeler', 'iftar': 'Iftar', 'wuzu_area': 'Wuzu Area', 'ac': 'AC', 'air_coolers': 'Air Cooler', 'male_washroom': 'Male Washroom', 'drinking_water': 'Drinking Water', 'wheelchair_accessible': 'Wheelchair', 'mushaf_available': 'Mushaf', 'chairs': 'Chairs', 'janazah_carrier': 'Janazah', 'women_prayer_area': 'Women Area', 'children_area': 'Children Area'} %}
+        {% for key, label in facility_labels.items() %}
+        <div class="flex items-center justify-between py-1">
+          <span class="text-gray-600">{{ label }}</span>
+          {% if masjid.facilities and masjid.facilities.get(key) %}
+          <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Yes</span>
+          {% else %}
+          <span class="text-gray-300 text-xs">No</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <form method="post" action="/admin/masjids/{{ masjid.id }}/update-facilities" x-show="editing" class="p-6 border-t border-gray-100 bg-gray-50/50 space-y-1">
+        {% set form_items = [('car_parking', 'Car Parking'), ('two_wheeler', 'Two Wheeler'), ('iftar', 'Iftar'), ('wuzu', 'Wuzu Area'), ('ac', 'AC'), ('air_cooler', 'Air Cooler'), ('male_washroom', 'Male Washroom'), ('drinking_water', 'Drinking Water'), ('wheelchair', 'Wheelchair'), ('mushaf', 'Mushaf'), ('chairs', 'Chairs'), ('janazah', 'Janazah'), ('women_area', 'Women Area'), ('children_area', 'Children Area')] %}
+        {% for key, label in form_items %}
+        <label class="flex items-center justify-between py-2 cursor-pointer hover:bg-white/50 rounded-lg px-2 -mx-2">
+          <span class="text-sm text-gray-700">{{ label }}</span>
+          <div class="relative">
+            <input type="hidden" name="{{ key }}" value="false">
+            <input type="checkbox" name="{{ key }}" value="true" class="sr-only peer"
+              {% set db_key = key.replace('two_wheeler', 'two_wheeler_parking').replace('wuzu', 'wuzu_area').replace('air_cooler', 'air_coolers').replace('wheelchair', 'wheelchair_accessible').replace('mushaf', 'mushaf_available').replace('janazah', 'janazah_carrier').replace('women_area', 'women_prayer_area') %}
+              {% if masjid.facilities and masjid.facilities.get(db_key) %}checked{% endif %}>
+            <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+          </div>
+        </label>
+        {% endfor %}
+        <div class="flex gap-2 pt-3 border-t border-gray-200"><button type="submit" class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 shadow-sm">Save Facilities</button></div>
+      </form>
+    </div>
+
+    <!-- Google Places Data -->
+    {% if masjid.google_place_data %}
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Google Places Data</h3>
+      </div>
+      <div class="p-6 space-y-2 text-sm">
+        {% set g = masjid.google_place_data %}
+        <div class="flex justify-between"><span class="text-gray-500">Rating</span><span class="font-medium">{{ g.rating or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Total Ratings</span><span class="font-medium">{{ g.user_ratings_total or '—' }}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Status</span><span class="font-medium">{{ g.business_status or '—' }}</span></div>
+        {% if g.types %}
+        <div class="pt-3 border-t border-gray-100"><span class="text-xs text-gray-500 mb-2 block">Categories</span><div class="flex flex-wrap gap-1.5">{% for t in g.types %}<span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{{ t }}</span>{% endfor %}</div></div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+  // Toggle forms will fade when shown
+})
+</script>
+{% endif %}
+{% endblock %}

@@ -296,14 +296,6 @@ def admin_import_masjids(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/claims")
-def admin_claims(
-    request: Request,
-    admin: Dict[str, Any] = Depends(admin_api_required),
-):
-    return {"claims": [], "total": 0, "page": 1, "total_pages": 1}
-
-
 @router.get("/donations")
 def admin_donations(
     request: Request,

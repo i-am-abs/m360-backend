@@ -43,8 +43,8 @@
             <li class="py-3 first:pt-0 last:pb-0">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm font-medium text-gray-900">{{ claim.name or 'Unnamed' }}</p>
-                  <p class="text-xs text-gray-500">{{ claim.email }}</p>
+                  <p class="text-sm font-medium text-gray-900">{{ claim.masjid_name or 'Unnamed' }}</p>
+                  <p class="text-xs text-gray-500">{{ claim.claimed_role }} · {{ claim.user_id[:12] }}…</p>
                 </div>
                 <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
                   {{ claim.status or 'pending' }}

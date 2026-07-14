@@ -17,9 +17,11 @@ class ClaimService:
         self,
         claim_repo: ClaimRepository,
         masjid_repo: MasjidRepository,
+        fcm_service=None,
     ) -> None:
         self._claim_repo = claim_repo
         self._masjid_repo = masjid_repo
+        self._fcm_service = fcm_service
 
     def submit_claim(self, user_id: str, masjid_id: str, role: str, note: Optional[str] = None) -> Dict[str, Any]:
         masjid = self._masjid_repo.get_by_id(masjid_id)
@@ -112,6 +114,15 @@ class ClaimService:
             "Claim approved: claimId=%s userId=%s masjidId=%s reviewerId=%s",
             claim_id, user_id, masjid_id, reviewer_id,
         )
+        if self._fcm_service:
+            masjid = self._masjid_repo.get_by_id(masjid_id)
+            masjid_name = masjid.get("name", "Masjid") if masjid else "Masjid"
+            self._fcm_service.send_to_user(
+                user_id=user_id,
+                title="Claim Approved",
+                body=f"Your request for {masjid_name} as {role} has been approved",
+                data={"type": "claim", "masjid_id": masjid_id, "status": "approved"},
+            )
         return {"claim": {"id": claim_id, "status": "approved"}}
 
     def reject_claim(self, claim_id: str, reviewer_id: str, note: str) -> Dict[str, Any]:
@@ -129,11 +140,23 @@ class ClaimService:
             "Claim rejected: claimId=%s reviewerId=%s",
             claim_id, reviewer_id,
         )
+        if self._fcm_service:
+            masjid_id = claim.get("masjid_id")
+            user_id = claim.get("user_id")
+            if masjid_id and user_id:
+                masjid = self._masjid_repo.get_by_id(masjid_id)
+                masjid_name = masjid.get("name", "Masjid") if masjid else "Masjid"
+                self._fcm_service.send_to_user(
+                    user_id=user_id,
+                    title="Claim Rejected",
+                    body=f"Your request for {masjid_name} was not approved",
+                    data={"type": "claim", "masjid_id": masjid_id, "status": "rejected"},
+                )
         return {"claim": {"id": claim_id, "status": "rejected", "reviewer_note": note}}
 
     def list_claims(self, status: Optional[str], page: int, limit: int) -> Dict[str, Any]:
         result = self._claim_repo.list_claims(status, page, limit)
-        claims = result.get("items", [])
+        claims = result.get("claims", result.get("items", []))
         enriched = []
         for claim in claims:
             masjid_id = claim.get("masjid_id", "")

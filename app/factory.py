@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_v1_router
@@ -71,5 +71,30 @@ def create_app() -> FastAPI:
             name="admin_static",
         )
         application.include_router(admin_router)
+
+        @application.get("/")
+        def admin_root_redirect(request: Request):
+            import jwt as _jwt
+            token = request.cookies.get("admin_token")
+            if token:
+                try:
+                    payload = _jwt.decode(
+                        token,
+                        settings.secret_key.get_secret_value(),
+                        algorithms=["HS256"],
+                    )
+                    expires_at = payload.get("expires_at")
+                    if expires_at:
+                        from datetime import datetime as _dt, timezone as _tz
+                        expires = _dt.fromisoformat(expires_at.replace("Z", "+00:00"))
+                        if expires.tzinfo is None:
+                            expires = expires.replace(tzinfo=_tz.utc)
+                        if expires > _dt.now(tz=_tz.utc):
+                            from fastapi.responses import RedirectResponse as _RR
+                            return _RR(url="/admin/dashboard", status_code=303)
+                except _jwt.PyJWTError:
+                    pass
+            from fastapi.responses import RedirectResponse as _RR
+            return _RR(url="/admin/login", status_code=303)
 
     return application

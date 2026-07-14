@@ -1,0 +1,133 @@
+{% extends "admin_base.html" %}
+{% block page_title %}User {{ user.phone_number if user else 'Not Found' }}{% endblock %}
+{% block title %}User — Muslim360 Admin{% endblock %}
+
+{% block page_content %}
+{% set active_nav = 'users' %}
+
+<div class="mb-6">
+  <a href="/admin/users" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Users</a>
+</div>
+
+{% if not user %}
+<div class="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+  <p class="text-gray-500 text-lg">User not found</p>
+</div>
+{% else %}
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <!-- LEFT COLUMN -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <!-- User Info Card -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">User Information</h3>
+      </div>
+      <div class="p-6 space-y-4 text-sm">
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700">
+            {{ user.phone_number[-2:] if user.phone_number else '?' }}
+          </span>
+          <div>
+            <p class="text-base font-semibold text-gray-900">{{ user.phone_number }}</p>
+            <p class="text-xs text-gray-400 font-mono">{{ user.user_id }}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Status</p>
+            {% if user.blocked_at %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 border border-red-200"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>Blocked</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 border border-green-200"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Active</span>
+            {% endif %}
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Created</p>
+            <p class="text-gray-700">{{ user.created_at[:10] if user.created_at else '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Sessions</p>
+            <p class="text-gray-700">{{ sessions_count }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Global Role</p>
+            <p class="text-gray-700">{{ user.global_role or '—' }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-100 px-6 py-4 flex gap-2">
+        {% if user.blocked_at %}
+        <form method="post" action="/admin/users/{{ user.user_id }}/unblock" hx-post="/admin/users/{{ user.user_id }}/unblock" hx-confirm="Unblock this user?" hx-target="body">
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition">Unblock User</button>
+        </form>
+        {% else %}
+        <form method="post" action="/admin/users/{{ user.user_id }}/block" hx-post="/admin/users/{{ user.user_id }}/block" hx-confirm="Block this user?" hx-target="body">
+          <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 border border-red-200 hover:bg-red-100 transition">Block User</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Committee Memberships -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Committee Memberships ({{ masjids|length }})</h3>
+      </div>
+      {% if masjids %}
+      <div class="divide-y divide-gray-100">
+        {% for m in masjids %}
+        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50">
+          <div>
+            <a href="/admin/masjids/{{ m.id }}" class="text-sm font-medium text-gray-900 hover:text-primary-600">{{ m.name }}</a>
+            {% if m.city %}<p class="text-xs text-gray-400">{{ m.city }}</p>{% endif %}
+          </div>
+          <span class="text-xs font-mono text-gray-300">{{ m.place_id[:12] if m.place_id else '—' }}…</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <p class="text-sm text-gray-400">Not a committee member of any masjid</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="space-y-6">
+
+    <!-- Claims -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-base font-semibold text-gray-900">Claims ({{ claims|length }})</h3>
+      </div>
+      {% if claims %}
+      <div class="divide-y divide-gray-100">
+        {% for c in claims %}
+        <div class="px-6 py-4 hover:bg-gray-50/50">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-mono text-gray-400">{{ c.masjid_id[:16] }}…</span>
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border
+              {% if c.status == 'approved' %}bg-green-50 text-green-700 border-green-200
+              {% elif c.status == 'rejected' %}bg-red-50 text-red-700 border-red-200
+              {% else %}bg-yellow-50 text-yellow-700 border-yellow-200{% endif %}">
+              {{ c.status }}
+            </span>
+          </div>
+          <p class="text-sm text-gray-700">{{ c.claimed_role }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ c.created_at[:10] if c.created_at else '—' }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <p class="text-sm text-gray-400">No claims</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

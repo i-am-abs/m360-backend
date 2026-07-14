@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import admin_api, auth, broadcast, claims, donations, health, masjid, msg91_webhook, mux_webhook, quran, upload
+from app.api.v1.endpoints import admin_api, auth, broadcast, claims, donations, fcm, health, masjid, msg91_webhook, mux_webhook, quran, upload
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
@@ -13,4 +13,5 @@ api_v1_router.include_router(broadcast.router)
 api_v1_router.include_router(donations.router)
 api_v1_router.include_router(upload.router)
 api_v1_router.include_router(mux_webhook.router)
+api_v1_router.include_router(fcm.router)
 api_v1_router.include_router(admin_api.router)

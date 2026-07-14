@@ -128,6 +128,9 @@ class Settings(BaseSettings):
         ),
     )
 
+    # FCM Push Notifications
+    fcm_service_account_path: str = ""
+
     # Mux Video
     mux_token_id: str = ""
     mux_token_secret: str = ""

@@ -17,9 +17,13 @@ class BroadcastService:
         self,
         broadcast_repo: BroadcastRepository,
         follower_repo: FollowerRepository,
+        masjid_repo=None,
+        fcm_service=None,
     ) -> None:
         self._broadcast_repo = broadcast_repo
         self._follower_repo = follower_repo
+        self._masjid_repo = masjid_repo
+        self._fcm_service = fcm_service
 
     def post_message(self, masjid_id: str, sender_info: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
         message = self._broadcast_repo.create_message(
@@ -37,6 +41,19 @@ class BroadcastService:
             "Message posted: masjidId=%s sender=%s type=%s",
             masjid_id, sender_info.get("user_id"), data.get("message_type"),
         )
+
+        if self._fcm_service and self._masjid_repo:
+            masjid = self._masjid_repo.get_by_id(masjid_id)
+            if masjid:
+                place_id = masjid.get("place_id") or masjid.get("id", "")
+                masjid_name = masjid.get("name", "Masjid")
+                self._fcm_service.send_to_topic(
+                    topic=f"masjid_{place_id}",
+                    title="New Announcement",
+                    body=f"New message from {masjid_name}",
+                    data={"type": "broadcast", "masjid_id": place_id},
+                )
+
         return message
 
     def get_message_raw(self, message_id: str) -> Dict[str, Any]:

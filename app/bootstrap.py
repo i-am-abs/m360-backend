@@ -177,6 +177,16 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
     _init_redis(app, settings)
 
+    if settings.fcm_service_account_path:
+        import firebase_admin
+        from firebase_admin import credentials
+        try:
+            cred = credentials.Certificate(settings.fcm_service_account_path)
+            firebase_admin.initialize_app(cred)
+            _log.info("Firebase Admin SDK initialized")
+        except Exception as e:
+            _log.warning("Firebase Admin SDK init failed: %s", e)
+
     msg91_pending = Msg91PendingReqIdStore(
         redis_client=app.state.redis,
         ttl_seconds=300.0,
@@ -230,6 +240,8 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
 
     app.state.connection_manager = ConnectionManager()
 
+    from app.services.fcm_service import FcmService
+
     mongo_client = getattr(app.state, "mongo_client", None)
     if mongo_client is not None:
         db = mongo_client.get_database(settings.mongodb_database)
@@ -239,6 +251,10 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         follower_repo = MongoFollowerRepository(db)
         donation_repo = MongoDonationRepository(db)
 
+        app.state.fcm_service = FcmService(
+            user_store=app.state.user_store,
+            db=db,
+        )
         app.state.masjid_entity_service = MasjidEntityService(
             masjid_repo=masjid_repo,
             google_places=app.state.masjid_search_service,
@@ -246,10 +262,13 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         app.state.claim_service = ClaimService(
             claim_repo=claim_repo,
             masjid_repo=masjid_repo,
+            fcm_service=app.state.fcm_service,
         )
         app.state.broadcast_service = BroadcastService(
             broadcast_repo=broadcast_repo,
             follower_repo=follower_repo,
+            masjid_repo=masjid_repo,
+            fcm_service=app.state.fcm_service,
         )
         app.state.follower_service = FollowerService(
             follower_repo=follower_repo,
@@ -260,6 +279,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         )
     else:
         _log.warning("MongoDB not available — masjid entity, claims, broadcast, and donation features disabled.")
+        app.state.fcm_service = None
         app.state.masjid_entity_service = None
         app.state.claim_service = None
         app.state.broadcast_service = None

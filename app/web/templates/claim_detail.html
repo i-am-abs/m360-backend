@@ -1,0 +1,65 @@
+{% extends "admin_base.html" %}
+{% block page_title %}Claim Details{% endblock %}
+{% block title %}Claim — Muslim360 Admin{% endblock %}
+
+{% block page_content %}
+{% set active_nav = 'claims' %}
+
+<div class="mb-6">
+  <a href="/admin/claims" class="text-sm text-gray-500 hover:text-gray-700">&larr; Back to Claims</a>
+</div>
+
+{% if not claim %}
+<div class="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+  <p class="text-gray-500 text-lg">Claim not found</p>
+</div>
+{% else %}
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-gray-900 mb-4">Applicant Details</h2>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Name</dt><dd class="font-medium text-gray-900">{{ claim.user_name or '—' }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Phone</dt><dd class="font-mono text-gray-700">{{ claim.user_phone or claim.user_id[:20] }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">User ID</dt><dd class="font-mono text-xs text-gray-400">{{ claim.user_id }}</dd></div>
+    </dl>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-gray-900 mb-4">Claim Details</h2>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between"><dt class="text-gray-500">Masjid</dt><dd class="font-medium text-gray-900">{{ claim.masjid_name or claim.masjid_id[:20] }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">City</dt><dd class="text-gray-700">{{ claim.masjid_city or '—' }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Requested Role</dt><dd class="font-medium text-gray-900">{{ claim.claimed_role }}</dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Status</dt>
+        <dd>
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border
+            {% if claim.status == 'approved' %}bg-green-50 text-green-700 border-green-200
+            {% elif claim.status == 'rejected' %}bg-red-50 text-red-700 border-red-200
+            {% else %}bg-yellow-50 text-yellow-700 border-yellow-200{% endif %}">
+            {{ claim.status }}
+          </span>
+        </dd>
+      </div>
+      <div class="flex justify-between"><dt class="text-gray-500">Submitted</dt><dd class="text-gray-700">{{ claim.created_at[:19] if claim.created_at else '—' }}</dd></div>
+      {% if claim.applicant_note %}
+      <div class="pt-3 border-t border-gray-100">
+        <dt class="text-gray-500 text-xs mb-1">Applicant Note</dt>
+        <dd class="text-gray-700">{{ claim.applicant_note }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+  </div>
+</div>
+
+{% if claim.status == 'pending' %}
+<div class="mt-6 flex gap-3">
+  <form method="post" action="/admin/claims/{{ claim.id }}/approve" hx-post="/admin/claims/{{ claim.id }}/approve" hx-confirm="Approve this claim?" hx-target="body">
+    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition">Approve Claim</button>
+  </form>
+  <form method="post" action="/admin/claims/{{ claim.id }}/reject" hx-post="/admin/claims/{{ claim.id }}/reject" hx-confirm="Reject this claim?" hx-target="body">
+    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 border border-red-200 hover:bg-red-100 transition">Reject Claim</button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
