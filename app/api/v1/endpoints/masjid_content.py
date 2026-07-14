@@ -26,7 +26,7 @@ def list_masjids(
         svc: MasjidListingService = Depends(get_masjid_listing_service),
 ):
     items = svc.list_masjids_for_user(current_user)
-    return success_response([item.model_dump(by_alias=True) for item in items])
+    return success_response(items)
 
 
 @router.post(ApiEndpoint.MASJID_TIMINGS.value, summary="Create masjid prayer timings")

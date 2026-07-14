@@ -40,19 +40,20 @@ class MongoMasjidStore(MasjidRepository):
             data: Dict[str, Any],
     ) -> Dict[str, Any]:
         now = self._now_iso()
-        payload: Dict[str, Any] = {
-            "committee": data.get("committee", {}),
-            "timings": data.get("timings", []),
-            "amenities": data.get("amenities", []),
-            "updated_at": now,
-        }
+        set_fields: Dict[str, Any] = {"updated_at": now}
+        if "committee" in data:
+            set_fields["committee"] = data.get("committee") or {}
+        if "timings" in data:
+            set_fields["timings"] = data.get("timings") or []
+        if "amenities" in data:
+            set_fields["amenities"] = data.get("amenities") or []
 
         result = self._col.find_one_and_update(
             {"place_id": place_id},
             [
                 {
                     "$set": {
-                        **payload,
+                        **set_fields,
                         "created_at": {
                             "$ifNull": ["$created_at", now]
                         },

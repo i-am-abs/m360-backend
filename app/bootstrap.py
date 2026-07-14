@@ -195,6 +195,7 @@ def _create_phone_auth_service(
         settings: Settings,
         user_store: UserRepository,
         msg91_pending: Msg91PendingReqIdStore,
+        admin_store=None,
 ) -> PhoneAuthService:
     return PhoneAuthService(
         store=user_store,
@@ -206,6 +207,7 @@ def _create_phone_auth_service(
         ),
         msg91_pending=msg91_pending,
         msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
+        admin_store=admin_store,
     )
 
 
@@ -346,8 +348,19 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             app.state.redis is not None and settings.api_get_cache_ttl_seconds > 0
     )
 
+    platform = _create_platform_stores(settings, app.state.mongo_client)
+    app.state.feature_flag_store = platform["feature_flag_store"]
+    app.state.admin_store = platform["admin_store"]
+    app.state.verification_store = platform["verification_store"]
+    app.state.audit_store = platform["audit_store"]
+    app.state.listing_store = platform["listing_store"]
+
+    # Rebuild phone auth with admin linking now that admin_store exists
     app.state.phone_auth_service = _create_phone_auth_service(
-        settings, user_store, msg91_pending,
+        settings,
+        user_store,
+        msg91_pending,
+        admin_store=platform["admin_store"],
     )
     if (
             settings.uvicorn_workers > 1
@@ -359,20 +372,15 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             "may miss webhooks. Enable Redis or use a single worker."
         )
 
-    app.state.user_masjid_service = UserMasjidService(
-        store=user_store,
-        places_reader=masjid_search,
-    )
     app.state.masjid_store = _create_masjid_store(
         settings, app.state.mongo_client
     )
-
-    platform = _create_platform_stores(settings, app.state.mongo_client)
-    app.state.feature_flag_store = platform["feature_flag_store"]
-    app.state.admin_store = platform["admin_store"]
-    app.state.verification_store = platform["verification_store"]
-    app.state.audit_store = platform["audit_store"]
-    app.state.listing_store = platform["listing_store"]
+    app.state.user_masjid_service = UserMasjidService(
+        store=user_store,
+        places_reader=masjid_search,
+        masjid_store=app.state.masjid_store,
+        admin_store=platform["admin_store"],
+    )
 
     rbac = RbacService(platform["admin_store"])
     app.state.rbac_service = rbac
@@ -387,10 +395,12 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         platform["admin_store"],
         platform["audit_store"],
         rbac,
+        masjid_store=app.state.masjid_store,
     )
     app.state.verification_service = VerificationService(
         platform["verification_store"],
         platform["audit_store"],
+        rbac,
     )
     app.state.upload_service = _create_upload_service(settings)
     app.state.masjid_listing_service = MasjidListingService(
@@ -398,6 +408,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         platform["listing_store"],
         masjid_search,
         user_store,
+        masjid_store=app.state.masjid_store,
     )
     app.state.masjid_timings_service = MasjidTimingsService(
         app.state.masjid_store,

@@ -7,6 +7,7 @@ from app.core.enums.error_code import ErrorCode
 from app.core.enums.role import UserRole
 from app.exceptions.base import ApiException
 from app.interfaces.admin_repository import AdminRepository
+from app.utils.admin_link import ensure_admin_user_link
 from app.utils.structured_log import log_event
 
 
@@ -23,7 +24,11 @@ class RbacService:
         if not user_id:
             return UserRole.USER.value
 
-        admins = self._admin_store.list_by_user_id(str(user_id))
+        admins = ensure_admin_user_link(
+            self._admin_store,
+            user_id=str(user_id),
+            phone=user.get("phone_number"),
+        )
         if not admins:
             return UserRole.USER.value
 
@@ -70,7 +75,11 @@ class RbacService:
             return user_with_role
 
         user_id = str(user.get("user_id") or "")
-        assignments = self._admin_store.list_by_user_id(user_id)
+        assignments = ensure_admin_user_link(
+            self._admin_store,
+            user_id=user_id,
+            phone=user.get("phone_number"),
+        )
         place_ids = {
             str(doc.get("masjid_place_id"))
             for doc in assignments

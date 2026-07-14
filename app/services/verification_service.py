@@ -27,9 +27,11 @@ class VerificationService:
             self,
             verification_store: VerificationRepository,
             audit_store: AuditLogRepository,
+            rbac: Any = None,
     ) -> None:
         self._verification_store = verification_store
         self._audit_store = audit_store
+        self._rbac = rbac
 
     def list_roles(self) -> RolesResponse:
         roles = [
@@ -81,15 +83,21 @@ class VerificationService:
             status: str,
             current_user: Dict[str, Any],
     ) -> VerificationRequestResponse:
-        from app.core.enums.role import UserRole
+        from app.services.rbac_service import RbacService
 
-        role = current_user.get("role")
-        if role != UserRole.SUPER_ADMIN.value:
-            raise ApiException(
-                "Only super admins can approve verification requests",
-                status_code=HTTPStatus.FORBIDDEN.value,
-                code=ErrorCode.FORBIDDEN,
-            )
+        # Resolve role via admin store (session user has no role field)
+        # Prefer injecting RbacService; fall back if not wired.
+        rbac = getattr(self, "_rbac", None)
+        if rbac is not None:
+            rbac.require_roles(current_user, {UserRole.SUPER_ADMIN.value})
+        else:
+            role = current_user.get("role")
+            if role != UserRole.SUPER_ADMIN.value:
+                raise ApiException(
+                    "Only super admins can approve verification requests",
+                    status_code=HTTPStatus.FORBIDDEN.value,
+                    code=ErrorCode.FORBIDDEN,
+                )
 
         stored = self._verification_store.update_status(
             request_id,

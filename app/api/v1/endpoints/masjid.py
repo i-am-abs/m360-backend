@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import (
+    get_admin_store,
     get_current_user,
     get_masjid_search_service,
     get_masjid_store,
@@ -16,10 +17,12 @@ from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.core.config import Settings
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.core.enums.masjid import MasjidQueryDefault
+from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.user_masjid_service import UserMasjidService
+from app.utils.admin_link import resolve_committee_for_place
 from app.utils.masjid import get_deterministic_masjid_metadata
 from app.utils.response import success_response
 
@@ -100,6 +103,7 @@ def get_masjid_details(
         store: UserRepository = Depends(get_user_store),
         svc: MasjidSearchService = Depends(get_masjid_search_service),
         masjid_store: MasjidRepository = Depends(get_masjid_store),
+        admin_store: AdminRepository = Depends(get_admin_store),
 ):
     place = svc.get_place_by_id(place_id)
     pid = place.get("id") or place_id
@@ -108,21 +112,23 @@ def get_masjid_details(
     is_added = pid in favorites
     saved_count = len(favorites)
 
-    # Fetch committee data from our own DB (None when no committee exists)
-    committee_data = masjid_store.get_committee(pid)
-
-    return success_response(
-        MasjidDetailsPresenter.to_view(
-            place,
-            has_donations=meta["hasDonationsEnabled"],
-            has_announcements=meta["hasAnnouncementsEnabled"],
-            donation_count=meta["donationUpdatesCount"],
-            announcement_count=meta["announcementUpdatesCount"],
-            is_added=is_added,
-            saved_count=saved_count,
-            committee_data=committee_data,
-        )
+    committee = resolve_committee_for_place(
+        pid,
+        admin_store=admin_store,
+        masjid_store=masjid_store,
     )
+    view = MasjidDetailsPresenter.to_view(
+        place,
+        has_donations=meta["hasDonationsEnabled"],
+        has_announcements=meta["hasAnnouncementsEnabled"],
+        donation_count=meta["donationUpdatesCount"],
+        announcement_count=meta["announcementUpdatesCount"],
+        is_added=is_added,
+        saved_count=saved_count,
+        committee_data=committee["details"] if committee["has_committee"] else None,
+    )
+    view["committee"] = committee
+    return success_response(view)
 
 
 @router.get(ApiEndpoint.MY_MASJIDS.value, summary="List my favourite masjids")

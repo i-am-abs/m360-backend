@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
+from typing import Optional
 
 from app.core.enums.masjid_amenity import Amenity
 from app.core.enums.prayer import PrayerName
@@ -42,9 +43,14 @@ class AdminStatusView(BaseModel):
 
 
 class MasjidListItem(BaseModel):
+    """Legacy minimal list item — listing API now returns full place details dicts."""
+
     id: str
     name: str
     admin_status: AdminStatusView = Field(serialization_alias="adminStatus")
+    address: Optional[str] = None
+    location: Optional[dict] = None
+    committee: Optional[dict] = None
 
     model_config = {"populate_by_name": True}
 

@@ -18,6 +18,19 @@ class AdminRepository(ABC):
         pass
 
     @abstractmethod
+    def list_by_phone(
+            self,
+            phone: str,
+            *,
+            status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    def list_approved_for_place(self, place_id: str) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
     def list_all(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         pass
 
@@ -31,6 +44,15 @@ class AdminRepository(ABC):
     ) -> Optional[Dict[str, Any]]:
         pass
 
+    @abstractmethod
+    def update_fields(
+            self,
+            admin_id: str,
+            fields: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
     def link_user(self, admin_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         pass
 
