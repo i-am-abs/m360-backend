@@ -76,6 +76,13 @@ class MongoMasjidStore(MasjidRepository):
         timings = doc.get("timings")
         return timings if timings else None
 
+    def get_amenities(self, place_id: str) -> Optional[List[str]]:
+        doc = self._col.find_one({"place_id": place_id}, {"amenities": 1, "_id": 0})
+        if not doc:
+            return None
+        amenities = doc.get("amenities")
+        return amenities if amenities else None
+
     def update_timings(
             self,
             place_id: str,
@@ -155,6 +162,9 @@ class NoOpMasjidStore(MasjidRepository):
         return data
 
     def get_timings(self, place_id: str) -> Optional[List[Dict[str, Any]]]:
+        return None
+
+    def get_amenities(self, place_id: str) -> Optional[List[str]]:
         return None
 
     def update_timings(

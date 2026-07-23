@@ -22,6 +22,10 @@ class MasjidRepository(ABC):
         pass
 
     @abstractmethod
+    def get_amenities(self, place_id: str) -> Optional[List[str]]:
+        pass
+
+    @abstractmethod
     def update_timings(
             self,
             place_id: str,

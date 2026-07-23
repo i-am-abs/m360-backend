@@ -117,6 +117,8 @@ def get_masjid_details(
         admin_store=admin_store,
         masjid_store=masjid_store,
     )
+    prayer_timings = masjid_store.get_timings(pid) or []
+    amenities = masjid_store.get_amenities(pid) or []
     view = MasjidDetailsPresenter.to_view(
         place,
         has_donations=meta["hasDonationsEnabled"],
@@ -126,6 +128,8 @@ def get_masjid_details(
         is_added=is_added,
         saved_count=saved_count,
         committee_data=committee["details"] if committee["has_committee"] else None,
+        prayer_timings=prayer_timings,
+        amenities=amenities,
     )
     view["committee"] = committee
     return success_response(view)

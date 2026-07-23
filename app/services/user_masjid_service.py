@@ -52,6 +52,11 @@ class UserMasjidService:
                     admin_store=self._admin_store,
                     masjid_store=self._masjid_store,
                 )
+                prayer_timings: List[Dict[str, Any]] = []
+                amenities: List[str] = []
+                if self._masjid_store is not None:
+                    prayer_timings = self._masjid_store.get_timings(resolved_id) or []
+                    amenities = self._masjid_store.get_amenities(resolved_id) or []
                 view = MasjidDetailsPresenter.to_view(
                     place,
                     has_donations=meta["hasDonationsEnabled"],
@@ -61,6 +66,8 @@ class UserMasjidService:
                     is_added=True,
                     saved_count=len(place_ids),
                     committee_data=committee["details"] if committee["has_committee"] else None,
+                    prayer_timings=prayer_timings,
+                    amenities=amenities,
                 )
                 view["committee"] = committee
                 view.pop("raw", None)
@@ -74,6 +81,8 @@ class UserMasjidService:
                     "hasAnnouncementsEnabled": False,
                     "donationUpdatesCount": 0,
                     "announcementUpdatesCount": 0,
+                    "timings": {"prayer": [], "current_opening_hours": None, "regular_opening_hours": None},
+                    "amenities": [],
                     "committee": {"has_committee": False, "details": None},
                 })
         return {"count": len(masjids), "masjids": masjids}

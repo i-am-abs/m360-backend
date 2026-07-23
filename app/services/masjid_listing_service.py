@@ -88,6 +88,11 @@ class MasjidListingService:
             admin_store=self._admin_store,
             masjid_store=self._masjid_store,
         )
+        prayer_timings: List[Dict[str, Any]] = []
+        amenities: List[str] = []
+        if self._masjid_store is not None:
+            prayer_timings = self._masjid_store.get_timings(pid) or []
+            amenities = self._masjid_store.get_amenities(pid) or []
         view = MasjidDetailsPresenter.to_view(
             place,
             has_donations=meta["hasDonationsEnabled"],
@@ -97,6 +102,8 @@ class MasjidListingService:
             is_added=pid in favorite_ids,
             saved_count=saved_count,
             committee_data=committee["details"] if committee["has_committee"] else None,
+            prayer_timings=prayer_timings,
+            amenities=amenities,
         )
         # Presenter sets committee.has_committee from details is not None —
         # force the resolved shape for consistency.

@@ -35,6 +35,11 @@ class AdminResponse(BaseModel):
     committee_id: Optional[str] = Field(None, serialization_alias="committeeId")
     masjid_place_id: Optional[str] = Field(None, serialization_alias="masjidPlaceId")
     status: AdminRegistrationStatus
+    onboarding_done: bool = Field(
+        False,
+        serialization_alias="onboardingDone",
+        description="True when prayer timings have been saved for the assigned masjid",
+    )
 
     model_config = {"populate_by_name": True}
 

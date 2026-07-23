@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class MasjidDetailsPresenter:
@@ -14,6 +14,8 @@ class MasjidDetailsPresenter:
             is_added: bool = False,
             saved_count: int = 0,
             committee_data: Optional[Dict[str, Any]] = None,
+            prayer_timings: Optional[List[Dict[str, Any]]] = None,
+            amenities: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         accessibility = place.get("accessibilityOptions") or {}
         parking = place.get("parkingOptions") or {}
@@ -24,9 +26,11 @@ class MasjidDetailsPresenter:
             "address": place.get("formattedAddress"),
             "location": place.get("location"),
             "timings": {
+                "prayer": prayer_timings or [],
                 "current_opening_hours": place.get("currentOpeningHours"),
                 "regular_opening_hours": place.get("regularOpeningHours"),
             },
+            "amenities": amenities or [],
             "management": {
                 "phone_number": place.get("internationalPhoneNumber"),
                 "website": place.get("websiteUri"),

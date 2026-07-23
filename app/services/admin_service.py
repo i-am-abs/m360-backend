@@ -228,8 +228,14 @@ class AdminService:
         )
         return self._to_response(stored)
 
-    @staticmethod
-    def _to_response(doc: Dict[str, Any]) -> AdminResponse:
+    def _is_onboarding_done(self, doc: Dict[str, Any]) -> bool:
+        place_id = doc.get("masjid_place_id")
+        if not place_id or self._masjid_store is None:
+            return False
+        timings = self._masjid_store.get_timings(str(place_id)) or []
+        return len(timings) > 0
+
+    def _to_response(self, doc: Dict[str, Any]) -> AdminResponse:
         return AdminResponse(
             id=doc["admin_id"],
             name=doc["name"],
@@ -239,4 +245,5 @@ class AdminService:
             committee_id=doc.get("committee_id"),
             masjid_place_id=doc.get("masjid_place_id"),
             status=AdminRegistrationStatus(doc["status"]),
+            onboarding_done=self._is_onboarding_done(doc),
         )
