@@ -28,6 +28,7 @@ class MasjidListingService:
         self._masjid_store = masjid_store
 
     def list_masjids_for_user(self, user: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """List masjids the user administers only (independent of my-masjid favorites)."""
         user_id = str(user.get("user_id") or "")
         phone = str(user.get("phone_number") or "")
 
@@ -39,7 +40,7 @@ class MasjidListingService:
             )
             favorite_ids = self._user_store.list_favorites(phone) if phone else []
 
-            place_ids: Set[str] = set(favorite_ids)
+            place_ids: Set[str] = set()
             for doc in admin_docs:
                 pid = doc.get("masjid_place_id")
                 if pid:
@@ -59,6 +60,7 @@ class MasjidListingService:
                     listing_admin_status=listing_status,
                     favorite_ids=favorite_ids,
                     saved_count=len(favorite_ids),
+                    current_user=user,
                 ))
 
         log_event("masjid_listing", "listed", user_id=user_id, count=len(items))
@@ -71,6 +73,7 @@ class MasjidListingService:
             listing_admin_status: Optional[Dict[str, Any]],
             favorite_ids: List[str],
             saved_count: int,
+            current_user: Dict[str, Any],
     ) -> Dict[str, Any]:
         try:
             place = self._search_service.get_place_by_id(place_id)
@@ -85,5 +88,6 @@ class MasjidListingService:
             admin_store=self._admin_store,
             masjid_store=self._masjid_store,
             listing_admin_status=listing_admin_status,
+            current_user=current_user,
             include_raw=False,
         )

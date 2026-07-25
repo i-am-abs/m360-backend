@@ -13,7 +13,7 @@ class MasjidDetailsPresenter:
             announcement_count: int = 0,
             is_added: bool = False,
             saved_count: int = 0,
-            committee_data: Optional[Dict[str, Any]] = None,
+            committee_data: Optional[List[Dict[str, Any]]] = None,
             prayer_timings: Optional[List[Dict[str, Any]]] = None,
             amenities: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
@@ -21,6 +21,7 @@ class MasjidDetailsPresenter:
         parking = place.get("parkingOptions") or {}
         payment = place.get("paymentOptions") or {}
         prayers = list(prayer_timings or [])
+        members = list(committee_data or [])
         return {
             "place_id": place.get("id"),
             "name": (place.get("displayName") or {}).get("text"),
@@ -54,9 +55,9 @@ class MasjidDetailsPresenter:
             "isAddedToMyMasjid": is_added,
             "savedMasjidCount": saved_count,
             "committee": {
-                "hasCommittee": committee_data is not None,
-                "has_committee": committee_data is not None,
-                "details": committee_data,
+                "hasCommittee": len(members) > 0,
+                "has_committee": len(members) > 0,
+                "details": members,
             },
             "raw": place,
         }

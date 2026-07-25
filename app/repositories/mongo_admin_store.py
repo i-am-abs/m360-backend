@@ -47,6 +47,7 @@ class MongoAdminStore(AdminRepository):
             "phone": phone,
             "profile_image": data.get("profile_image"),
             "role": data["role"],
+            "designation": data.get("designation"),
             "committee_id": data.get("committee_id"),
             "masjid_place_id": data.get("masjid_place_id"),
             "status": data.get("status", "pending"),

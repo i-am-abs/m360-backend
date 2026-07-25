@@ -20,7 +20,7 @@ from app.utils.response import success_response
 router = APIRouter(tags=["masjids"])
 
 
-@router.get(ApiEndpoint.MASJIDS_LIST.value, summary="List user masjids with admin status")
+@router.get(ApiEndpoint.MASJIDS_LIST.value, summary="List admin-assigned masjids for current user")
 def list_masjids(
         current_user: Dict[str, Any] = Depends(get_current_user),
         svc: MasjidListingService = Depends(get_masjid_listing_service),

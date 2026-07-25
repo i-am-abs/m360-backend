@@ -50,6 +50,7 @@ class UserMasjidService:
                     saved_count=len(place_ids),
                     admin_store=self._admin_store,
                     masjid_store=self._masjid_store,
+                    current_user=user,
                     include_raw=False,
                 )
                 masjids.append(view)
@@ -66,11 +67,13 @@ class UserMasjidService:
                     "prayerTimings": [],
                     "amenities": [],
                     "onboardingDone": False,
+                    "isAdmin": False,
+                    "isCurrentUserAdmin": False,
                     "adminStatus": {"label": "unverified", "message": ""},
                     "committee": {
                         "hasCommittee": False,
                         "has_committee": False,
-                        "details": None,
+                        "details": [],
                     },
                 })
         return {"count": len(masjids), "masjids": masjids}

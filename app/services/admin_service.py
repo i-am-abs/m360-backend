@@ -4,6 +4,7 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional
 
 from app.core.enums.admin_status import AdminRegistrationStatus
+from app.core.enums.committee_designation import CommitteeDesignation
 from app.core.enums.error_code import ErrorCode
 from app.core.enums.role import UserRole
 from app.exceptions.base import ApiException
@@ -13,6 +14,7 @@ from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.schemas.admin import AdminRegisterRequest, AdminResponse, AdminStatusUpdateRequest
 from app.services.rbac_service import RbacService
+from app.utils.admin_link import committee_member_from_admin
 from app.utils.phone import canonicalize_india_phone
 from app.utils.structured_log import log_event, log_timing
 
@@ -47,8 +49,11 @@ class AdminService:
                 code=ErrorCode.INVALID_PHONE,
             ) from exc
 
+        system_role = request.system_role
+        designation = request.resolved_designation
+
         with log_timing("admin", "register", phone=phone):
-            if request.role == UserRole.SUPER_ADMIN:
+            if system_role == UserRole.SUPER_ADMIN.value:
                 if not current_user:
                     raise ApiException(
                         "Super admin registration requires authentication",
@@ -65,6 +70,8 @@ class AdminService:
                     request,
                     phone=phone,
                     user_id=str(user_id) if user_id else None,
+                    system_role=system_role,
+                    designation=designation,
                 )
             else:
                 try:
@@ -73,7 +80,8 @@ class AdminService:
                         "name": request.name,
                         "phone": phone,
                         "profile_image": request.profile_image,
-                        "role": request.role.value,
+                        "role": system_role,
+                        "designation": designation,
                         "committee_id": request.committee_id,
                         "masjid_place_id": request.masjid_place_id,
                         "status": AdminRegistrationStatus.PENDING.value,
@@ -93,6 +101,7 @@ class AdminService:
             "details": {
                 "phone": phone,
                 "role": stored.get("role"),
+                "designation": stored.get("designation"),
                 "masjid_place_id": stored.get("masjid_place_id"),
             },
         })
@@ -111,6 +120,8 @@ class AdminService:
             *,
             phone: str,
             user_id: Optional[str],
+            system_role: str,
+            designation: str,
     ) -> Dict[str, Any]:
         """Reuse existing admin row when registering a masjid committee assignment."""
         admin_id = str(existing["admin_id"])
@@ -119,7 +130,6 @@ class AdminService:
         if user_id and existing.get("user_id") != user_id:
             fields["user_id"] = user_id
 
-        # Canonicalize legacy 10-digit phone rows
         if existing.get("phone") != phone:
             fields["phone"] = phone
 
@@ -134,7 +144,6 @@ class AdminService:
                 )
             if not existing_place:
                 fields["masjid_place_id"] = request.masjid_place_id
-                # New masjid assignment needs re-approval unless already super_admin
                 if existing.get("role") != UserRole.SUPER_ADMIN.value:
                     fields["status"] = AdminRegistrationStatus.PENDING.value
             if request.name:
@@ -143,19 +152,19 @@ class AdminService:
                 fields["profile_image"] = request.profile_image
             if request.committee_id is not None:
                 fields["committee_id"] = request.committee_id
-            # Keep elevated role if already super_admin; otherwise ensure admin
             if (
                     existing.get("role") not in UserRole.admin_roles()
-                    and request.role.value in UserRole.admin_roles()
+                    and system_role in UserRole.admin_roles()
             ):
-                fields["role"] = request.role.value
+                fields["role"] = system_role
+            if designation:
+                fields["designation"] = designation
 
             if fields:
                 updated = self._admin_store.update_fields(admin_id, fields)
                 return updated or existing
             return existing
 
-        # No masjid assignment in request → true duplicate registration
         raise ApiException(
             "This phone number is already an admin",
             status_code=HTTPStatus.CONFLICT.value,
@@ -201,19 +210,14 @@ class AdminService:
         ):
             place_id = str(stored["masjid_place_id"])
             if self._masjid_store is not None:
+                approved = self._admin_store.list_approved_for_place(place_id)
+                # Ensure the just-approved doc is included even if read is eventually consistent.
+                if not any(d.get("admin_id") == stored.get("admin_id") for d in approved):
+                    approved = [stored] + approved
+                members = [committee_member_from_admin(doc) for doc in approved]
                 self._masjid_store.upsert_committee(
                     place_id,
-                    {
-                        "committee": {
-                            "adminId": stored.get("admin_id"),
-                            "name": stored.get("name"),
-                            "phone": stored.get("phone"),
-                            "role": stored.get("role"),
-                            "status": stored.get("status"),
-                            "committeeId": stored.get("committee_id"),
-                            "profileImage": stored.get("profile_image"),
-                        },
-                    },
+                    {"committee": members},
                 )
             if self._listing_store is not None:
                 self._listing_store.upsert_listing(
@@ -266,12 +270,21 @@ class AdminService:
         return len(timings) > 0
 
     def _to_response(self, doc: Dict[str, Any]) -> AdminResponse:
+        designation = CommitteeDesignation.normalize(
+            doc.get("designation") or (
+                doc.get("role")
+                if doc.get("role") not in UserRole.values()
+                else CommitteeDesignation.ADMIN.value
+            ),
+        )
         return AdminResponse(
             id=doc["admin_id"],
             name=doc["name"],
             phone=doc["phone"],
             profile_image=doc.get("profile_image"),
             role=doc["role"],
+            designation=designation,
+            designation_label=CommitteeDesignation.labels().get(designation),
             committee_id=doc.get("committee_id"),
             masjid_place_id=doc.get("masjid_place_id"),
             status=AdminRegistrationStatus(doc["status"]),

@@ -113,6 +113,7 @@ def get_masjid_details(
         saved_count=len(favorites),
         admin_store=admin_store,
         masjid_store=masjid_store,
+        current_user=current_user,
         include_raw=True,
     )
     return success_response(view)

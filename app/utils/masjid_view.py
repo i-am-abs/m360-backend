@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
-from app.utils.admin_link import resolve_committee_for_place
+from app.utils.admin_link import is_user_admin_for_place, resolve_committee_for_place
 from app.utils.masjid import get_deterministic_masjid_metadata
 
 
@@ -47,6 +47,7 @@ def build_masjid_detail_view(
         admin_store: Optional[AdminRepository] = None,
         masjid_store: Optional[MasjidRepository] = None,
         listing_admin_status: Optional[Dict[str, Any]] = None,
+        current_user: Optional[Dict[str, Any]] = None,
         include_raw: bool = False,
 ) -> Dict[str, Any]:
     """Full masjid payload used by details + admin listing endpoints."""
@@ -63,6 +64,12 @@ def build_masjid_detail_view(
         prayer_timings = masjid_store.get_timings(pid) or []
         amenities = masjid_store.get_amenities(pid) or []
 
+    is_admin = is_user_admin_for_place(
+        pid,
+        current_user=current_user,
+        admin_store=admin_store,
+    )
+
     view = MasjidDetailsPresenter.to_view(
         place,
         has_donations=meta["hasDonationsEnabled"],
@@ -71,7 +78,7 @@ def build_masjid_detail_view(
         announcement_count=meta["announcementUpdatesCount"],
         is_added=is_added,
         saved_count=saved_count,
-        committee_data=committee["details"] if committee.get("hasCommittee") else None,
+        committee_data=committee["details"] if committee.get("hasCommittee") else [],
         prayer_timings=prayer_timings,
         amenities=amenities,
     )
@@ -84,6 +91,8 @@ def build_masjid_detail_view(
         listing_admin_status=listing_admin_status,
     )
     view["onboardingDone"] = len(prayer_timings) > 0
+    view["isAdmin"] = is_admin
+    view["isCurrentUserAdmin"] = is_admin
     if not include_raw:
         view.pop("raw", None)
     return view

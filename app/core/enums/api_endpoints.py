@@ -47,6 +47,7 @@ class ApiEndpoint(Enum):
     VERIFICATION_REQUESTS = "/verification-requests"
     VERIFICATION_REQUEST_STATUS = "/verification-requests/{request_id}/status"
     ROLES = "/roles"
+    DESIGNATIONS = "/designations"
 
     UPLOADS = "/uploads"
 

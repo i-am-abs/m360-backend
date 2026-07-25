@@ -14,7 +14,8 @@ from app.utils.response import success_response
 router = APIRouter(tags=["verification"])
 
 
-@router.get(ApiEndpoint.ROLES.value, summary="List assignable verification roles")
+@router.get(ApiEndpoint.ROLES.value, summary="List assignable verification roles/designations")
+@router.get(ApiEndpoint.DESIGNATIONS.value, summary="List allowed committee designations")
 def list_roles(svc: VerificationService = Depends(get_verification_service)):
     result = svc.list_roles()
     return success_response(result.model_dump())

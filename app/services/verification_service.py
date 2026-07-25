@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict
 
+from app.core.enums.committee_designation import CommitteeDesignation
 from app.core.enums.error_code import ErrorCode
 from app.core.enums.role import UserRole
 from app.exceptions.base import ApiException
@@ -18,11 +19,6 @@ from app.utils.structured_log import log_event, log_timing
 
 
 class VerificationService:
-    _ROLE_LABELS = {
-        UserRole.ADMIN.value: "Masjid Admin",
-        UserRole.SUPER_ADMIN.value: "Super Admin",
-    }
-
     def __init__(
             self,
             verification_store: VerificationRepository,
@@ -34,10 +30,13 @@ class VerificationService:
         self._rbac = rbac
 
     def list_roles(self) -> RolesResponse:
+        """Allowed verification / committee designations for client pickers."""
         roles = [
             RoleItem(id=role_id, label=label)
-            for role_id, label in self._ROLE_LABELS.items()
+            for role_id, label in CommitteeDesignation.labels().items()
         ]
+        # Super admin remains assignable for internal verification flows.
+        roles.append(RoleItem(id=UserRole.SUPER_ADMIN.value, label="Super Admin"))
         return RolesResponse(roles=roles)
 
     def create_request(
@@ -85,8 +84,6 @@ class VerificationService:
     ) -> VerificationRequestResponse:
         from app.services.rbac_service import RbacService
 
-        # Resolve role via admin store (session user has no role field)
-        # Prefer injecting RbacService; fall back if not wired.
         rbac = getattr(self, "_rbac", None)
         if rbac is not None:
             rbac.require_roles(current_user, {UserRole.SUPER_ADMIN.value})
