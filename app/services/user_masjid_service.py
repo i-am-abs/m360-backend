@@ -3,7 +3,6 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional
 
-from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.core.enums.masjid import MasjidSaveLimit
 from app.exceptions.base import ApiException
 from app.interfaces.admin_repository import AdminRepository
@@ -11,8 +10,7 @@ from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
 from app.repositories.user_store_helpers import resolve_canonical_phone
-from app.utils.admin_link import resolve_committee_for_place
-from app.utils.masjid import get_deterministic_masjid_metadata
+from app.utils.masjid_view import build_masjid_detail_view
 
 _MASJID_SAVE_LIMIT_MESSAGE = (
     "You are not allowed to save more than 3 masjids at a time."
@@ -45,32 +43,15 @@ class UserMasjidService:
                 place = self._places_reader.get_place_by_id(pid)
                 if not isinstance(place, dict):
                     raise ValueError("invalid place")
-                resolved_id = place.get("id") or pid
-                meta = get_deterministic_masjid_metadata(resolved_id)
-                committee = resolve_committee_for_place(
-                    resolved_id,
-                    admin_store=self._admin_store,
-                    masjid_store=self._masjid_store,
-                )
-                prayer_timings: List[Dict[str, Any]] = []
-                amenities: List[str] = []
-                if self._masjid_store is not None:
-                    prayer_timings = self._masjid_store.get_timings(resolved_id) or []
-                    amenities = self._masjid_store.get_amenities(resolved_id) or []
-                view = MasjidDetailsPresenter.to_view(
+                view = build_masjid_detail_view(
                     place,
-                    has_donations=meta["hasDonationsEnabled"],
-                    has_announcements=meta["hasAnnouncementsEnabled"],
-                    donation_count=meta["donationUpdatesCount"],
-                    announcement_count=meta["announcementUpdatesCount"],
+                    place_id=pid,
                     is_added=True,
                     saved_count=len(place_ids),
-                    committee_data=committee["details"] if committee["has_committee"] else None,
-                    prayer_timings=prayer_timings,
-                    amenities=amenities,
+                    admin_store=self._admin_store,
+                    masjid_store=self._masjid_store,
+                    include_raw=False,
                 )
-                view["committee"] = committee
-                view.pop("raw", None)
                 masjids.append(view)
             except Exception:
                 masjids.append({
@@ -81,9 +62,16 @@ class UserMasjidService:
                     "hasAnnouncementsEnabled": False,
                     "donationUpdatesCount": 0,
                     "announcementUpdatesCount": 0,
-                    "timings": {"prayer": [], "current_opening_hours": None, "regular_opening_hours": None},
+                    "timings": [],
+                    "prayerTimings": [],
                     "amenities": [],
-                    "committee": {"has_committee": False, "details": None},
+                    "onboardingDone": False,
+                    "adminStatus": {"label": "unverified", "message": ""},
+                    "committee": {
+                        "hasCommittee": False,
+                        "has_committee": False,
+                        "details": None,
+                    },
                 })
         return {"count": len(masjids), "masjids": masjids}
 

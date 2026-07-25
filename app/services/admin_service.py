@@ -9,6 +9,7 @@ from app.core.enums.role import UserRole
 from app.exceptions.base import ApiException
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.audit_log_repository import AuditLogRepository
+from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.schemas.admin import AdminRegisterRequest, AdminResponse, AdminStatusUpdateRequest
 from app.services.rbac_service import RbacService
@@ -23,11 +24,13 @@ class AdminService:
             audit_store: AuditLogRepository,
             rbac: RbacService,
             masjid_store: Optional[MasjidRepository] = None,
+            listing_store: Optional[MasjidListingRepository] = None,
     ) -> None:
         self._admin_store = admin_store
         self._audit_store = audit_store
         self._rbac = rbac
         self._masjid_store = masjid_store
+        self._listing_store = listing_store
 
     def register(
             self,
@@ -195,20 +198,47 @@ class AdminService:
         if (
                 body.status == AdminRegistrationStatus.APPROVED
                 and stored.get("masjid_place_id")
-                and self._masjid_store is not None
         ):
-            self._masjid_store.upsert_committee(
+            place_id = str(stored["masjid_place_id"])
+            if self._masjid_store is not None:
+                self._masjid_store.upsert_committee(
+                    place_id,
+                    {
+                        "committee": {
+                            "adminId": stored.get("admin_id"),
+                            "name": stored.get("name"),
+                            "phone": stored.get("phone"),
+                            "role": stored.get("role"),
+                            "status": stored.get("status"),
+                            "committeeId": stored.get("committee_id"),
+                            "profileImage": stored.get("profile_image"),
+                        },
+                    },
+                )
+            if self._listing_store is not None:
+                self._listing_store.upsert_listing(
+                    place_id,
+                    {
+                        "admin_status": {
+                            "label": "verified",
+                            "message": body.message or "Approved",
+                        },
+                        "message": body.message,
+                    },
+                )
+        elif (
+                body.status == AdminRegistrationStatus.REJECTED
+                and stored.get("masjid_place_id")
+                and self._listing_store is not None
+        ):
+            self._listing_store.upsert_listing(
                 str(stored["masjid_place_id"]),
                 {
-                    "committee": {
-                        "adminId": stored.get("admin_id"),
-                        "name": stored.get("name"),
-                        "phone": stored.get("phone"),
-                        "role": stored.get("role"),
-                        "status": stored.get("status"),
-                        "committeeId": stored.get("committee_id"),
-                        "profileImage": stored.get("profile_image"),
+                    "admin_status": {
+                        "label": "unverified",
+                        "message": body.message or "Rejected",
                     },
+                    "message": body.message,
                 },
             )
 

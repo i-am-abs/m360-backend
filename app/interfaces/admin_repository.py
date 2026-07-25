@@ -31,6 +31,15 @@ class AdminRepository(ABC):
         pass
 
     @abstractmethod
+    def list_for_place(
+            self,
+            place_id: str,
+            *,
+            status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
     def list_all(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         pass
 

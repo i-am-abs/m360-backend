@@ -89,6 +89,18 @@ class MongoAdminStore(AdminRepository):
         }).sort("created_at", -1)
         return [self._public(doc) for doc in docs]
 
+    def list_for_place(
+            self,
+            place_id: str,
+            *,
+            status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        query: Dict[str, Any] = {"masjid_place_id": place_id}
+        if status:
+            query["status"] = status
+        docs = self._col.find(query).sort("created_at", -1)
+        return [self._public(doc) for doc in docs]
+
     def list_all(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
         query: Dict[str, Any] = {}
         if status:
@@ -161,6 +173,14 @@ class NoOpAdminStore(AdminRepository):
         return []
 
     def list_approved_for_place(self, place_id: str) -> List[Dict[str, Any]]:
+        return []
+
+    def list_for_place(
+            self,
+            place_id: str,
+            *,
+            status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         return []
 
     def list_all(self, status: Optional[str] = None) -> List[Dict[str, Any]]:

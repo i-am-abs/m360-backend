@@ -13,7 +13,6 @@ from app.api.deps import (
     get_user_masjid_service,
     get_user_store,
 )
-from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.core.config import Settings
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.core.enums.masjid import MasjidQueryDefault
@@ -22,8 +21,7 @@ from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.user_masjid_service import UserMasjidService
-from app.utils.admin_link import resolve_committee_for_place
-from app.utils.masjid import get_deterministic_masjid_metadata
+from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.response import success_response
 
 router = APIRouter(tags=["masjids"])
@@ -107,31 +105,16 @@ def get_masjid_details(
 ):
     place = svc.get_place_by_id(place_id)
     pid = place.get("id") or place_id
-    meta = get_deterministic_masjid_metadata(pid)
     favorites = store.list_favorites(current_user["phone_number"])
-    is_added = pid in favorites
-    saved_count = len(favorites)
-
-    committee = resolve_committee_for_place(
-        pid,
+    view = build_masjid_detail_view(
+        place,
+        place_id=pid,
+        is_added=pid in favorites,
+        saved_count=len(favorites),
         admin_store=admin_store,
         masjid_store=masjid_store,
+        include_raw=True,
     )
-    prayer_timings = masjid_store.get_timings(pid) or []
-    amenities = masjid_store.get_amenities(pid) or []
-    view = MasjidDetailsPresenter.to_view(
-        place,
-        has_donations=meta["hasDonationsEnabled"],
-        has_announcements=meta["hasAnnouncementsEnabled"],
-        donation_count=meta["donationUpdatesCount"],
-        announcement_count=meta["announcementUpdatesCount"],
-        is_added=is_added,
-        saved_count=saved_count,
-        committee_data=committee["details"] if committee["has_committee"] else None,
-        prayer_timings=prayer_timings,
-        amenities=amenities,
-    )
-    view["committee"] = committee
     return success_response(view)
 
 

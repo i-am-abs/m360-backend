@@ -396,6 +396,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         platform["audit_store"],
         rbac,
         masjid_store=app.state.masjid_store,
+        listing_store=platform["listing_store"],
     )
     app.state.verification_service = VerificationService(
         platform["verification_store"],

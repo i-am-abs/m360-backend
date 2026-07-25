@@ -20,17 +20,20 @@ class MasjidDetailsPresenter:
         accessibility = place.get("accessibilityOptions") or {}
         parking = place.get("parkingOptions") or {}
         payment = place.get("paymentOptions") or {}
+        prayers = list(prayer_timings or [])
         return {
             "place_id": place.get("id"),
             "name": (place.get("displayName") or {}).get("text"),
             "address": place.get("formattedAddress"),
             "location": place.get("location"),
-            "timings": {
-                "prayer": prayer_timings or [],
-                "current_opening_hours": place.get("currentOpeningHours"),
-                "regular_opening_hours": place.get("regularOpeningHours"),
+            # Saved prayer timings are the primary `timings` payload (matches create/update API).
+            "timings": prayers,
+            "prayerTimings": prayers,
+            "openingHours": {
+                "current": place.get("currentOpeningHours"),
+                "regular": place.get("regularOpeningHours"),
             },
-            "amenities": amenities or [],
+            "amenities": list(amenities or []),
             "management": {
                 "phone_number": place.get("internationalPhoneNumber"),
                 "website": place.get("websiteUri"),
@@ -51,6 +54,7 @@ class MasjidDetailsPresenter:
             "isAddedToMyMasjid": is_added,
             "savedMasjidCount": saved_count,
             "committee": {
+                "hasCommittee": committee_data is not None,
                 "has_committee": committee_data is not None,
                 "details": committee_data,
             },

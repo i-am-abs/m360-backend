@@ -18,18 +18,20 @@ def resolve_committee_for_place(
         admins = admin_store.list_approved_for_place(place_id)
         if admins:
             primary = admins[0]
+            details = {
+                "adminId": primary.get("admin_id"),
+                "name": primary.get("name"),
+                "phone": primary.get("phone"),
+                "role": primary.get("role"),
+                "status": primary.get("status"),
+                "committeeId": primary.get("committee_id"),
+                "profileImage": primary.get("profile_image"),
+                "masjidPlaceId": primary.get("masjid_place_id"),
+            }
             return {
+                "hasCommittee": True,
                 "has_committee": True,
-                "details": {
-                    "adminId": primary.get("admin_id"),
-                    "name": primary.get("name"),
-                    "phone": primary.get("phone"),
-                    "role": primary.get("role"),
-                    "status": primary.get("status"),
-                    "committeeId": primary.get("committee_id"),
-                    "profileImage": primary.get("profile_image"),
-                    "masjidPlaceId": primary.get("masjid_place_id"),
-                },
+                "details": details,
             }
 
     if masjid_store is not None:
@@ -37,12 +39,19 @@ def resolve_committee_for_place(
         if stored:
             nested = stored.get("committee")
             if nested:
-                return {"has_committee": True, "details": nested}
-            # timings/amenities-only docs are not a committee
+                return {
+                    "hasCommittee": True,
+                    "has_committee": True,
+                    "details": nested,
+                }
             if any(stored.get(k) for k in ("name", "phone", "admin_id", "adminId")):
-                return {"has_committee": True, "details": stored}
+                return {
+                    "hasCommittee": True,
+                    "has_committee": True,
+                    "details": stored,
+                }
 
-    return {"has_committee": False, "details": None}
+    return {"hasCommittee": False, "has_committee": False, "details": None}
 
 
 def ensure_admin_user_link(
@@ -70,7 +79,6 @@ def ensure_admin_user_link(
         updates: Dict[str, Any] = {}
         if doc.get("user_id") != user_id:
             updates["user_id"] = user_id
-        # Normalize legacy 10-digit phones when possible
         try:
             from app.utils.phone import canonicalize_india_phone
             canonical = canonicalize_india_phone(phone)

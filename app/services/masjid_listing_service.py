@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
 
-from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
-from app.utils.admin_link import ensure_admin_user_link, resolve_committee_for_place
-from app.utils.masjid import get_deterministic_masjid_metadata
+from app.utils.admin_link import ensure_admin_user_link
+from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.structured_log import log_event, log_timing
 
 
@@ -54,13 +53,10 @@ class MasjidListingService:
             items: List[Dict[str, Any]] = []
             for place_id in place_ids:
                 listing = listings.get(place_id, {})
-                admin_status = listing.get("admin_status") or {
-                    "label": "unverified",
-                    "message": listing.get("message") or "",
-                }
+                listing_status = listing.get("admin_status")
                 items.append(self._build_item(
                     place_id=place_id,
-                    admin_status=admin_status,
+                    listing_admin_status=listing_status,
                     favorite_ids=favorite_ids,
                     saved_count=len(favorite_ids),
                 ))
@@ -72,7 +68,7 @@ class MasjidListingService:
             self,
             *,
             place_id: str,
-            admin_status: Dict[str, Any],
+            listing_admin_status: Optional[Dict[str, Any]],
             favorite_ids: List[str],
             saved_count: int,
     ) -> Dict[str, Any]:
@@ -81,39 +77,13 @@ class MasjidListingService:
         except Exception:
             place = {"id": place_id, "unavailable": True}
 
-        pid = place.get("id") or place_id
-        meta = get_deterministic_masjid_metadata(pid)
-        committee = resolve_committee_for_place(
-            pid,
+        return build_masjid_detail_view(
+            place,
+            place_id=place_id,
+            is_added=place_id in favorite_ids or (place.get("id") in favorite_ids),
+            saved_count=saved_count,
             admin_store=self._admin_store,
             masjid_store=self._masjid_store,
+            listing_admin_status=listing_admin_status,
+            include_raw=False,
         )
-        prayer_timings: List[Dict[str, Any]] = []
-        amenities: List[str] = []
-        if self._masjid_store is not None:
-            prayer_timings = self._masjid_store.get_timings(pid) or []
-            amenities = self._masjid_store.get_amenities(pid) or []
-        view = MasjidDetailsPresenter.to_view(
-            place,
-            has_donations=meta["hasDonationsEnabled"],
-            has_announcements=meta["hasAnnouncementsEnabled"],
-            donation_count=meta["donationUpdatesCount"],
-            announcement_count=meta["announcementUpdatesCount"],
-            is_added=pid in favorite_ids,
-            saved_count=saved_count,
-            committee_data=committee["details"] if committee["has_committee"] else None,
-            prayer_timings=prayer_timings,
-            amenities=amenities,
-        )
-        # Presenter sets committee.has_committee from details is not None —
-        # force the resolved shape for consistency.
-        view["committee"] = committee
-        view["id"] = pid
-        view["name"] = view.get("name") or pid
-        view["adminStatus"] = {
-            "label": admin_status.get("label", "unverified"),
-            "message": admin_status.get("message", ""),
-        }
-        # Drop bulky raw Google payload from list endpoint
-        view.pop("raw", None)
-        return view
