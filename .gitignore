@@ -13,4 +13,5 @@ logs/
 *.swp
 *.swo
 *.log
+firebase-service-account.json
 *.pyc
