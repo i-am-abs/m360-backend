@@ -66,5 +66,5 @@ class AdminRepository(ABC):
         pass
 
     @abstractmethod
-    def list_by_user_id(self, user_id: str) -> List[Dict[str, Any]]:
+    def list_by_user_id(self, user_id: str, *, status: Optional[str] = None) -> List[Dict[str, Any]]:
         pass

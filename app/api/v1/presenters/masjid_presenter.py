@@ -54,6 +54,7 @@ class MasjidDetailsPresenter:
             "announcementUpdatesCount": announcement_count,
             "isAddedToMyMasjid": is_added,
             "savedMasjidCount": saved_count,
+            "committee_details": members,
             "committee": {
                 "hasCommittee": len(members) > 0,
                 "has_committee": len(members) > 0,

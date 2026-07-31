@@ -122,7 +122,7 @@ def is_user_admin_for_place(
                 user_id=user_id,
                 phone=str(phone) if phone else None,
         ):
-            if str(doc.get("masjid_place_id") or "") == place_id:
+            if str(doc.get("masjid_place_id") or "") == place_id and doc.get("status") == "approved":
                 return True
 
     if phone:
@@ -138,7 +138,7 @@ def ensure_admin_user_link(
         user_id: str,
         phone: Optional[str],
 ) -> List[Dict[str, Any]]:
-    """Link admin rows for this phone to user_id; return approved docs for the user."""
+    """Link admin rows for this phone to user_id; return docs for the user."""
     if not user_id:
         return []
 

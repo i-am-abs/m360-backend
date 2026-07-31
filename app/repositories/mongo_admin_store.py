@@ -139,11 +139,11 @@ class MongoAdminStore(AdminRepository):
     def link_user(self, admin_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         return self.update_fields(admin_id, {"user_id": user_id})
 
-    def list_by_user_id(self, user_id: str) -> List[Dict[str, Any]]:
-        docs = self._col.find({
-            "user_id": user_id,
-            "status": "approved",
-        })
+    def list_by_user_id(self, user_id: str, *, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        query: Dict[str, Any] = {"user_id": user_id}
+        if status:
+            query["status"] = status
+        docs = self._col.find(query)
         return [self._public(doc) for doc in docs]
 
     @staticmethod
@@ -206,5 +206,5 @@ class NoOpAdminStore(AdminRepository):
     def link_user(self, admin_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         return None
 
-    def list_by_user_id(self, user_id: str) -> List[Dict[str, Any]]:
+    def list_by_user_id(self, user_id: str, *, status: Optional[str] = None) -> List[Dict[str, Any]]:
         return []

@@ -82,6 +82,7 @@ def build_masjid_detail_view(
         prayer_timings=prayer_timings,
         amenities=amenities,
     )
+    view["committee_details"] = committee["details"] if committee.get("hasCommittee") else []
     view["committee"] = committee
     view["id"] = pid
     view["name"] = view.get("name") or pid

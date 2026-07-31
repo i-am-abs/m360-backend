@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import (
     get_admin_store,
     get_current_user,
+    get_optional_current_user,
     get_masjid_search_service,
     get_masjid_store,
     get_settings,
@@ -97,7 +98,7 @@ def get_masjid_status(settings: Settings = Depends(get_settings)):
 @router.get(ApiEndpoint.MASJID_DETAILS.value, summary="Get masjid full details")
 def get_masjid_details(
         place_id: str,
-        current_user: Dict[str, Any] = Depends(get_current_user),
+        current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
         store: UserRepository = Depends(get_user_store),
         svc: MasjidSearchService = Depends(get_masjid_search_service),
         masjid_store: MasjidRepository = Depends(get_masjid_store),
@@ -105,7 +106,7 @@ def get_masjid_details(
 ):
     place = svc.get_place_by_id(place_id)
     pid = place.get("id") or place_id
-    favorites = store.list_favorites(current_user["phone_number"])
+    favorites = store.list_favorites(current_user["phone_number"]) if current_user else []
     view = build_masjid_detail_view(
         place,
         place_id=pid,
