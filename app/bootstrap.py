@@ -19,25 +19,60 @@ from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
 from app.repositories.google_places_client import GooglePlacesClient
 from app.repositories.local_cache_user_store import LocalCacheUserStore
-from app.repositories.mongo_broadcast_repository import MongoBroadcastRepository
+from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
+from app.repositories.mongo_user_store import MongoUserStore
+from app.repositories.redis_user_store import RedisUserStore
+from app.repositories.mongo_feature_flag_store import MongoFeatureFlagStore, NoOpFeatureFlagStore
+from app.repositories.mongo_admin_store import MongoAdminStore, NoOpAdminStore
+from app.repositories.mongo_verification_store import MongoVerificationStore, NoOpVerificationStore
+from app.repositories.mongo_audit_log_store import MongoAuditLogStore, NoOpAuditLogStore
+from app.repositories.mongo_masjid_listing_store import MongoMasjidListingStore, NoOpMasjidListingStore
+from app.repositories.r2_upload_provider import R2UploadProvider, StubR2UploadProvider
+from app.repositories.mux_upload_provider import MuxUploadProvider, StubMuxUploadProvider
+from app.repositories.mongo_fcm_token_store import MongoFcmTokenStore, NoOpFcmTokenStore
+from app.repositories.mongo_masjid_follow_store import (
+    MongoMasjidFollowStore,
+    NoOpMasjidFollowStore,
+)
+from app.repositories.mongo_broadcast_store import MongoBroadcastStore, NoOpBroadcastStore
+from app.repositories.fcm_notification_sender import (
+    FcmNotificationSender,
+    StubNotificationSender,
+)
+from app.repositories.mongo_broadcast_repository import MongoBroadcastFeedRepository
 from app.repositories.mongo_claim_repository import MongoClaimRepository
 from app.repositories.mongo_donation_repository import MongoDonationRepository
 from app.repositories.mongo_follower_repository import MongoFollowerRepository
 from app.repositories.mongo_masjid_repository import MongoMasjidRepository
-from app.repositories.mongo_user_store import MongoUserStore
-from app.repositories.redis_user_store import RedisUserStore
-from app.services.broadcast_service import BroadcastService
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
-from app.services.claim_service import ClaimService
-from app.services.connection_manager import ConnectionManager
-from app.services.donation_service import DonationService
-from app.services.follower_service import FollowerService
-from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
 from app.services.user_masjid_service import UserMasjidService
+from app.services.feature_flag_service import FeatureFlagService
+from app.services.rbac_service import RbacService
+from app.services.admin_service import AdminService
+from app.services.verification_service import VerificationService
+from app.services.upload_service import UploadService
+from app.services.masjid_listing_service import MasjidListingService
+from app.services.masjid_timings_service import MasjidTimingsService
+from app.services.masjid_amenities_service import MasjidAmenitiesService
+from app.services.internal_timings_service import InternalTimingsService
+from app.services.notification_service import NotificationService
+from app.services.broadcast_service import BroadcastService
+from app.services.broadcast_feed_service import BroadcastFeedService
+from app.services.claim_service import ClaimService
+from app.services.connection_manager import ConnectionManager
+from app.services.donation_service import DonationService
+from app.services.follower_service import FollowerService
+from app.services.masjid_entity_service import MasjidEntityService
+from app.services.rate_limiter import (
+    InMemoryRateLimitBackend,
+    RateLimiter,
+    RedisRateLimitBackend,
+)
+from app.utils.auth_session_policy import resolve_session_ttl_seconds
 from app.utils.phone import IndiaPhoneValidator
 
 _log = get_logger(__name__)
@@ -125,6 +160,15 @@ def _create_masjid_search_service(
     return inner
 
 
+def _create_masjid_store(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> "MongoMasjidStore | NoOpMasjidStore":
+    if settings.mongodb_configured and mongo_client is not None:
+        return MongoMasjidStore(mongo_client.get_database(settings.mongodb_database))
+    return NoOpMasjidStore()
+
+
 def _create_user_repository(app: FastAPI, settings: Settings) -> UserRepository:
     if settings.mongodb_configured:
         if not settings.mongodb_uri or not str(settings.mongodb_uri).strip():
@@ -162,15 +206,120 @@ def _create_phone_auth_service(
         settings: Settings,
         user_store: UserRepository,
         msg91_pending: Msg91PendingReqIdStore,
+        admin_store=None,
 ) -> PhoneAuthService:
     return PhoneAuthService(
         store=user_store,
         otp_gateway=Msg91OtpGateway(settings),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
-        session_ttl_seconds=settings.auth_session_ttl_seconds,
+        session_ttl_seconds=resolve_session_ttl_seconds(
+            settings.auth_session_ttl_seconds,
+            force_infinite=settings.auth_force_infinite_sessions,
+        ),
         msg91_pending=msg91_pending,
         msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
+        admin_store=admin_store,
     )
+
+
+def _create_platform_stores(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> dict:
+    if settings.mongodb_configured and mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        return {
+            "feature_flag_store": MongoFeatureFlagStore(db),
+            "admin_store": MongoAdminStore(db),
+            "verification_store": MongoVerificationStore(db),
+            "audit_store": MongoAuditLogStore(db),
+            "listing_store": MongoMasjidListingStore(db),
+        }
+    return {
+        "feature_flag_store": NoOpFeatureFlagStore(),
+        "admin_store": NoOpAdminStore(),
+        "verification_store": NoOpVerificationStore(),
+        "audit_store": NoOpAuditLogStore(),
+        "listing_store": NoOpMasjidListingStore(),
+    }
+
+
+def _create_rate_limiter(
+        settings: Settings,
+        redis_client: Optional[Redis],
+) -> Optional[RateLimiter]:
+    if not settings.rate_limit_enabled:
+        return None
+
+    if redis_client is not None:
+        backend = RedisRateLimitBackend(redis_client, settings.redis_key_prefix)
+        _log.info(
+            "Rate limiting enabled (redis) default=%s/min auth=%s/min",
+            settings.rate_limit_requests_per_minute,
+            settings.rate_limit_auth_requests_per_minute,
+        )
+    else:
+        backend = InMemoryRateLimitBackend()
+        _log.warning(
+            "Rate limiting uses in-memory backend — enable Redis for multi-worker accuracy."
+        )
+
+    return RateLimiter(
+        backend,
+        default_limit=settings.rate_limit_requests_per_minute,
+        auth_limit=settings.rate_limit_auth_requests_per_minute,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
+
+
+def _create_upload_service(settings: Settings) -> UploadService:
+    image_provider = (
+        R2UploadProvider(settings) if settings.r2_configured else StubR2UploadProvider()
+    )
+    video_provider = (
+        MuxUploadProvider(settings) if settings.mux_configured else StubMuxUploadProvider()
+    )
+    return UploadService([image_provider, video_provider])
+
+
+def _create_broadcast_stores(
+        settings: Settings,
+        mongo_client: Optional[MongoClient],
+) -> dict:
+    if settings.mongodb_configured and mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        return {
+            "fcm_token_store": MongoFcmTokenStore(db),
+            "follow_store": MongoMasjidFollowStore(db),
+            "broadcast_store": MongoBroadcastStore(db),
+        }
+    return {
+        "fcm_token_store": NoOpFcmTokenStore(),
+        "follow_store": NoOpMasjidFollowStore(),
+        "broadcast_store": NoOpBroadcastStore(),
+    }
+
+
+def _create_notification_sender(settings: Settings):
+    if settings.fcm_configured:
+        try:
+            sender = FcmNotificationSender(settings.firebase_credentials_file or "")
+            _log.info(
+                "FCM enabled — Firebase initialised from %s.",
+                settings.firebase_credentials_file,
+            )
+            return sender
+        except Exception as exc:
+            _log.warning(
+                "FCM configured but Firebase init failed (%s) — using stub sender.",
+                exc,
+            )
+            return StubNotificationSender()
+    _log.warning(
+        "FCM disabled — push notifications will be logged only. "
+        "Set FCM_ENABLED=true and FIREBASE_CREDENTIALS_FILE to enable."
+    )
+    return StubNotificationSender()
 
 
 def bootstrap(app: FastAPI, settings: Settings) -> None:
@@ -181,8 +330,9 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         import firebase_admin
         from firebase_admin import credentials
         try:
-            cred = credentials.Certificate(settings.fcm_service_account_path)
-            firebase_admin.initialize_app(cred)
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(settings.fcm_service_account_path)
+                firebase_admin.initialize_app(cred)
             _log.info("Firebase Admin SDK initialized")
         except Exception as e:
             _log.warning("Firebase Admin SDK init failed: %s", e)
@@ -220,8 +370,19 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             app.state.redis is not None and settings.api_get_cache_ttl_seconds > 0
     )
 
+    platform = _create_platform_stores(settings, app.state.mongo_client)
+    app.state.feature_flag_store = platform["feature_flag_store"]
+    app.state.admin_store = platform["admin_store"]
+    app.state.verification_store = platform["verification_store"]
+    app.state.audit_store = platform["audit_store"]
+    app.state.listing_store = platform["listing_store"]
+
+    # Rebuild phone auth with admin linking now that admin_store exists
     app.state.phone_auth_service = _create_phone_auth_service(
-        settings, user_store, msg91_pending,
+        settings,
+        user_store,
+        msg91_pending,
+        admin_store=platform["admin_store"],
     )
     if (
             settings.uvicorn_workers > 1
@@ -233,10 +394,83 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             "may miss webhooks. Enable Redis or use a single worker."
         )
 
+    app.state.masjid_store = _create_masjid_store(
+        settings, app.state.mongo_client
+    )
     app.state.user_masjid_service = UserMasjidService(
         store=user_store,
         places_reader=masjid_search,
+        masjid_store=app.state.masjid_store,
+        admin_store=platform["admin_store"],
     )
+
+    rbac = RbacService(platform["admin_store"])
+    app.state.rbac_service = rbac
+
+    app.state.feature_flag_service = FeatureFlagService(
+        platform["feature_flag_store"],
+        redis_client=app.state.redis,
+        cache_ttl_seconds=settings.api_get_cache_ttl_seconds,
+        cache_key_prefix=settings.redis_key_prefix,
+    )
+    app.state.admin_service = AdminService(
+        platform["admin_store"],
+        platform["audit_store"],
+        rbac,
+        masjid_store=app.state.masjid_store,
+        listing_store=platform["listing_store"],
+    )
+    app.state.verification_service = VerificationService(
+        platform["verification_store"],
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.upload_service = _create_upload_service(settings)
+    app.state.masjid_listing_service = MasjidListingService(
+        platform["admin_store"],
+        platform["listing_store"],
+        masjid_search,
+        user_store,
+        masjid_store=app.state.masjid_store,
+    )
+    app.state.masjid_timings_service = MasjidTimingsService(
+        app.state.masjid_store,
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.masjid_amenities_service = MasjidAmenitiesService(
+        app.state.masjid_store,
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.internal_timings_service = InternalTimingsService(
+        app.state.masjid_store,
+        redis_client=app.state.redis,
+        cache_ttl_seconds=settings.internal_timings_cache_ttl_seconds,
+        cache_key_prefix=settings.redis_key_prefix,
+    )
+
+    broadcast_stores = _create_broadcast_stores(settings, app.state.mongo_client)
+    app.state.fcm_token_store = broadcast_stores["fcm_token_store"]
+    app.state.masjid_follow_store = broadcast_stores["follow_store"]
+    app.state.broadcast_store = broadcast_stores["broadcast_store"]
+
+    notification_sender = _create_notification_sender(settings)
+    app.state.notification_sender = notification_sender
+    app.state.notification_service = NotificationService(
+        broadcast_stores["fcm_token_store"],
+        broadcast_stores["follow_store"],
+        notification_sender,
+    )
+    app.state.broadcast_service = BroadcastService(
+        broadcast_stores["broadcast_store"],
+        app.state.notification_service,
+        platform["audit_store"],
+        rbac,
+        default_page_size=settings.broadcast_default_page_size,
+    )
+
+    app.state.rate_limiter = _create_rate_limiter(settings, app.state.redis)
 
     app.state.connection_manager = ConnectionManager()
 
@@ -247,7 +481,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         db = mongo_client.get_database(settings.mongodb_database)
         masjid_repo = MongoMasjidRepository(db)
         claim_repo = MongoClaimRepository(db)
-        broadcast_repo = MongoBroadcastRepository(db)
+        broadcast_feed_repo = MongoBroadcastFeedRepository(db)
         follower_repo = MongoFollowerRepository(db)
         donation_repo = MongoDonationRepository(db)
 
@@ -264,8 +498,8 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             masjid_repo=masjid_repo,
             fcm_service=app.state.fcm_service,
         )
-        app.state.broadcast_service = BroadcastService(
-            broadcast_repo=broadcast_repo,
+        app.state.broadcast_feed_service = BroadcastFeedService(
+            broadcast_repo=broadcast_feed_repo,
             follower_repo=follower_repo,
             masjid_repo=masjid_repo,
             fcm_service=app.state.fcm_service,
@@ -275,23 +509,24 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         )
         app.state.donation_service = DonationService(
             donation_repo=donation_repo,
-            broadcast_service=app.state.broadcast_service,
+            broadcast_service=app.state.broadcast_feed_service,
         )
     else:
-        _log.warning("MongoDB not available — masjid entity, claims, broadcast, and donation features disabled.")
+        _log.warning("MongoDB not available — masjid entity, claims, broadcast feed, and donation features disabled.")
         app.state.fcm_service = None
         app.state.masjid_entity_service = None
         app.state.claim_service = None
-        app.state.broadcast_service = None
+        app.state.broadcast_feed_service = None
         app.state.follower_service = None
         app.state.donation_service = None
 
     mode = app.state.user_store_backend
     _log.info(
         "Bootstrap complete — persistence=%s — api_response_cache=%s — "
-        "auth_session_ttl_seconds=%s (never_expires=%s) — all services wired.",
+        "auth_session_ttl_seconds=%s (never_expires=%s, force_infinite=%s) — all services wired.",
         mode,
         app.state.api_response_cache,
         settings.auth_session_ttl_seconds,
         settings.auth_session_never_expires,
+        settings.auth_force_infinite_sessions,
     )

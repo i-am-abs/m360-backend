@@ -2,26 +2,24 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 
-from app.api.deps import get_current_user
-from app.services.fcm_service import FcmService
+from app.api.deps import get_current_user, get_notification_service
+from app.core.enums.api_endpoints import ApiEndpoint
+from app.schemas.fcm import FcmTokenRegisterRequest, FcmTokenResponse
+from app.services.notification_service import NotificationService
+from app.utils.response import success_response
 
-router = APIRouter(tags=["fcm"])
-
-
-class FcmTokenRequest(BaseModel):
-    token: str
+router = APIRouter(tags=["broadcast"])
 
 
-@router.post("/users/fcm-token")
+@router.post(ApiEndpoint.FCM_TOKENS.value, summary="Register FCM device token for current user")
 def register_fcm_token(
-    request: Request,
-    body: FcmTokenRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+        body: FcmTokenRegisterRequest,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: NotificationService = Depends(get_notification_service),
 ):
-    fcm: FcmService = getattr(request.app.state, "fcm_service", None)
-    if fcm:
-        fcm.store_token(current_user["user_id"], body.token)
-    return {"status": "ok"}
+    user_id = str(current_user["user_id"])
+    svc.register_token(user_id, body.token, body.platform)
+    response = FcmTokenResponse(user_id=user_id, token_registered=True)
+    return success_response(response.model_dump(by_alias=True), message="Token registered")

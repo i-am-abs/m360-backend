@@ -5,7 +5,7 @@ from typing import Any, Dict
 from app.core.enums.google_places import GooglePlacesUrl, PhotoConfig
 
 
-def build_photo_media_url(api_key: str, photo_resource_name: str, max_height_px: int,) -> str:
+def build_photo_media_url(api_key: str, photo_resource_name: str, max_height_px: int, ) -> str:
     base = f"{GooglePlacesUrl.MEDIA_HOST.value}/{photo_resource_name}/media"
     return f"{base}?maxHeightPx={max_height_px}&key={api_key}"
 
@@ -26,7 +26,7 @@ def transform_photos_on_place(place: Dict[str, Any], api_key: str) -> None:
         photo["name"] = build_photo_media_url(api_key, photo_name, max_h)
 
 
-def transform_places_in_search_response(data: Dict[str, Any], api_key: str,) -> Dict[str, Any]:
+def transform_places_in_search_response(data: Dict[str, Any], api_key: str, ) -> Dict[str, Any]:
     for place in data.get("places") or []:
         if isinstance(place, dict):
             transform_photos_on_place(place, api_key)

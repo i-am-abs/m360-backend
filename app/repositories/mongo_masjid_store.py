@@ -1,0 +1,186 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from pymongo import ASCENDING
+from pymongo.database import Database
+
+from app.interfaces.masjid_repository import MasjidRepository
+
+
+class MongoMasjidStore(MasjidRepository):
+    _COLLECTION = "masjid_committees"
+    _EXCLUDE = {"_id": 0, "place_id": 0}
+
+    def __init__(self, db: Database) -> None:
+        self._col = db[self._COLLECTION]
+        self._ensure_indexes()
+
+    def _ensure_indexes(self) -> None:
+        self._col.create_index(
+            [(("place_id", ASCENDING))],
+            unique=True,
+            name="place_id_unique",
+        )
+
+    @staticmethod
+    def _now_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    def get_committee(self, place_id: str) -> Optional[Dict[str, Any]]:
+        doc = self._col.find_one({"place_id": place_id}, self._EXCLUDE)
+        if not doc:
+            return None
+        return dict(doc)
+
+    def upsert_committee(
+            self,
+            place_id: str,
+            data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        now = self._now_iso()
+        set_fields: Dict[str, Any] = {"updated_at": now}
+        if "committee" in data:
+            set_fields["committee"] = data.get("committee") or {}
+        if "timings" in data:
+            set_fields["timings"] = data.get("timings") or []
+        if "amenities" in data:
+            set_fields["amenities"] = data.get("amenities") or []
+
+        result = self._col.find_one_and_update(
+            {"place_id": place_id},
+            [
+                {
+                    "$set": {
+                        **set_fields,
+                        "created_at": {
+                            "$ifNull": ["$created_at", now]
+                        },
+                    }
+                }
+            ],
+            upsert=True,
+            return_document=True,  # type: ignore[call-arg]
+        )
+
+        stored: Dict[str, Any] = dict(result or {})
+        stored.pop("_id", None)
+        stored.pop("place_id", None)
+        return stored
+
+    def get_timings(self, place_id: str) -> Optional[List[Dict[str, Any]]]:
+        doc = self._col.find_one({"place_id": place_id}, {"timings": 1, "_id": 0})
+        if not doc:
+            return None
+        timings = doc.get("timings")
+        return timings if timings else None
+
+    def get_amenities(self, place_id: str) -> Optional[List[str]]:
+        doc = self._col.find_one({"place_id": place_id}, {"amenities": 1, "_id": 0})
+        if not doc:
+            return None
+        amenities = doc.get("amenities")
+        return amenities if amenities else None
+
+    def update_timings(
+            self,
+            place_id: str,
+            timings: List[Dict[str, Any]],
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        now = self._now_iso()
+        update_fields: Dict[str, Any] = {
+            "timings": timings,
+            "updated_at": now,
+        }
+        if updated_by:
+            update_fields["timings_updated_by"] = updated_by
+
+        result = self._col.find_one_and_update(
+            {"place_id": place_id},
+            [
+                {
+                    "$set": {
+                        **update_fields,
+                        "created_at": {"$ifNull": ["$created_at", now]},
+                    }
+                }
+            ],
+            upsert=True,
+            return_document=True,  # type: ignore[call-arg]
+        )
+        stored: Dict[str, Any] = dict(result or {})
+        stored.pop("_id", None)
+        stored.pop("place_id", None)
+        return stored
+
+    def update_amenities(
+            self,
+            place_id: str,
+            amenities: List[str],
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        now = self._now_iso()
+        update_fields: Dict[str, Any] = {
+            "amenities": amenities,
+            "updated_at": now,
+        }
+        if updated_by:
+            update_fields["amenities_updated_by"] = updated_by
+
+        result = self._col.find_one_and_update(
+            {"place_id": place_id},
+            [
+                {
+                    "$set": {
+                        **update_fields,
+                        "created_at": {"$ifNull": ["$created_at", now]},
+                    }
+                }
+            ],
+            upsert=True,
+            return_document=True,  # type: ignore[call-arg]
+        )
+        stored: Dict[str, Any] = dict(result or {})
+        stored.pop("_id", None)
+        stored.pop("place_id", None)
+        return stored
+
+
+class NoOpMasjidStore(MasjidRepository):
+    def get_committee(self, place_id: str) -> Optional[Dict[str, Any]]:
+        return None
+
+    def upsert_committee(
+            self,
+            place_id: str,
+            data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        return data
+
+    def get_timings(self, place_id: str) -> Optional[List[Dict[str, Any]]]:
+        return None
+
+    def get_amenities(self, place_id: str) -> Optional[List[str]]:
+        return None
+
+    def update_timings(
+            self,
+            place_id: str,
+            timings: List[Dict[str, Any]],
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {"timings": timings}
+
+    def update_amenities(
+            self,
+            place_id: str,
+            amenities: List[str],
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {"amenities": amenities}

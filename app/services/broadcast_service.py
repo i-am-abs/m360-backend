@@ -1,190 +1,144 @@
 from __future__ import annotations
 
-from datetime import datetime
-from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from app.core.logging import get_logger
-from app.exceptions.base import ApiException
+from app.interfaces.audit_log_repository import AuditLogRepository
 from app.interfaces.broadcast_repository import BroadcastRepository
-from app.interfaces.follower_repository import FollowerRepository
-
-log = get_logger(__name__)
+from app.schemas.broadcast import (
+    BroadcastCreateRequest,
+    BroadcastDeliveryResult,
+    BroadcastItem,
+    BroadcastPage,
+)
+from app.services.notification_service import NotificationService
+from app.services.rbac_service import RbacService
+from app.utils.structured_log import log_event, log_timing
 
 
 class BroadcastService:
     def __init__(
-        self,
-        broadcast_repo: BroadcastRepository,
-        follower_repo: FollowerRepository,
-        masjid_repo=None,
-        fcm_service=None,
+            self,
+            broadcast_store: BroadcastRepository,
+            notification_service: NotificationService,
+            audit_store: AuditLogRepository,
+            rbac: RbacService,
+            default_page_size: int = 20,
     ) -> None:
-        self._broadcast_repo = broadcast_repo
-        self._follower_repo = follower_repo
-        self._masjid_repo = masjid_repo
-        self._fcm_service = fcm_service
+        self._broadcast_store = broadcast_store
+        self._notifications = notification_service
+        self._audit_store = audit_store
+        self._rbac = rbac
+        self._default_page_size = default_page_size
 
-    def post_message(self, masjid_id: str, sender_info: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
-        message = self._broadcast_repo.create_message(
-            masjid_id=masjid_id,
-            sender=sender_info,
-            msg_type=data.get("message_type", "text"),
-            text=data.get("text"),
-            video_url=data.get("video_url"),
-            thumbnail_url=data.get("thumbnail_url"),
-            mux_asset_id=data.get("mux_asset_id"),
-            mux_upload_id=data.get("mux_upload_id"),
-            campaign_id=data.get("campaign_id"),
-        )
-        log.info(
-            "Message posted: masjidId=%s sender=%s type=%s",
-            masjid_id, sender_info.get("user_id"), data.get("message_type"),
-        )
+    def create_broadcast(
+            self,
+            place_id: str,
+            body: BroadcastCreateRequest,
+            current_user: Dict[str, Any],
+    ) -> BroadcastDeliveryResult:
+        user = self._rbac.require_masjid_admin(current_user, place_id)
 
-        if self._fcm_service and self._masjid_repo:
-            masjid = self._masjid_repo.get_by_id(masjid_id)
-            if masjid:
-                place_id = masjid.get("place_id") or masjid.get("id", "")
-                masjid_name = masjid.get("name", "Masjid")
-                self._fcm_service.send_to_topic(
-                    topic=f"masjid_{place_id}",
-                    title="New Announcement",
-                    body=f"New message from {masjid_name}",
-                    data={"type": "broadcast", "masjid_id": place_id},
-                )
+        with log_timing("broadcast", "create", resource_id=place_id):
+            stored = self._broadcast_store.create({
+                "masjid_id": place_id,
+                "caption": body.caption,
+                "video_uri": body.video_uri,
+                "thumbnail_uri": body.thumbnail_uri,
+                "message_type": body.message_type,
+                "created_by": str(user.get("user_id") or ""),
+            })
 
-        return message
+        self._audit_store.write({
+            "action": "broadcast_created",
+            "resource_type": "broadcast",
+            "resource_id": stored["broadcast_id"],
+            "user_id": user.get("user_id"),
+            "details": {"masjid_id": place_id, "message_type": body.message_type},
+        })
 
-    def get_message_raw(self, message_id: str) -> Dict[str, Any]:
-        msg = self._broadcast_repo.get_message(message_id)
-        if not msg:
-            raise ApiException("Broadcast not found", status_code=HTTPStatus.NOT_FOUND)
-        return msg
-
-    def get_feed(
-        self,
-        masjid_id: str,
-        cursor: Optional[datetime],
-        since: Optional[datetime],
-        limit: int,
-        user_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        result = self._broadcast_repo.get_messages(masjid_id, cursor, since, limit, user_id=user_id)
-        log.info("get_feed: masjid=%s messages=%d", masjid_id, len(result.get("messages", [])))
-        campaign_ids = [
-            m.get("campaign_id")
-            for m in result.get("messages", [])
-            if m.get("message_type") == "campaign_card" and m.get("campaign_id")
-        ]
-        log.info("get_feed: campaign_ids to enrich=%s", campaign_ids)
-        if campaign_ids:
-            result = self._enrich_with_campaign_data(result, campaign_ids)
-        return result
-
-    def _enrich_with_campaign_data(self, feed: Dict[str, Any], campaign_ids: list) -> Dict[str, Any]:
-        try:
-            from pymongo import MongoClient
-            from app.core.config import get_settings
-            settings = get_settings()
-            client = MongoClient(settings.mongodb_uri)
-            db_name = getattr(settings, "mongodb_database", None) or getattr(settings, "mongodb_db_name", None) or "m360"
-            db = client[db_name]
-            from bson import ObjectId
-            obj_ids = []
-            for cid in campaign_ids:
-                try:
-                    obj_ids.append(ObjectId(cid))
-                except Exception:
-                    pass
-            if not obj_ids:
-                client.close()
-                return feed
-            campaigns = {str(c["_id"]): c for c in db.donation_campaigns.find({"_id": {"$in": obj_ids}})}
-            for msg in feed.get("messages", []):
-                if msg.get("message_type") == "campaign_card" and msg.get("campaign_id"):
-                    cid = msg["campaign_id"]
-                    if cid in campaigns:
-                        c = campaigns[cid]
-                        end_date = c.get("end_date")
-                        days_left = 0
-                        if end_date:
-                            try:
-                                if isinstance(end_date, str):
-                                    ed = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-                                else:
-                                    ed = end_date
-                                days_left = max(0, (ed - datetime.utcnow()).days)
-                            except Exception:
-                                pass
-                        donors = c.get("donor_count", 0)
-                        latest = c.get("latest_donor") or {}
-                        msg["campaign"] = {
-                            "id": cid,
-                            "title": c.get("title", ""),
-                            "description": c.get("description"),
-                            "target_amount": c.get("target_amount", 0),
-                            "raised_amount": c.get("raised_amount", 0),
-                            "currency": c.get("currency", "INR"),
-                            "donor_count": donors,
-                            "days_left": days_left,
-                            "latest_donor": latest,
-                            "is_active": c.get("is_active", True),
-                        }
-            client.close()
-        except Exception as e:
-            log.warning("Failed to enrich campaign data: %s", e)
-        return feed
-
-    def delete_message(self, message_id: str, user_id: str) -> bool:
-        msg = self._broadcast_repo.get_message(message_id)
-        if not msg:
-            raise ApiException("Message not found", status_code=HTTPStatus.NOT_FOUND)
-
-        sender = msg.get("sender", {})
-        if sender.get("user_id") != user_id:
-            raise ApiException(
-                "Only the sender can delete this message",
-                status_code=HTTPStatus.FORBIDDEN,
-            )
-
-        ok = self._broadcast_repo.delete_message(message_id)
-        if ok:
-            log.info("Message deleted: messageId=%s by userId=%s", message_id, user_id)
-        return ok
-
-    def toggle_reaction(self, message_id: str, user_id: str, emoji: str) -> Dict[str, Any]:
-        msg = self._broadcast_repo.get_message(message_id)
-        if not msg:
-            raise ApiException("Message not found", status_code=HTTPStatus.NOT_FOUND)
-        return self._broadcast_repo.toggle_reaction(message_id, user_id, emoji)
-
-    def post_campaign_card(self, masjid_id: str, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
-        message = self._broadcast_repo.create_message(
-            masjid_id=masjid_id,
-            sender={
-                "user_id": "system",
-                "name": "System",
-                "role": "Campaign",
+        recipients, sent, failed = self._notifications.notify_followers(
+            place_id,
+            title="New masjid update",
+            body=body.caption[:120],
+            data={
+                "broadcast_id": stored["broadcast_id"],
+                "masjid_id": place_id,
+                "message_type": body.message_type,
             },
-            msg_type="campaign_card",
-            text=None,
-            video_url=None,
-            thumbnail_url=None,
-            mux_asset_id=None,
-            mux_upload_id=None,
-            campaign_id=campaign_data.get("id"),
         )
-        return message
-
-    def handle_mux_asset_ready(self, asset_id: str, playback_id: str, upload_id: Optional[str] = None) -> None:
-        self._broadcast_repo.update_mux_playback(
-            asset_id=asset_id,
-            playback_id=playback_id,
-            video_url=f"https://stream.mux.com/{playback_id}.m3u8",
-            thumbnail_url=f"https://image.mux.com/{playback_id}/thumbnail.jpg",
-            upload_id=upload_id,
+        log_event(
+            "broadcast",
+            "created",
+            resource_id=stored["broadcast_id"],
+            user_id=user.get("user_id"),
+            recipients=recipients,
+        )
+        return BroadcastDeliveryResult(
+            broadcast_id=stored["broadcast_id"],
+            recipients=recipients,
+            sent=sent,
+            failed=failed,
         )
 
-    def increment_view_count(self, message_id: str) -> int:
-        return self._broadcast_repo.increment_view_count(message_id)
+    def list_broadcasts(
+            self,
+            place_id: str,
+            *,
+            limit: Optional[int] = None,
+            before_id: Optional[int] = None,
+    ) -> BroadcastPage:
+        page_size = self._clamp_limit(limit)
+        items, has_more = self._broadcast_store.list_by_masjid(
+            place_id,
+            limit=page_size,
+            before_seq=before_id,
+        )
+        models = [self._to_item(doc) for doc in items]
+        next_cursor = models[-1].seq if (models and has_more) else None
+        log_event(
+            "broadcast",
+            "listed",
+            resource_id=place_id,
+            count=len(models),
+            has_more=has_more,
+        )
+        return BroadcastPage(items=models, next_cursor=next_cursor, has_more=has_more)
+
+    def notify_followers_internal(
+            self,
+            place_id: str,
+            broadcast_id: str,
+    ) -> BroadcastDeliveryResult:
+        doc = self._broadcast_store.get_by_id(broadcast_id)
+        caption = (doc or {}).get("caption", "New masjid update")
+        recipients, sent, failed = self._notifications.notify_followers(
+            place_id,
+            title="New masjid update",
+            body=caption[:120],
+            data={"broadcast_id": broadcast_id, "masjid_id": place_id},
+        )
+        return BroadcastDeliveryResult(
+            broadcast_id=broadcast_id,
+            recipients=recipients,
+            sent=sent,
+            failed=failed,
+        )
+
+    def _clamp_limit(self, limit: Optional[int]) -> int:
+        if limit is None:
+            return self._default_page_size
+        return max(1, min(100, limit))
+
+    @staticmethod
+    def _to_item(doc: Dict[str, Any]) -> BroadcastItem:
+        return BroadcastItem(
+            id=doc["broadcast_id"],
+            masjid_id=doc["masjid_id"],
+            caption=doc["caption"],
+            video_uri=doc.get("video_uri"),
+            thumbnail_uri=doc.get("thumbnail_uri"),
+            message_type=doc.get("message_type", "text"),
+            seq=int(doc.get("seq", 0)),
+            created_at=doc.get("created_at", ""),
+            created_by=doc.get("created_by"),
+        )

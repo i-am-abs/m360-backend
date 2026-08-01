@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.normalize_path import NormalizePathMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 
 
@@ -57,6 +58,10 @@ def create_app() -> FastAPI:
         allow_credentials=settings.cors_allow_credentials,
         allow_methods=list(settings.cors_allow_methods),
         allow_headers=list(settings.cors_allow_headers),
+    )
+    application.add_middleware(
+        RateLimitMiddleware,
+        rate_limiter=getattr(application.state, "rate_limiter", None),
     )
     register_exception_handlers(application)
     application.include_router(api_v1_router, prefix="/api/v1")

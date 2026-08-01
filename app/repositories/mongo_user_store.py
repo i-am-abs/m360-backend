@@ -9,7 +9,11 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from app.interfaces.user_repository import UserRepository
-from app.repositories.user_store_helpers import merge_favorite_place_ids, pick_primary_user, resolve_canonical_phone
+from app.repositories.user_store_helpers import (
+    merge_favorite_place_ids,
+    pick_primary_user,
+    resolve_canonical_phone,
+)
 from app.utils.phone import phone_lookup_variants
 from app.utils.session_ttl import session_expires_in, session_never_expires
 
@@ -26,7 +30,8 @@ class MongoUserStore(UserRepository):
         self._users.create_index([("user_id", ASCENDING)], unique=True)
         self._sessions.create_index([("access_token", ASCENDING)], unique=True)
         self._sessions.create_index("expires_at", expireAfterSeconds=0)
-        self._favorites.create_index([("user_id", ASCENDING)], unique=True)
+        self._favorites.create_index([("phone_number", ASCENDING)], unique=True, sparse=True)
+        self._favorites.create_index([("user_id", ASCENDING)], unique=True, sparse=True)
 
     def ensure_user(self, phone_number: str) -> Dict[str, Any]:
         canonical_phone = resolve_canonical_phone(phone_number)
@@ -51,28 +56,29 @@ class MongoUserStore(UserRepository):
         matches = [(str(doc["phone_number"]), self._as_user_dict(doc)) for doc in docs]
         primary_key, primary_user, duplicates = pick_primary_user(matches)
         primary_user_id = str(primary_user["user_id"])
-        favorite_lists = [self.list_favorites(primary_user_id)]
+        favorite_lists = [self.list_favorites(canonical_phone)]
         duplicate_user_ids: list[str] = []
         for _dup_key, dup_user in duplicates:
             dup_user_id = str(dup_user.get("user_id") or "")
             if not dup_user_id:
                 continue
             duplicate_user_ids.append(dup_user_id)
-            favorite_lists.append(self.list_favorites(dup_user_id))
+            favorite_lists.append(self._list_legacy_favorites(dup_user_id))
 
         merged_favorites = merge_favorite_place_ids(*favorite_lists)
         if merged_favorites:
             self._favorites.update_one(
-                {"user_id": primary_user_id},
+                {"phone_number": canonical_phone},
                 {
-                    "$set": {"place_ids": merged_favorites},
-                    "$setOnInsert": {"user_id": primary_user_id},
+                    "$set": {"place_ids": merged_favorites, "phone_number": canonical_phone},
+                    "$unset": {"user_id": ""},
                 },
                 upsert=True,
             )
         for dup_user_id in duplicate_user_ids:
             self._favorites.delete_one({"user_id": dup_user_id})
             self._users.delete_one({"user_id": dup_user_id})
+        self._favorites.delete_one({"user_id": primary_user_id})
 
         if primary_user.get("phone_number") != canonical_phone:
             self._users.update_one(
@@ -133,26 +139,79 @@ class MongoUserStore(UserRepository):
             return True
         return exp > datetime.now(timezone.utc)
 
-    def list_favorites(self, user_id: str) -> List[str]:
+    def _list_legacy_favorites(self, user_id: str) -> List[str]:
         doc = self._favorites.find_one({"user_id": user_id})
         if not doc:
             return []
         return list(doc.get("place_ids") or [])
 
-    def add_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def _migrate_favorites_for_phone(self, phone_number: str) -> List[str]:
+        phone = resolve_canonical_phone(phone_number)
+        doc = self._favorites.find_one({"phone_number": phone})
+        if doc:
+            return list(doc.get("place_ids") or [])
+
+        variants = phone_lookup_variants(phone)
+        user_docs = list(self._users.find({"phone_number": {"$in": variants}}))
+        favorite_lists: List[List[str]] = []
+        legacy_user_ids: list[str] = []
+        for user_doc in user_docs:
+            user_id = str(user_doc.get("user_id") or "")
+            if not user_id:
+                continue
+            legacy = self._list_legacy_favorites(user_id)
+            if legacy:
+                favorite_lists.append(legacy)
+                legacy_user_ids.append(user_id)
+
+        if not favorite_lists:
+            return []
+
+        merged = merge_favorite_place_ids(*favorite_lists)
         self._favorites.update_one(
-            {"user_id": user_id},
-            {"$addToSet": {"place_ids": place_id}, "$setOnInsert": {"user_id": user_id}},
+            {"phone_number": phone},
+            {"$set": {"place_ids": merged, "phone_number": phone}, "$unset": {"user_id": ""}},
             upsert=True,
         )
-        return self.list_favorites(user_id)
+        for user_id in legacy_user_ids:
+            self._favorites.delete_one({"user_id": user_id})
+        return merged
 
-    def remove_favorite(self, user_id: str, place_id: str) -> List[str]:
+    def list_favorites(self, phone_number: str) -> List[str]:
+        from app.core.enums.masjid import MasjidSaveLimit
+
+        favorites = self._migrate_favorites_for_phone(phone_number)
+        max_favorites = MasjidSaveLimit.MAX_FAVORITES.value
+        if len(favorites) <= max_favorites:
+            return favorites
+        favorites = favorites[:max_favorites]
+        phone = resolve_canonical_phone(phone_number)
         self._favorites.update_one(
-            {"user_id": user_id},
+            {"phone_number": phone},
+            {"$set": {"place_ids": favorites}},
+        )
+        return favorites
+
+    def add_favorite(self, phone_number: str, place_id: str) -> List[str]:
+        phone = resolve_canonical_phone(phone_number)
+        self._favorites.update_one(
+            {"phone_number": phone},
+            {
+                "$addToSet": {"place_ids": place_id},
+                "$set": {"phone_number": phone},
+                "$unset": {"user_id": ""},
+            },
+            upsert=True,
+        )
+        return self.list_favorites(phone)
+
+    def remove_favorite(self, phone_number: str, place_id: str) -> List[str]:
+        phone = resolve_canonical_phone(phone_number)
+        self._favorites.update_one(
+            {"phone_number": phone},
             {"$pull": {"place_ids": place_id}},
         )
-        return self.list_favorites(user_id)
+        return self.list_favorites(phone)
 
     @staticmethod
     def _now_iso() -> str:

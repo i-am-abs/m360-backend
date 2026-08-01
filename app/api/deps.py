@@ -3,24 +3,36 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import Settings
 from app.core.enums.error_code import ErrorCode
 from app.exceptions.base import ApiException
+from app.interfaces.admin_repository import AdminRepository
+from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
+from app.services.admin_service import AdminService
 from app.services.broadcast_service import BroadcastService
+from app.services.broadcast_feed_service import BroadcastFeedService
 from app.services.claim_service import ClaimService
 from app.services.connection_manager import ConnectionManager
 from app.services.donation_service import DonationService
+from app.services.feature_flag_service import FeatureFlagService
 from app.services.follower_service import FollowerService
+from app.services.internal_timings_service import InternalTimingsService
+from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_entity_service import MasjidEntityService
+from app.services.masjid_listing_service import MasjidListingService
+from app.services.masjid_timings_service import MasjidTimingsService
+from app.services.notification_service import NotificationService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
+from app.services.upload_service import UploadService
 from app.services.user_masjid_service import UserMasjidService
+from app.services.verification_service import VerificationService
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -72,6 +84,14 @@ def get_user_store(request: Request) -> UserRepository:
     return request.app.state.user_store
 
 
+def get_masjid_store(request: Request) -> MasjidRepository:
+    return request.app.state.masjid_store
+
+
+def get_admin_store(request: Request) -> AdminRepository:
+    return request.app.state.admin_store
+
+
 def get_bearer_credentials(
         credentials: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> HTTPAuthorizationCredentials:
@@ -84,7 +104,8 @@ def get_bearer_credentials(
     return credentials
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer), store: UserRepository = Depends(get_user_store),) -> Dict[str, Any]:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer),
+                     store: UserRepository = Depends(get_user_store), ) -> Dict[str, Any]:
     if credentials is None or not credentials.credentials:
         raise ApiException(
             "Missing Authorization bearer token",
@@ -101,16 +122,65 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)
     return user
 
 
+def get_optional_current_user(
+        credentials: HTTPAuthorizationCredentials = Depends(bearer),
+        store: UserRepository = Depends(get_user_store),
+) -> Optional[Dict[str, Any]]:
+    if credentials is None or not credentials.credentials:
+        return None
+    return store.get_user_by_session(credentials.credentials)
+
+
+def get_feature_flag_service(request: Request) -> FeatureFlagService:
+    return request.app.state.feature_flag_service
+
+
+def get_admin_service(request: Request) -> AdminService:
+    return request.app.state.admin_service
+
+
+def get_verification_service(request: Request) -> VerificationService:
+    return request.app.state.verification_service
+
+
+def get_upload_service(request: Request) -> UploadService:
+    return request.app.state.upload_service
+
+
+def get_masjid_listing_service(request: Request) -> MasjidListingService:
+    return request.app.state.masjid_listing_service
+
+
+def get_masjid_timings_service(request: Request) -> MasjidTimingsService:
+    return request.app.state.masjid_timings_service
+
+
+def get_masjid_amenities_service(request: Request) -> MasjidAmenitiesService:
+    return request.app.state.masjid_amenities_service
+
+
+def get_internal_timings_service(request: Request) -> InternalTimingsService:
+    return request.app.state.internal_timings_service
+
+
+def get_notification_service(request: Request) -> NotificationService:
+    return request.app.state.notification_service
+
+
+def get_broadcast_service(request: Request) -> BroadcastService:
+    return request.app.state.broadcast_service
+
+
+def get_broadcast_feed_service(request: Request) -> BroadcastFeedService:
+    return request.app.state.broadcast_feed_service
+
+
 def get_masjid_entity_service(request: Request) -> MasjidEntityService:
     return request.app.state.masjid_entity_service
 
 
 def get_claim_service(request: Request) -> ClaimService:
     return request.app.state.claim_service
-
-
-def get_broadcast_service(request: Request) -> BroadcastService:
-    return request.app.state.broadcast_service
 
 
 def get_follower_service(request: Request) -> FollowerService:
@@ -125,14 +195,23 @@ def get_connection_manager(request: Request) -> ConnectionManager:
     return request.app.state.connection_manager
 
 
-def get_optional_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
-    store: UserRepository = Depends(get_user_store),
-) -> Optional[Dict[str, Any]]:
-    if credentials is None or not credentials.credentials:
-        return None
-    user = store.get_user_by_session(credentials.credentials)
-    return user
+def verify_internal_api_key(
+        request: Request,
+        x_internal_api_key: Optional[str] = Header(None, alias="X-Internal-Api-Key"),
+) -> None:
+    settings: Settings = request.app.state.settings
+    if not settings.internal_api_configured:
+        raise ApiException(
+            "Internal API is not configured",
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+            code=ErrorCode.CONFIG_MISSING,
+        )
+    if not x_internal_api_key or x_internal_api_key != settings.internal_api_key:
+        raise ApiException(
+            "Invalid internal API key",
+            status_code=HTTPStatus.UNAUTHORIZED.value,
+            code=ErrorCode.AUTH_INTERNAL_KEY_INVALID,
+        )
 
 
 def require_platform_admin(

@@ -4,18 +4,28 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_current_user, get_masjid_entity_service, get_masjid_search_service, \
-    get_optional_current_user, get_settings, get_user_masjid_service, get_user_store
-from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
+from app.api.deps import (
+    get_admin_store,
+    get_current_user,
+    get_masjid_entity_service,
+    get_masjid_search_service,
+    get_masjid_store,
+    get_optional_current_user,
+    get_settings,
+    get_user_masjid_service,
+    get_user_store,
+)
 from app.core.config import Settings
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.core.enums.masjid import MasjidQueryDefault
+from app.interfaces.admin_repository import AdminRepository
+from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.schemas.masjid_entity import CommitteeMemberAdd, MasjidSyncRequest, MasjidUpdate, TimingsUpdate
 from app.services.masjid_entity_service import MasjidEntityService
 from app.services.user_masjid_service import UserMasjidService
-from app.utils.masjid import get_deterministic_masjid_metadata
+from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.response import success_response
 
 router = APIRouter(tags=["masjids"])
@@ -89,33 +99,34 @@ def get_masjid_status(settings: Settings = Depends(get_settings)):
 
 
 @router.get(ApiEndpoint.MASJID_DETAILS.value, summary="Get masjid full details")
-def get_masjid_details(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
-                       store: UserRepository = Depends(get_user_store),
-                       svc: MasjidSearchService = Depends(get_masjid_search_service), ):
+def get_masjid_details(
+        place_id: str,
+        current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+        store: UserRepository = Depends(get_user_store),
+        svc: MasjidSearchService = Depends(get_masjid_search_service),
+        masjid_store: MasjidRepository = Depends(get_masjid_store),
+        admin_store: AdminRepository = Depends(get_admin_store),
+):
     place = svc.get_place_by_id(place_id)
     pid = place.get("id") or place_id
-    meta = get_deterministic_masjid_metadata(pid)
-    user_id = current_user["user_id"]
-    favorites = store.list_favorites(user_id)
-    is_added = pid in favorites
-    saved_count = len(favorites)
-    return success_response(
-        MasjidDetailsPresenter.to_view(
-            place,
-            has_donations=meta["hasDonationsEnabled"],
-            has_announcements=meta["hasAnnouncementsEnabled"],
-            donation_count=meta["donationUpdatesCount"],
-            announcement_count=meta["announcementUpdatesCount"],
-            is_added=is_added,
-            saved_count=saved_count,
-        )
+    favorites = store.list_favorites(current_user["phone_number"]) if current_user else []
+    view = build_masjid_detail_view(
+        place,
+        place_id=pid,
+        is_added=pid in favorites,
+        saved_count=len(favorites),
+        admin_store=admin_store,
+        masjid_store=masjid_store,
+        current_user=current_user,
+        include_raw=True,
     )
+    return success_response(view)
 
 
 @router.get(ApiEndpoint.MY_MASJIDS.value, summary="List my favourite masjids")
 def list_my_masjids(current_user: Dict[str, Any] = Depends(get_current_user),
                     svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.list_my_masjids(current_user["user_id"]))
+    return success_response(svc.list_my_masjids(current_user))
 
 
 @router.get(ApiEndpoint.MASJID_LIST.value + "/my-committee", summary="List masjids where I'm committee")
@@ -129,30 +140,13 @@ def list_my_committee_masjids(
 @router.post(ApiEndpoint.MY_MASJID_ADD.value, summary="Add masjid to favourites")
 def add_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                   svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.add_my_masjid(current_user["user_id"], place_id), message="Masjid added")
+    return success_response(svc.add_my_masjid(current_user, place_id), message="Masjid added")
 
 
 @router.delete(ApiEndpoint.MY_MASJID_REMOVE.value, summary="Remove from favourites")
 def remove_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                      svc: UserMasjidService = Depends(get_user_masjid_service), ):
-    return success_response(svc.remove_my_masjid(current_user["user_id"], place_id), message="Masjid removed")
-
-
-@router.get(ApiEndpoint.MASJID_LIST.value, summary="List masjids from DB")
-def list_masjids(
-    lat: Optional[float] = Query(None),
-    lng: Optional[float] = Query(None),
-    radius: int = Query(5000),
-    city: Optional[str] = Query(None),
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=50),
-    svc: MasjidEntityService = Depends(get_masjid_entity_service),
-):
-    if lat is not None and lng is not None:
-        return success_response(svc.search_nearby(lat, lng, radius, limit, page))
-    if city:
-        return success_response(svc.search_by_name(city, limit, page))
-    return success_response(svc.get_masjid_list(page, limit))
+    return success_response(svc.remove_my_masjid(current_user, place_id), message="Masjid removed")
 
 
 @router.get(ApiEndpoint.MASJID_GET.value, summary="Get masjid detail")

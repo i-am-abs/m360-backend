@@ -128,8 +128,26 @@ class Settings(BaseSettings):
         ),
     )
 
+    internal_api_key: Optional[str] = None
+    internal_timings_cache_ttl_seconds: int = 60
+
+    r2_endpoint_url: Optional[str] = None
+    r2_bucket_name: Optional[str] = None
+    r2_access_key_id: Optional[str] = None
+    r2_secret_access_key: Optional[str] = None
+    r2_public_base_url: Optional[str] = None
+
+    upload_max_image_bytes: int = 10 * 1024 * 1024
+    upload_max_video_bytes: int = 200 * 1024 * 1024
+
     # FCM Push Notifications
     fcm_service_account_path: str = ""
+    fcm_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("FCM_ENABLED", "fcm_enabled"),
+    )
+    firebase_credentials_file: Optional[str] = None
+    broadcast_default_page_size: int = Field(default=20, ge=1, le=100)
 
     # Mux Video
     mux_token_id: str = ""
@@ -137,6 +155,22 @@ class Settings(BaseSettings):
     mux_webhook_secret: str = ""
     mux_env_key: str = "deb2jrkrr735ufr00gdtrf8j9"
 
+    rate_limit_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("RATE_LIMIT_ENABLED", "rate_limit_enabled"),
+    )
+    rate_limit_requests_per_minute: int = Field(default=120, ge=1)
+    rate_limit_auth_requests_per_minute: int = Field(default=20, ge=1)
+    rate_limit_window_seconds: int = Field(default=60, ge=1)
+
+    auth_force_infinite_sessions: bool = Field(
+        default=True,
+        description="When true, bearer tokens never expire for user, admin, and super_admin.",
+        validation_alias=AliasChoices(
+            "AUTH_FORCE_INFINITE_SESSIONS",
+            "auth_force_infinite_sessions",
+        ),
+    )
     @property
     def quran_api_configured(self) -> bool:
         return bool(self.quran_client_id and self.quran_client_secret)
@@ -152,6 +186,31 @@ class Settings(BaseSettings):
     @property
     def redis_configured(self) -> bool:
         return self.redis_enabled and bool(self.redis_url and str(self.redis_url).strip())
+
+    @property
+    def r2_configured(self) -> bool:
+        return bool(
+            self.r2_endpoint_url
+            and self.r2_bucket_name
+            and self.r2_access_key_id
+            and self.r2_secret_access_key
+        )
+
+    @property
+    def mux_configured(self) -> bool:
+        return bool(self.mux_token_id and self.mux_token_secret)
+
+    @property
+    def fcm_configured(self) -> bool:
+        return bool(
+            self.fcm_enabled
+            and self.firebase_credentials_file
+            and self.firebase_credentials_file.strip()
+        )
+
+    @property
+    def internal_api_configured(self) -> bool:
+        return bool(self.internal_api_key and self.internal_api_key.strip())
 
     @property
     def project_root(self) -> Path:
@@ -177,7 +236,15 @@ class Settings(BaseSettings):
 
     @property
     def auth_session_never_expires(self) -> bool:
+        if self.auth_force_infinite_sessions:
+            return True
         return self.auth_session_ttl_seconds <= 0
+
+    @property
+    def effective_session_ttl_seconds(self) -> int:
+        if self.auth_force_infinite_sessions:
+            return 0
+        return self.auth_session_ttl_seconds
 
     @field_validator("masjid_search_radius_meters", mode="before")
     @classmethod

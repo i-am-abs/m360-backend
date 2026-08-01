@@ -13,5 +13,7 @@ logs/
 *.swp
 *.swo
 *.log
-firebase-service-account.json
 *.pyc
+firebase-service-account.json
+*firebase-adminsdk*.json
+project-*-firebase-adminsdk-*.json

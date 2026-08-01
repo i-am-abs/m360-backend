@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.claim_repository import ClaimRepository
-from app.interfaces.masjid_repository import MasjidRepository
+from app.interfaces.masjid_repository import MasjidEntityRepository
 
 log = get_logger(__name__)
 
@@ -16,7 +16,7 @@ class ClaimService:
     def __init__(
         self,
         claim_repo: ClaimRepository,
-        masjid_repo: MasjidRepository,
+        masjid_repo: MasjidEntityRepository,
         fcm_service=None,
     ) -> None:
         self._claim_repo = claim_repo

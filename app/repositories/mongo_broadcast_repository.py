@@ -7,12 +7,12 @@ from bson import ObjectId
 from pymongo import DESCENDING
 from pymongo.database import Database
 
-from app.interfaces.broadcast_repository import BroadcastRepository
+from app.interfaces.broadcast_feed_repository import BroadcastFeedRepository
 
 ALLOWED_EMOJIS = ["👍", "❤️", "😂", "🥲", "😊", "🤲"]
 
 
-class MongoBroadcastRepository(BroadcastRepository):
+class MongoBroadcastFeedRepository(BroadcastFeedRepository):
     def __init__(self, db: Database) -> None:
         self._messages = db["broadcast_messages"]
         self._ensure_indexes()

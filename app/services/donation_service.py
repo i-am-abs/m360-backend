@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.donation_repository import DonationRepository
-from app.services.broadcast_service import BroadcastService
+from app.services.broadcast_feed_service import BroadcastFeedService
 
 log = get_logger(__name__)
 
@@ -15,7 +15,7 @@ class DonationService:
     def __init__(
         self,
         donation_repo: DonationRepository,
-        broadcast_service: BroadcastService,
+        broadcast_service: BroadcastFeedService,
     ) -> None:
         self._donation_repo = donation_repo
         self._broadcast_service = broadcast_service

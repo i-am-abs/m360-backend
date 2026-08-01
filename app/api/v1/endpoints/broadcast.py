@@ -6,13 +6,12 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 
-from app.api.deps import get_broadcast_service, get_current_user, get_follower_service, get_masjid_entity_service
+from app.api.deps import get_broadcast_feed_service, get_current_user, get_masjid_entity_service
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.exceptions.base import ApiException
-from app.schemas.broadcast import BroadcastMessageCreate, CampaignCardCreate, ReactionToggle
-from app.services.broadcast_service import BroadcastService
+from app.schemas.broadcast_feed import BroadcastMessageCreate, CampaignCardCreate, ReactionToggle
+from app.services.broadcast_feed_service import BroadcastFeedService
 from app.services.connection_manager import ConnectionManager
-from app.services.follower_service import FollowerService
 from app.services.masjid_entity_service import MasjidEntityService
 from app.utils.response import success_response
 
@@ -22,7 +21,7 @@ router = APIRouter(tags=["broadcast"])
 @router.get("/broadcast/public/{message_id}", summary="Get public broadcast")
 def get_public_broadcast(
     message_id: str,
-    svc: BroadcastService = Depends(get_broadcast_service),
+    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
     masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     msg = svc.get_message_raw(message_id)
@@ -45,7 +44,7 @@ def get_broadcast_feed(
     since: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastService = Depends(get_broadcast_service),
+    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     return success_response(svc.get_feed(masjid_id, cursor, since, limit, user_id=current_user["user_id"]))
 
@@ -55,7 +54,7 @@ def post_broadcast_message(
     masjid_id: str,
     req: BroadcastMessageCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    broadcast_svc: BroadcastService = Depends(get_broadcast_service),
+    broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
     masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     masjid = masjid_svc.get_masjid(masjid_id)
@@ -83,7 +82,7 @@ def post_campaign_card(
     masjid_id: str,
     req: CampaignCardCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    broadcast_svc: BroadcastService = Depends(get_broadcast_service),
+    broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
     masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     masjid = masjid_svc.get_masjid(masjid_id)
@@ -105,7 +104,7 @@ def post_campaign_card(
 def delete_broadcast_message(
     message_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastService = Depends(get_broadcast_service),
+    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     svc.delete_message(message_id, current_user["user_id"])
     return success_response({"deleted": True})
@@ -116,7 +115,7 @@ def react_to_message(
     message_id: str,
     req: ReactionToggle,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastService = Depends(get_broadcast_service),
+    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     result = svc.toggle_reaction(message_id, current_user["user_id"], req.emoji)
     return success_response(result)
@@ -125,47 +124,10 @@ def react_to_message(
 @router.post("/broadcast/{message_id}/view", summary="Increment view count")
 def increment_view_count(
     message_id: str,
-    svc: BroadcastService = Depends(get_broadcast_service),
+    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     count = svc.increment_view_count(message_id)
     return success_response({"view_count": count})
-
-
-@router.post(ApiEndpoint.FOLLOW_MASJID.value, summary="Follow masjid")
-def follow_masjid(
-    masjid_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: FollowerService = Depends(get_follower_service),
-):
-    return success_response(svc.follow(current_user["user_id"], masjid_id))
-
-
-@router.delete(ApiEndpoint.UNFOLLOW_MASJID.value, summary="Unfollow masjid")
-def unfollow_masjid(
-    masjid_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: FollowerService = Depends(get_follower_service),
-):
-    return success_response(svc.unfollow(current_user["user_id"], masjid_id))
-
-
-@router.get(ApiEndpoint.FOLLOW_STATUS.value, summary="Check follow status")
-def follow_status(
-    masjid_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: FollowerService = Depends(get_follower_service),
-):
-    following = svc.is_following(current_user["user_id"], masjid_id)
-    return success_response({"is_following": following})
-
-
-@router.get(ApiEndpoint.FOLLOWER_COUNT.value, summary="Get follower count")
-def follower_count(
-    masjid_id: str,
-    svc: FollowerService = Depends(get_follower_service),
-):
-    count = svc.get_followers_count(masjid_id)
-    return success_response({"count": count})
 
 
 @router.websocket("/v1/ws/masjid/{masjid_id}")
@@ -182,7 +144,7 @@ async def masjid_websocket(
         return
 
     conn_mgr: ConnectionManager = app.state.connection_manager
-    broadcast_svc: BroadcastService = app.state.broadcast_service
+    broadcast_svc: BroadcastFeedService = app.state.broadcast_feed_service
     masjid_svc: MasjidEntityService = app.state.masjid_entity_service
 
     await conn_mgr.connect(masjid_id, user["user_id"], websocket)

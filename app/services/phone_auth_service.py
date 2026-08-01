@@ -7,22 +7,34 @@ from app.core.enums.error_code import ErrorCode
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
+from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.otp_gateway import OtpGateway
 from app.interfaces.phone_validator import PhoneValidator
 from app.interfaces.user_repository import UserRepository
+from app.utils.admin_link import ensure_admin_user_link
 from app.utils.session_ttl import session_never_expires
 
 log = get_logger(__name__)
 
 
 class PhoneAuthService:
-    def __init__(self, store: UserRepository, otp_gateway: OtpGateway, phone_validator: PhoneValidator, session_ttl_seconds: int, msg91_pending: Optional[Msg91PendingReqIdStore] = None, msg91_async_req_id_wait_seconds: float = 0.0,) -> None:
+    def __init__(
+            self,
+            store: UserRepository,
+            otp_gateway: OtpGateway,
+            phone_validator: PhoneValidator,
+            session_ttl_seconds: int,
+            msg91_pending: Optional[Msg91PendingReqIdStore] = None,
+            msg91_async_req_id_wait_seconds: float = 0.0,
+            admin_store: Optional[AdminRepository] = None,
+    ) -> None:
         self._store = store
         self._otp_gateway = otp_gateway
         self._phone_validator = phone_validator
         self._session_ttl = session_ttl_seconds
         self._msg91_pending = msg91_pending
         self._msg91_async_wait = msg91_async_req_id_wait_seconds
+        self._admin_store = admin_store
 
     def request_otp(self, phone_number: str) -> Dict[str, Any]:
         formatted = self._phone_validator.validate_and_format(phone_number)
@@ -43,13 +55,14 @@ class PhoneAuthService:
                 code=ErrorCode.MSG91_ERROR,
                 provider_message=str(data.get("errors") or data.get("message") or data),
             )
-        log.info("OTP sent for %s | reqId=%s", phone_number, req_id)
-        return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
+        log.info("OTP sent for %s | reqId=%s", formatted, req_id)
+        return {"phone_number": formatted, "req_id": req_id, "provider_response": data}
 
     def retry_otp(self, phone_number: str, req_id: str, retry_channel: Optional[str] = None) -> Dict[str, Any]:
+        formatted = self._phone_validator.validate_and_format(phone_number)
         data = self._otp_gateway.retry_otp(req_id, retry_channel)
-        log.info("OTP retry for %s | reqId=%s | channel=%s", phone_number, req_id, retry_channel)
-        return {"phone_number": phone_number, "req_id": req_id, "provider_response": data}
+        log.info("OTP retry for %s | reqId=%s | channel=%s", formatted, req_id, retry_channel)
+        return {"phone_number": formatted, "req_id": req_id, "provider_response": data}
 
     def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
         formatted_phone = self._phone_validator.validate_and_format(phone_number)
@@ -57,7 +70,21 @@ class PhoneAuthService:
         self._assert_verification_success(data)
         user = self._store.ensure_user(formatted_phone)
         session = self._store.create_session(user["user_id"], self._session_ttl)
-        log.info("OTP verified for %s | userId=%s", phone_number, user["user_id"])
+        user["phone_number"] = formatted_phone
+        if self._admin_store is not None:
+            linked = ensure_admin_user_link(
+                self._admin_store,
+                user_id=str(user["user_id"]),
+                phone=formatted_phone,
+            )
+            if linked:
+                log.info(
+                    "Linked %s admin row(s) for phone=%s userId=%s",
+                    len(linked),
+                    formatted_phone,
+                    user["user_id"],
+                )
+        log.info("OTP verified for %s | userId=%s", formatted_phone, user["user_id"])
         return {
             "user": user,
             "auth": self._auth_payload(session),

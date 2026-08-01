@@ -8,10 +8,10 @@ from bson import ObjectId
 from pymongo import ASCENDING
 from pymongo.database import Database
 
-from app.interfaces.masjid_repository import MasjidRepository
+from app.interfaces.masjid_repository import MasjidEntityRepository
 
 
-class MongoMasjidRepository(MasjidRepository):
+class MongoMasjidRepository(MasjidEntityRepository):
     def __init__(self, db: Database) -> None:
         self._masjids = db["masjids"]
         self._ensure_indexes()

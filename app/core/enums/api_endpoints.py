@@ -78,3 +78,28 @@ class ApiEndpoint(Enum):
     DONATION_HISTORY = "/donations/history"
     PAYMENT_WEBHOOK = "/webhooks/payment"
     CAMPAIGN_DONORS = "/campaigns/{campaign_id}/donors"
+
+    FEATURES = "/features"
+
+    ADMINS_REGISTER = "/admins/register"
+    ADMINS_LIST = "/admins"
+    ADMINS_STATUS = "/admins/{admin_id}/status"
+
+    VERIFICATION_REQUESTS = "/verification-requests"
+    VERIFICATION_REQUEST_STATUS = "/verification-requests/{request_id}/status"
+    ROLES = "/roles"
+    DESIGNATIONS = "/designations"
+
+    UPLOADS = "/uploads"
+
+    MASJIDS_LIST = "/masjids"
+    MASJID_TIMINGS = "/masjids/{place_id}/timings"
+    MASJID_AMENITIES = "/masjids/{place_id}/amenities"
+
+    INTERNAL_MASJID_TIMINGS = "/internal/masjids/{place_id}/timings"
+
+    # Broadcast / push notifications
+    FCM_TOKENS = "/fcm/tokens"
+    MASJID_FOLLOW = "/masjids/{place_id}/follow"
+    MASJID_BROADCASTS = "/masjids/{place_id}/broadcasts"
+    INTERNAL_MASJID_BROADCAST = "/internal/masjids/{place_id}/broadcast"

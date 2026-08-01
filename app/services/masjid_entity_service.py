@@ -7,7 +7,7 @@ from bson import ObjectId
 
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
-from app.interfaces.masjid_repository import MasjidRepository
+from app.interfaces.masjid_repository import MasjidEntityRepository
 from app.interfaces.masjid_service import MasjidSearchService
 
 log = get_logger(__name__)
@@ -28,7 +28,7 @@ def _looks_like_place_id(value: str) -> bool:
 class MasjidEntityService:
     def __init__(
         self,
-        masjid_repo: MasjidRepository,
+        masjid_repo: MasjidEntityRepository,
         google_places: MasjidSearchService,
     ) -> None:
         self._repo = masjid_repo
