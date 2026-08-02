@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from app.core.enums.admin_status import AdminRegistrationStatus
 from app.core.enums.committee_designation import CommitteeDesignation
@@ -183,13 +183,65 @@ class AdminService:
             current_user: Dict[str, Any],
             *,
             status: Optional[str] = None,
-    ) -> List[AdminResponse]:
+    ) -> Dict[str, Any]:
         self._rbac.require_roles(
             current_user,
             {UserRole.SUPER_ADMIN.value, UserRole.ADMIN.value},
         )
-        docs = self._admin_store.list_all(status=status)
-        return [self._to_response(doc) for doc in docs]
+        # Blank status → union of pending + approved (not rejected).
+        normalized = (status or "").strip().lower() or None
+        if normalized and normalized not in AdminRegistrationStatus.values():
+            raise ApiException(
+                f"status must be one of: {', '.join(AdminRegistrationStatus.values())}",
+                status_code=HTTPStatus.BAD_REQUEST.value,
+                code=ErrorCode.VALIDATION_ERROR,
+            )
+
+        if normalized:
+            docs = self._admin_store.list_all(status=normalized)
+            items = [self._to_response(doc).model_dump(by_alias=True) for doc in docs]
+            pending = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.PENDING.value
+            ]
+            approved = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.APPROVED.value
+            ]
+            rejected = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.REJECTED.value
+            ]
+        else:
+            pending_docs = self._admin_store.list_all(
+                status=AdminRegistrationStatus.PENDING.value,
+            )
+            approved_docs = self._admin_store.list_all(
+                status=AdminRegistrationStatus.APPROVED.value,
+            )
+            pending = [
+                self._to_response(doc).model_dump(by_alias=True)
+                for doc in pending_docs
+            ]
+            approved = [
+                self._to_response(doc).model_dump(by_alias=True)
+                for doc in approved_docs
+            ]
+            rejected = []
+            items = pending + approved
+
+        return {
+            "admins": items,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected,
+            "counts": {
+                "total": len(items),
+                "pending": len(pending),
+                "approved": len(approved),
+                "rejected": len(rejected),
+            },
+        }
 
     def update_status(
             self,

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
 
+from app.core.enums.role import UserRole
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
+from app.services.rbac_service import RbacService
 from app.utils.admin_link import ensure_admin_user_link
 from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.structured_log import log_event, log_timing
@@ -20,15 +22,21 @@ class MasjidListingService:
             search_service: MasjidSearchService,
             user_store: UserRepository,
             masjid_store: Optional[MasjidRepository] = None,
+            rbac: Optional[RbacService] = None,
     ) -> None:
         self._admin_store = admin_store
         self._listing_store = listing_store
         self._search_service = search_service
         self._user_store = user_store
         self._masjid_store = masjid_store
+        self._rbac = rbac
 
     def list_masjids_for_user(self, user: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """List masjids the user administers only (independent of my-masjid favorites)."""
+        """List masjids for the user.
+
+        Super admins see every masjid that has any admin assignment.
+        Regular admins see only masjids they administer.
+        """
         user_id = str(user.get("user_id") or "")
         phone = str(user.get("phone_number") or "")
 
@@ -40,11 +48,19 @@ class MasjidListingService:
             )
             favorite_ids = self._user_store.list_favorites(phone) if phone else []
 
-            place_ids: Set[str] = set()
-            for doc in admin_docs:
-                pid = doc.get("masjid_place_id")
-                if pid:
-                    place_ids.add(str(pid))
+            role = (
+                self._rbac.resolve_user_role(user)
+                if self._rbac is not None
+                else UserRole.USER.value
+            )
+            if role == UserRole.SUPER_ADMIN.value:
+                place_ids = self._place_ids_with_any_admin()
+            else:
+                place_ids = {
+                    str(doc["masjid_place_id"])
+                    for doc in admin_docs
+                    if doc.get("masjid_place_id")
+                }
 
             listings = {
                 doc["place_id"]: doc
@@ -63,8 +79,22 @@ class MasjidListingService:
                     current_user=user,
                 ))
 
-        log_event("masjid_listing", "listed", user_id=user_id, count=len(items))
+        log_event(
+            "masjid_listing",
+            "listed",
+            user_id=user_id,
+            role=role,
+            count=len(items),
+        )
         return items
+
+    def _place_ids_with_any_admin(self) -> Set[str]:
+        place_ids: Set[str] = set()
+        for doc in self._admin_store.list_all():
+            pid = doc.get("masjid_place_id")
+            if pid:
+                place_ids.add(str(pid))
+        return place_ids
 
     def _build_item(
             self,

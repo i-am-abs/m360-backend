@@ -410,6 +410,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         masjid_search,
         user_store,
         masjid_store=app.state.masjid_store,
+        rbac=rbac,
     )
     app.state.masjid_timings_service = MasjidTimingsService(
         app.state.masjid_store,
