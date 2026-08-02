@@ -5,7 +5,11 @@ from typing import Any, Dict, List, Optional
 from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
-from app.utils.admin_link import is_user_admin_for_place, resolve_committee_for_place
+from app.utils.admin_link import (
+    committee_member_from_admin,
+    is_user_admin_for_place,
+    resolve_committee_for_place,
+)
 from app.utils.masjid import get_deterministic_masjid_metadata
 
 
@@ -94,6 +98,17 @@ def build_masjid_detail_view(
     view["onboardingDone"] = len(prayer_timings) > 0
     view["isAdmin"] = is_admin
     view["isCurrentUserAdmin"] = is_admin
+
+    approved_admins: List[Dict[str, Any]] = []
+    pending_admins: List[Dict[str, Any]] = []
+    if admin_store is not None:
+        for doc in admin_store.list_for_place(pid, status="approved"):
+            approved_admins.append(committee_member_from_admin(doc))
+        for doc in admin_store.list_for_place(pid, status="pending"):
+            pending_admins.append(committee_member_from_admin(doc))
+    view["approvedAdmins"] = approved_admins
+    view["pendingAdmins"] = pending_admins
+
     if not include_raw:
         view.pop("raw", None)
     return view
