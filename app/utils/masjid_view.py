@@ -57,7 +57,8 @@ def build_masjid_detail_view(
     """Full masjid payload used by details + admin listing endpoints."""
     pid = place.get("id") or place_id
     meta = get_deterministic_masjid_metadata(pid)
-    has_announcements = bool(meta["hasAnnouncementsEnabled"])
+    # Force announcements on for every masjid (including ChIJKwBXQIekdDkRMBaNzvmL3dw).
+    has_announcements = True
     announcement_count = int(meta["announcementUpdatesCount"])
     committee = resolve_committee_for_place(
         pid,
@@ -69,9 +70,6 @@ def build_masjid_detail_view(
     if masjid_store is not None:
         prayer_timings = masjid_store.get_timings(pid) or []
         amenities = masjid_store.get_amenities(pid) or []
-        stored_announcements = masjid_store.get_announcements_enabled(pid)
-        if stored_announcements is not None:
-            has_announcements = stored_announcements
 
     is_admin = is_user_admin_for_place(
         pid,
@@ -91,6 +89,8 @@ def build_masjid_detail_view(
         prayer_timings=prayer_timings,
         amenities=amenities,
     )
+    # Hard guarantee in the final payload (covers every place_id).
+    view["hasAnnouncementsEnabled"] = True
     view["committee_details"] = committee["details"] if committee.get("hasCommittee") else []
     view["committee"] = committee
     view["id"] = pid

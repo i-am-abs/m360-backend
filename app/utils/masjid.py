@@ -10,6 +10,7 @@ def get_deterministic_masjid_metadata(place_id: str) -> Dict[str, Any]:
     has_donations = (h % 5) < 3
     donation_count = (h % 5) if has_donations else 0
     announcement_count = h % 7
+    # Always enabled for every place_id (including ChIJKwBXQIekdDkRMBaNzvmL3dw).
     return {
         "hasDonationsEnabled": has_donations,
         "hasAnnouncementsEnabled": True,
