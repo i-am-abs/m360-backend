@@ -48,7 +48,7 @@ class MasjidDetailsPresenter:
                 "accepts_nfc": payment.get("acceptsNfc"),
             },
             "hasDonationsEnabled": has_donations,
-            "hasAnnouncementsEnabled": has_announcements,
+            "hasAnnouncementsEnabled": True,  # always on
             "donationUpdatesCount": donation_count,
             "announcementUpdatesCount": announcement_count,
             "isAddedToMyMasjid": is_added,

@@ -53,6 +53,7 @@ from app.services.upload_service import UploadService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
+from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.internal_timings_service import InternalTimingsService
 from app.services.notification_service import NotificationService
 from app.services.broadcast_service import BroadcastService
@@ -418,6 +419,11 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         rbac,
     )
     app.state.masjid_amenities_service = MasjidAmenitiesService(
+        app.state.masjid_store,
+        platform["audit_store"],
+        rbac,
+    )
+    app.state.masjid_announcements_service = MasjidAnnouncementsService(
         app.state.masjid_store,
         platform["audit_store"],
         rbac,

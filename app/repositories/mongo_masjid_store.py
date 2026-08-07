@@ -149,6 +149,50 @@ class MongoMasjidStore(MasjidRepository):
         stored.pop("place_id", None)
         return stored
 
+    def get_announcements_enabled(self, place_id: str) -> Optional[bool]:
+        doc = self._col.find_one(
+            {"place_id": place_id},
+            {"has_announcements_enabled": 1, "_id": 0},
+        )
+        if not doc or "has_announcements_enabled" not in doc:
+            return None
+        return bool(doc.get("has_announcements_enabled"))
+
+    def set_announcements_enabled(
+            self,
+            place_id: str,
+            enabled: bool,
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        now = self._now_iso()
+        update_fields: Dict[str, Any] = {
+            "has_announcements_enabled": bool(enabled),
+            "updated_at": now,
+        }
+        if updated_by:
+            update_fields["announcements_enabled_updated_by"] = updated_by
+
+        result = self._col.find_one_and_update(
+            {"place_id": place_id},
+            [
+                {
+                    "$set": {
+                        **update_fields,
+                        "created_at": {"$ifNull": ["$created_at", now]},
+                    }
+                }
+            ],
+            upsert=True,
+            return_document=True,  # type: ignore[call-arg]
+        )
+        stored: Dict[str, Any] = dict(result or {})
+        stored.pop("_id", None)
+        return {
+            "place_id": place_id,
+            "hasAnnouncementsEnabled": bool(stored.get("has_announcements_enabled")),
+        }
+
 
 class NoOpMasjidStore(MasjidRepository):
     def get_committee(self, place_id: str) -> Optional[Dict[str, Any]]:
@@ -184,3 +228,18 @@ class NoOpMasjidStore(MasjidRepository):
             updated_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         return {"amenities": amenities}
+
+    def get_announcements_enabled(self, place_id: str) -> Optional[bool]:
+        return None
+
+    def set_announcements_enabled(
+            self,
+            place_id: str,
+            enabled: bool,
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "place_id": place_id,
+            "hasAnnouncementsEnabled": bool(enabled),
+        }
