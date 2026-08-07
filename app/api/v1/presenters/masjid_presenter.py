@@ -8,7 +8,7 @@ class MasjidDetailsPresenter:
     def to_view(
             place: Dict[str, Any],
             has_donations: bool = False,
-            has_announcements: bool = False,
+            has_announcements: bool = True,
             donation_count: int = 0,
             announcement_count: int = 0,
             is_added: bool = False,
@@ -27,7 +27,6 @@ class MasjidDetailsPresenter:
             "name": (place.get("displayName") or {}).get("text"),
             "address": place.get("formattedAddress"),
             "location": place.get("location"),
-            # Saved prayer timings are the primary `timings` payload (matches create/update API).
             "timings": prayers,
             "prayerTimings": prayers,
             "openingHours": {
