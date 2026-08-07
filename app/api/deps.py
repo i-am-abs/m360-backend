@@ -18,6 +18,7 @@ from app.services.broadcast_service import BroadcastService
 from app.services.feature_flag_service import FeatureFlagService
 from app.services.internal_timings_service import InternalTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
+from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.services.notification_service import NotificationService
@@ -151,6 +152,10 @@ def get_masjid_timings_service(request: Request) -> MasjidTimingsService:
 
 def get_masjid_amenities_service(request: Request) -> MasjidAmenitiesService:
     return request.app.state.masjid_amenities_service
+
+
+def get_masjid_announcements_service(request: Request) -> MasjidAnnouncementsService:
+    return request.app.state.masjid_announcements_service
 
 
 def get_internal_timings_service(request: Request) -> InternalTimingsService:

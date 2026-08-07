@@ -7,12 +7,18 @@ from fastapi import APIRouter, Depends
 from app.api.deps import (
     get_current_user,
     get_masjid_amenities_service,
+    get_masjid_announcements_service,
     get_masjid_listing_service,
     get_masjid_timings_service,
 )
 from app.core.enums.api_endpoints import ApiEndpoint
-from app.schemas.masjid_content import MasjidAmenitiesRequest, MasjidTimingsRequest
+from app.schemas.masjid_content import (
+    MasjidAmenitiesRequest,
+    MasjidAnnouncementsEnabledRequest,
+    MasjidTimingsRequest,
+)
 from app.services.masjid_amenities_service import MasjidAmenitiesService
+from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.utils.response import success_response
@@ -71,3 +77,17 @@ def update_masjid_amenities(
 ):
     result = svc.update_amenities(place_id, body, current_user)
     return success_response(result, message="Amenities updated")
+
+
+@router.put(
+    ApiEndpoint.MASJID_ANNOUNCEMENTS_ENABLED.value,
+    summary="Enable or disable announcements for a masjid",
+)
+def set_masjid_announcements_enabled(
+        place_id: str,
+        body: MasjidAnnouncementsEnabledRequest,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: MasjidAnnouncementsService = Depends(get_masjid_announcements_service),
+):
+    result = svc.set_announcements_enabled(place_id, body, current_user)
+    return success_response(result, message="Announcements setting updated")

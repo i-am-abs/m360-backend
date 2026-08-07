@@ -37,6 +37,13 @@ class MasjidAmenitiesRequest(BaseModel):
         return list(dict.fromkeys(values))
 
 
+class MasjidAnnouncementsEnabledRequest(BaseModel):
+    enabled: bool = Field(
+        ...,
+        description="Set hasAnnouncementsEnabled for this masjid place_id",
+    )
+
+
 class AdminStatusView(BaseModel):
     label: str
     message: str = ""
