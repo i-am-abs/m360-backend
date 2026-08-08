@@ -1,0 +1,30 @@
+{% for user in users %}
+<tr class="hover:bg-gray-50 transition">
+  <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">{{ user.user_id[:12] if user.user_id else '—' }}…</td>
+  <td class="px-6 py-4 whitespace-nowrap"><a href="/admin/users/{{ user.user_id }}" class="text-sm text-gray-900 font-medium hover:text-primary-600">{{ user.phone_number }}</a></td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.created_at[:10] if user.created_at else '—' }}</td>
+  <td class="px-6 py-4 whitespace-nowrap">
+    {% if user.blocked_at %}
+    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-red-50 text-red-700 border-red-200">Blocked</span>
+    {% else %}
+    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-green-50 text-green-700 border-green-200">Active</span>
+    {% endif %}
+  </td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+    {% if user.blocked_at %}
+    <button hx-post="/admin/users/{{ user.user_id }}/unblock" hx-confirm="Unblock this user?"
+            class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition text-xs font-semibold">Unblock</button>
+    {% else %}
+    <button hx-post="/admin/users/{{ user.user_id }}/block" hx-confirm="Block this user?"
+            class="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-red-700 border border-red-200 hover:bg-red-100 transition text-xs font-semibold">Block</button>
+    {% endif %}
+  </td>
+</tr>
+{% else %}
+<tr>
+  <td colspan="5" class="px-6 py-16 text-center">
+    <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+    <p class="mt-3 text-sm text-gray-500">No users found</p>
+  </td>
+</tr>
+{% endfor %}

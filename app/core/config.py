@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Tuple
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     quran_oauth_url: str = "https://oauth2.quran.foundation"
 
     jwt_expiration_minutes: int = 60
+
+    secret_key: SecretStr = Field(
+        default="change-me-in-production",
+        description="JWT signing secret for admin panel tokens.",
+        validation_alias=AliasChoices("SECRET_KEY", "secret_key"),
+    )
 
     google_places_api_key: Optional[str] = None
     masjid_search_radius_meters: int = 5000
@@ -93,6 +99,35 @@ class Settings(BaseSettings):
     cors_allow_methods: Tuple[str, ...] = ("*",)
     cors_allow_headers: Tuple[str, ...] = ("*",)
 
+    # Payment Gateway (Razorpay)
+    razorpay_key_id: Optional[str] = None
+    razorpay_key_secret: Optional[str] = None
+    razorpay_webhook_secret: Optional[str] = None
+
+    # Donation default
+    donation_cache_ttl_seconds: int = 60
+
+    # Platform admin
+    platform_admin_env: str = ""
+
+    # Admin panel (web UI)
+    super_admins: Optional[str] = None
+    admin_panel_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "ADMIN_PANEL_ENABLED",
+            "admin_panel_enabled",
+        ),
+    )
+    admin_session_ttl_seconds: int = Field(
+        default=86400,
+        description="Admin session TTL in seconds (default 24h).",
+        validation_alias=AliasChoices(
+            "ADMIN_SESSION_TTL_SECONDS",
+            "admin_session_ttl_seconds",
+        ),
+    )
+
     internal_api_key: Optional[str] = None
     internal_timings_cache_ttl_seconds: int = 60
 
@@ -102,18 +137,23 @@ class Settings(BaseSettings):
     r2_secret_access_key: Optional[str] = None
     r2_public_base_url: Optional[str] = None
 
-    mux_token_id: Optional[str] = None
-    mux_token_secret: Optional[str] = None
-
     upload_max_image_bytes: int = 10 * 1024 * 1024
     upload_max_video_bytes: int = 200 * 1024 * 1024
 
+    # FCM Push Notifications
+    fcm_service_account_path: str = ""
     fcm_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices("FCM_ENABLED", "fcm_enabled"),
     )
     firebase_credentials_file: Optional[str] = None
     broadcast_default_page_size: int = Field(default=20, ge=1, le=100)
+
+    # Mux Video
+    mux_token_id: str = ""
+    mux_token_secret: str = ""
+    mux_webhook_secret: str = ""
+    mux_env_key: str = "deb2jrkrr735ufr00gdtrf8j9"
 
     rate_limit_enabled: bool = Field(
         default=True,
@@ -131,7 +171,6 @@ class Settings(BaseSettings):
             "auth_force_infinite_sessions",
         ),
     )
-
     @property
     def quran_api_configured(self) -> bool:
         return bool(self.quran_client_id and self.quran_client_secret)
@@ -176,6 +215,10 @@ class Settings(BaseSettings):
     @property
     def project_root(self) -> Path:
         return PROJECT_ROOT
+
+    @property
+    def payment_configured(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
 
     @field_validator("quran_base_url", "quran_oauth_url", mode="before")
     @classmethod

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import (
     get_current_user,
     get_masjid_amenities_service,
     get_masjid_announcements_service,
+    get_masjid_entity_service,
     get_masjid_listing_service,
     get_masjid_timings_service,
+    get_optional_current_user,
 )
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.schemas.masjid_content import (
@@ -19,6 +21,7 @@ from app.schemas.masjid_content import (
 )
 from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_announcements_service import MasjidAnnouncementsService
+from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.utils.response import success_response
@@ -26,13 +29,26 @@ from app.utils.response import success_response
 router = APIRouter(tags=["masjids"])
 
 
-@router.get(ApiEndpoint.MASJIDS_LIST.value, summary="List admin-assigned masjids for current user")
+@router.get(ApiEndpoint.MASJIDS_LIST.value, summary="List masjids")
 def list_masjids(
-        current_user: Dict[str, Any] = Depends(get_current_user),
-        svc: MasjidListingService = Depends(get_masjid_listing_service),
+        lat: Optional[float] = Query(None),
+        lng: Optional[float] = Query(None),
+        radius: int = Query(5000),
+        city: Optional[str] = Query(None),
+        page: int = Query(1, ge=1),
+        limit: int = Query(20, ge=1, le=50),
+        current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+        svc_listing: MasjidListingService = Depends(get_masjid_listing_service),
+        svc_entity: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
-    items = svc.list_masjids_for_user(current_user)
-    return success_response(items)
+    if lat is not None and lng is not None:
+        return success_response(svc_entity.search_nearby(lat, lng, radius, limit, page))
+    if city:
+        return success_response(svc_entity.search_by_name(city, limit, page))
+    if current_user is not None:
+        items = svc_listing.list_masjids_for_user(current_user)
+        return success_response(items)
+    return success_response(svc_entity.get_masjid_list(page, limit))
 
 
 @router.post(ApiEndpoint.MASJID_TIMINGS.value, summary="Create masjid prayer timings")

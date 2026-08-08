@@ -39,6 +39,11 @@ from app.repositories.fcm_notification_sender import (
     FcmNotificationSender,
     StubNotificationSender,
 )
+from app.repositories.mongo_broadcast_repository import MongoBroadcastFeedRepository
+from app.repositories.mongo_claim_repository import MongoClaimRepository
+from app.repositories.mongo_donation_repository import MongoDonationRepository
+from app.repositories.mongo_follower_repository import MongoFollowerRepository
+from app.repositories.mongo_masjid_repository import MongoMasjidRepository
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
@@ -57,6 +62,12 @@ from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.internal_timings_service import InternalTimingsService
 from app.services.notification_service import NotificationService
 from app.services.broadcast_service import BroadcastService
+from app.services.broadcast_feed_service import BroadcastFeedService
+from app.services.claim_service import ClaimService
+from app.services.connection_manager import ConnectionManager
+from app.services.donation_service import DonationService
+from app.services.follower_service import FollowerService
+from app.services.masjid_entity_service import MasjidEntityService
 from app.services.rate_limiter import (
     InMemoryRateLimitBackend,
     RateLimiter,
@@ -316,6 +327,17 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
     _init_redis(app, settings)
 
+    if settings.fcm_service_account_path:
+        import firebase_admin
+        from firebase_admin import credentials
+        try:
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(settings.fcm_service_account_path)
+                firebase_admin.initialize_app(cred)
+            _log.info("Firebase Admin SDK initialized")
+        except Exception as e:
+            _log.warning("Firebase Admin SDK init failed: %s", e)
+
     msg91_pending = Msg91PendingReqIdStore(
         redis_client=app.state.redis,
         ttl_seconds=300.0,
@@ -456,6 +478,54 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     )
 
     app.state.rate_limiter = _create_rate_limiter(settings, app.state.redis)
+
+    app.state.connection_manager = ConnectionManager()
+
+    from app.services.fcm_service import FcmService
+
+    mongo_client = getattr(app.state, "mongo_client", None)
+    if mongo_client is not None:
+        db = mongo_client.get_database(settings.mongodb_database)
+        masjid_repo = MongoMasjidRepository(db)
+        claim_repo = MongoClaimRepository(db)
+        broadcast_feed_repo = MongoBroadcastFeedRepository(db)
+        follower_repo = MongoFollowerRepository(db)
+        donation_repo = MongoDonationRepository(db)
+
+        app.state.fcm_service = FcmService(
+            user_store=app.state.user_store,
+            db=db,
+        )
+        app.state.masjid_entity_service = MasjidEntityService(
+            masjid_repo=masjid_repo,
+            google_places=app.state.masjid_search_service,
+        )
+        app.state.claim_service = ClaimService(
+            claim_repo=claim_repo,
+            masjid_repo=masjid_repo,
+            fcm_service=app.state.fcm_service,
+        )
+        app.state.broadcast_feed_service = BroadcastFeedService(
+            broadcast_repo=broadcast_feed_repo,
+            follower_repo=follower_repo,
+            masjid_repo=masjid_repo,
+            fcm_service=app.state.fcm_service,
+        )
+        app.state.follower_service = FollowerService(
+            follower_repo=follower_repo,
+        )
+        app.state.donation_service = DonationService(
+            donation_repo=donation_repo,
+            broadcast_service=app.state.broadcast_feed_service,
+        )
+    else:
+        _log.warning("MongoDB not available — masjid entity, claims, broadcast feed, and donation features disabled.")
+        app.state.fcm_service = None
+        app.state.masjid_entity_service = None
+        app.state.claim_service = None
+        app.state.broadcast_feed_service = None
+        app.state.follower_service = None
+        app.state.donation_service = None
 
     mode = app.state.user_store_backend
     _log.info(

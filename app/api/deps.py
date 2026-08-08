@@ -15,10 +15,16 @@ from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.admin_service import AdminService
 from app.services.broadcast_service import BroadcastService
+from app.services.broadcast_feed_service import BroadcastFeedService
+from app.services.claim_service import ClaimService
+from app.services.connection_manager import ConnectionManager
+from app.services.donation_service import DonationService
 from app.services.feature_flag_service import FeatureFlagService
+from app.services.follower_service import FollowerService
 from app.services.internal_timings_service import InternalTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_announcements_service import MasjidAnnouncementsService
+from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.services.notification_service import NotificationService
@@ -170,6 +176,30 @@ def get_broadcast_service(request: Request) -> BroadcastService:
     return request.app.state.broadcast_service
 
 
+def get_broadcast_feed_service(request: Request) -> BroadcastFeedService:
+    return request.app.state.broadcast_feed_service
+
+
+def get_masjid_entity_service(request: Request) -> MasjidEntityService:
+    return request.app.state.masjid_entity_service
+
+
+def get_claim_service(request: Request) -> ClaimService:
+    return request.app.state.claim_service
+
+
+def get_follower_service(request: Request) -> FollowerService:
+    return request.app.state.follower_service
+
+
+def get_donation_service(request: Request) -> DonationService:
+    return request.app.state.donation_service
+
+
+def get_connection_manager(request: Request) -> ConnectionManager:
+    return request.app.state.connection_manager
+
+
 def verify_internal_api_key(
         request: Request,
         x_internal_api_key: Optional[str] = Header(None, alias="X-Internal-Api-Key"),
@@ -187,3 +217,15 @@ def verify_internal_api_key(
             status_code=HTTPStatus.UNAUTHORIZED.value,
             code=ErrorCode.AUTH_INTERNAL_KEY_INVALID,
         )
+
+
+def require_platform_admin(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    if current_user.get("global_role") != "platform_admin":
+        raise ApiException(
+            "Forbidden",
+            status_code=HTTPStatus.FORBIDDEN.value,
+            code=ErrorCode.FORBIDDEN,
+        )
+    return current_user

@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import (
     get_admin_store,
     get_current_user,
-    get_optional_current_user,
+    get_masjid_entity_service,
     get_masjid_search_service,
     get_masjid_store,
+    get_optional_current_user,
     get_settings,
     get_user_masjid_service,
     get_user_store,
@@ -21,6 +22,8 @@ from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
+from app.schemas.masjid_entity import CommitteeMemberAdd, MasjidSyncRequest, MasjidUpdate, TimingsUpdate
+from app.services.masjid_entity_service import MasjidEntityService
 from app.services.user_masjid_service import UserMasjidService
 from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.response import success_response
@@ -126,6 +129,14 @@ def list_my_masjids(current_user: Dict[str, Any] = Depends(get_current_user),
     return success_response(svc.list_my_masjids(current_user))
 
 
+@router.get(ApiEndpoint.MASJID_LIST.value + "/my-committee", summary="List masjids where I'm committee")
+def list_my_committee_masjids(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(svc.list_committee_masjids(current_user["user_id"]))
+
+
 @router.post(ApiEndpoint.MY_MASJID_ADD.value, summary="Add masjid to favourites")
 def add_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                   svc: UserMasjidService = Depends(get_user_masjid_service), ):
@@ -136,3 +147,77 @@ def add_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_curr
 def remove_my_masjid(place_id: str, current_user: Dict[str, Any] = Depends(get_current_user),
                      svc: UserMasjidService = Depends(get_user_masjid_service), ):
     return success_response(svc.remove_my_masjid(current_user, place_id), message="Masjid removed")
+
+
+@router.get(ApiEndpoint.MASJID_GET.value, summary="Get masjid detail")
+def get_masjid(
+    masjid_id: str,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    user_id = current_user["user_id"] if current_user else None
+    return success_response(svc.get_masjid(masjid_id, user_id=user_id))
+
+
+@router.post(ApiEndpoint.MASJID_SYNC.value, summary="Sync Google Place into DB")
+def sync_masjid(
+    req: MasjidSyncRequest,
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(svc.sync_place_id(req.place_id))
+
+
+@router.put(ApiEndpoint.MASJID_UPDATE.value, summary="Update masjid")
+def update_masjid(
+    masjid_id: str,
+    updates: MasjidUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(
+        svc.update_masjid(masjid_id, updates.model_dump(exclude_none=True), current_user["user_id"])
+    )
+
+
+@router.put(ApiEndpoint.MASJID_UPDATE_FACILITIES.value, summary="Update facilities")
+def update_facilities(
+    masjid_id: str,
+    facilities: Dict[str, bool],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(
+        svc.update_facilities(masjid_id, facilities, current_user["user_id"])
+    )
+
+
+@router.put(ApiEndpoint.MASJID_UPDATE_TIMINGS.value, summary="Update timings")
+def update_timings(
+    masjid_id: str,
+    timings: TimingsUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(
+        svc.update_timings(masjid_id, timings.model_dump(exclude_none=True), current_user["user_id"])
+    )
+
+
+@router.post(ApiEndpoint.MASJID_COMMITTEE_ADD.value, summary="Add committee member")
+def add_committee_member(
+    masjid_id: str,
+    member: CommitteeMemberAdd,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(svc.add_committee_member(masjid_id, member.model_dump()))
+
+
+@router.delete(ApiEndpoint.MASJID_COMMITTEE_REMOVE.value, summary="Remove committee member")
+def remove_committee_member(
+    masjid_id: str,
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    svc: MasjidEntityService = Depends(get_masjid_entity_service),
+):
+    return success_response(svc.remove_committee_member(masjid_id, user_id, current_user["user_id"]))

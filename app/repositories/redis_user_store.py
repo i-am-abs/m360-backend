@@ -182,3 +182,15 @@ class RedisUserStore(UserRepository):
         favs = [p for p in self.list_favorites(phone_number) if p != place_id]
         self._r.set(self._key_favorites(phone_number), json.dumps(favs))
         return favs
+
+    def block_user(self, user_id: str) -> None:
+        pass
+
+    def unblock_user(self, user_id: str) -> None:
+        pass
+
+    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+        return {"users": [], "total": 0}
+
+    def search_users(self, query: str) -> List[Dict[str, Any]]:
+        return []
