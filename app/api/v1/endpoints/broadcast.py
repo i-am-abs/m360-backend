@@ -6,13 +6,20 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 
-from app.api.deps import get_broadcast_feed_service, get_current_user, get_masjid_entity_service
+from app.api.deps import (
+    get_admin_store,
+    get_broadcast_feed_service,
+    get_current_user,
+    get_masjid_entity_service,
+)
 from app.core.enums.api_endpoints import ApiEndpoint
 from app.exceptions.base import ApiException
+from app.interfaces.admin_repository import AdminRepository
 from app.schemas.broadcast_feed import BroadcastMessageCreate, CampaignCardCreate, ReactionToggle
 from app.services.broadcast_feed_service import BroadcastFeedService
 from app.services.connection_manager import ConnectionManager
 from app.services.masjid_entity_service import MasjidEntityService
+from app.utils.admin_link import is_user_admin_for_place
 from app.utils.response import success_response
 
 router = APIRouter(tags=["broadcast"])
@@ -56,9 +63,21 @@ def post_broadcast_message(
     current_user: Dict[str, Any] = Depends(get_current_user),
     broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
     masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+    admin_store: AdminRepository = Depends(get_admin_store),
 ):
     masjid = masjid_svc.get_masjid(masjid_id)
     masjid_data = masjid.get("masjid", {})
+    place_id = masjid_data.get("place_id") or masjid_data.get("id") or masjid_id
+
+    # Authorize against the authoritative admin store (admins/masjid_committees),
+    # not `masjids.management.committee` which is only populated by the claim flow.
+    if not is_user_admin_for_place(
+        place_id,
+        current_user=current_user,
+        admin_store=admin_store,
+    ):
+        raise ApiException("Only committee members can post", status_code=HTTPStatus.FORBIDDEN)
+
     committee = masjid_data.get("management", {}).get("committee", [])
     sender_info = None
     for m in committee:
@@ -66,7 +85,11 @@ def post_broadcast_message(
             sender_info = {"user_id": m["user_id"], "name": m.get("name", ""), "role": m.get("role", "")}
             break
     if not sender_info:
-        raise ApiException("Only committee members can post", status_code=HTTPStatus.FORBIDDEN)
+        sender_info = {
+            "user_id": current_user["user_id"],
+            "name": current_user.get("name") or current_user.get("phone_number") or "Admin",
+            "role": "admin",
+        }
 
     if req.message_type == "video" and not req.video_url and not req.mux_asset_id and not req.mux_upload_id:
         raise ApiException("video_url, mux_asset_id, or mux_upload_id is required for video messages", status_code=HTTPStatus.BAD_REQUEST)
