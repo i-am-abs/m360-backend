@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from app.core.enums.admin_status import AdminRegistrationStatus
 from app.core.enums.committee_designation import CommitteeDesignation
@@ -14,7 +14,7 @@ from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.schemas.admin import AdminRegisterRequest, AdminResponse, AdminStatusUpdateRequest
 from app.services.rbac_service import RbacService
-from app.utils.admin_link import committee_member_from_admin
+from app.utils.admin_link import committee_member_from_admin, phones_match
 from app.utils.phone import canonicalize_india_phone
 from app.utils.structured_log import log_event, log_timing
 
@@ -62,14 +62,21 @@ class AdminService:
                     )
                 self._rbac.require_roles(current_user, {UserRole.SUPER_ADMIN.value})
 
-            user_id = current_user.get("user_id") if current_user else None
+            # Only attach user_id when the registrant is registering themselves.
+            # Never copy the caller's user_id onto a different phone's admin row.
+            user_id = None
+            if current_user and current_user.get("user_id"):
+                caller_phone = current_user.get("phone_number")
+                if caller_phone and phones_match(str(caller_phone), phone):
+                    user_id = str(current_user["user_id"])
+
             existing = self._admin_store.get_by_phone(phone)
             if existing:
                 stored = self._handle_existing_admin(
                     existing,
                     request,
                     phone=phone,
-                    user_id=str(user_id) if user_id else None,
+                    user_id=user_id,
                     system_role=system_role,
                     designation=designation,
                 )
@@ -176,13 +183,65 @@ class AdminService:
             current_user: Dict[str, Any],
             *,
             status: Optional[str] = None,
-    ) -> List[AdminResponse]:
+    ) -> Dict[str, Any]:
         self._rbac.require_roles(
             current_user,
             {UserRole.SUPER_ADMIN.value, UserRole.ADMIN.value},
         )
-        docs = self._admin_store.list_all(status=status)
-        return [self._to_response(doc) for doc in docs]
+        # Blank status → union of pending + approved (not rejected).
+        normalized = (status or "").strip().lower() or None
+        if normalized and normalized not in AdminRegistrationStatus.values():
+            raise ApiException(
+                f"status must be one of: {', '.join(AdminRegistrationStatus.values())}",
+                status_code=HTTPStatus.BAD_REQUEST.value,
+                code=ErrorCode.VALIDATION_ERROR,
+            )
+
+        if normalized:
+            docs = self._admin_store.list_all(status=normalized)
+            items = [self._to_response(doc).model_dump(by_alias=True) for doc in docs]
+            pending = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.PENDING.value
+            ]
+            approved = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.APPROVED.value
+            ]
+            rejected = [
+                item for item in items
+                if item.get("status") == AdminRegistrationStatus.REJECTED.value
+            ]
+        else:
+            pending_docs = self._admin_store.list_all(
+                status=AdminRegistrationStatus.PENDING.value,
+            )
+            approved_docs = self._admin_store.list_all(
+                status=AdminRegistrationStatus.APPROVED.value,
+            )
+            pending = [
+                self._to_response(doc).model_dump(by_alias=True)
+                for doc in pending_docs
+            ]
+            approved = [
+                self._to_response(doc).model_dump(by_alias=True)
+                for doc in approved_docs
+            ]
+            rejected = []
+            items = pending + approved
+
+        return {
+            "admins": items,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected,
+            "counts": {
+                "total": len(items),
+                "pending": len(pending),
+                "approved": len(approved),
+                "rejected": len(rejected),
+            },
+        }
 
     def update_status(
             self,
@@ -190,13 +249,44 @@ class AdminService:
             body: AdminStatusUpdateRequest,
             current_user: Dict[str, Any],
     ) -> AdminResponse:
-        self._rbac.require_roles(current_user, {UserRole.SUPER_ADMIN.value})
+        target = self._admin_store.get_by_id(admin_id)
+        if not target:
+            raise ApiException(
+                "Admin registration not found",
+                status_code=HTTPStatus.NOT_FOUND.value,
+                code=ErrorCode.NOT_FOUND,
+            )
 
-        stored = self._admin_store.update_status(
-            admin_id,
-            body.status.value,
-            updated_by=str(current_user.get("user_id") or ""),
+        caller = self._rbac.require_roles(
+            current_user,
+            {UserRole.SUPER_ADMIN.value, UserRole.ADMIN.value},
         )
+        # Super admins may approve anyone. Masjid admins may only act on
+        # registrations for a masjid they already administer.
+        if caller.get("role") != UserRole.SUPER_ADMIN.value:
+            place_id = str(target.get("masjid_place_id") or "")
+            if not place_id:
+                raise ApiException(
+                    "You do not have permission to perform this action",
+                    status_code=HTTPStatus.FORBIDDEN.value,
+                    code=ErrorCode.FORBIDDEN,
+                )
+            self._rbac.require_masjid_admin(current_user, place_id)
+
+        fields: Dict[str, Any] = {
+            "status": body.status.value,
+            "updated_by": str(current_user.get("user_id") or ""),
+        }
+        # Approving a masjid committee member must keep system role as admin.
+        # Never elevate to super_admin via the status endpoint.
+        if (
+                body.status == AdminRegistrationStatus.APPROVED
+                and target.get("masjid_place_id")
+                and target.get("role") != UserRole.SUPER_ADMIN.value
+        ):
+            fields["role"] = UserRole.ADMIN.value
+
+        stored = self._admin_store.update_fields(admin_id, fields)
         if not stored:
             raise ApiException(
                 "Admin registration not found",

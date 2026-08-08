@@ -45,6 +45,21 @@ class MasjidRepository(ABC):
     ) -> Dict[str, Any]:
         pass
 
+    @abstractmethod
+    def get_announcements_enabled(self, place_id: str) -> Optional[bool]:
+        """Return stored flag, or None when not set."""
+        pass
+
+    @abstractmethod
+    def set_announcements_enabled(
+            self,
+            place_id: str,
+            enabled: bool,
+            *,
+            updated_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        pass
+
 
 class MasjidEntityRepository(ABC):
     @abstractmethod

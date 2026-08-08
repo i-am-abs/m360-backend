@@ -36,9 +36,14 @@ def update_admin_status(
 
 @router.get(ApiEndpoint.ADMINS_LIST.value, summary="List admin registrations")
 def list_admins(
-        status: Optional[str] = Query(None),
+        status: Optional[str] = Query(
+            None,
+            description=(
+                "Filter by status (pending|approved|rejected). "
+                "Omit to return pending + approved (union)."
+            ),
+        ),
         current_user: Dict[str, Any] = Depends(get_current_user),
         svc: AdminService = Depends(get_admin_service),
 ):
-    results = svc.list_admins(current_user, status=status)
-    return success_response([item.model_dump(by_alias=True) for item in results])
+    return success_response(svc.list_admins(current_user, status=status))

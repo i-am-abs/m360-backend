@@ -60,7 +60,7 @@ class UserMasjidService:
                     "id": pid,
                     "unavailable": True,
                     "hasDonationsEnabled": False,
-                    "hasAnnouncementsEnabled": False,
+                    "hasAnnouncementsEnabled": True,
                     "donationUpdatesCount": 0,
                     "announcementUpdatesCount": 0,
                     "timings": [],

@@ -95,6 +95,7 @@ class ApiEndpoint(Enum):
     MASJIDS_LIST = "/masjids"
     MASJID_TIMINGS = "/masjids/{place_id}/timings"
     MASJID_AMENITIES = "/masjids/{place_id}/amenities"
+    MASJID_ANNOUNCEMENTS_ENABLED = "/masjids/{place_id}/announcements-enabled"
 
     INTERNAL_MASJID_TIMINGS = "/internal/masjids/{place_id}/timings"
 

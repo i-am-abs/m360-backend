@@ -5,7 +5,11 @@ from typing import Any, Dict, List, Optional
 from app.api.v1.presenters.masjid_presenter import MasjidDetailsPresenter
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
-from app.utils.admin_link import is_user_admin_for_place, resolve_committee_for_place
+from app.utils.admin_link import (
+    committee_member_from_admin,
+    is_user_admin_for_place,
+    resolve_committee_for_place,
+)
 from app.utils.masjid import get_deterministic_masjid_metadata
 
 
@@ -53,6 +57,9 @@ def build_masjid_detail_view(
     """Full masjid payload used by details + admin listing endpoints."""
     pid = place.get("id") or place_id
     meta = get_deterministic_masjid_metadata(pid)
+    # Force announcements on for every masjid (including ChIJKwBXQIekdDkRMBaNzvmL3dw).
+    has_announcements = True
+    announcement_count = int(meta["announcementUpdatesCount"])
     committee = resolve_committee_for_place(
         pid,
         admin_store=admin_store,
@@ -73,15 +80,17 @@ def build_masjid_detail_view(
     view = MasjidDetailsPresenter.to_view(
         place,
         has_donations=meta["hasDonationsEnabled"],
-        has_announcements=meta["hasAnnouncementsEnabled"],
+        has_announcements=has_announcements,
         donation_count=meta["donationUpdatesCount"],
-        announcement_count=meta["announcementUpdatesCount"],
+        announcement_count=announcement_count,
         is_added=is_added,
         saved_count=saved_count,
         committee_data=committee["details"] if committee.get("hasCommittee") else [],
         prayer_timings=prayer_timings,
         amenities=amenities,
     )
+    # Hard guarantee in the final payload (covers every place_id).
+    view["hasAnnouncementsEnabled"] = True
     view["committee_details"] = committee["details"] if committee.get("hasCommittee") else []
     view["committee"] = committee
     view["id"] = pid
@@ -94,6 +103,17 @@ def build_masjid_detail_view(
     view["onboardingDone"] = len(prayer_timings) > 0
     view["isAdmin"] = is_admin
     view["isCurrentUserAdmin"] = is_admin
+
+    approved_admins: List[Dict[str, Any]] = []
+    pending_admins: List[Dict[str, Any]] = []
+    if admin_store is not None:
+        for doc in admin_store.list_for_place(pid, status="approved"):
+            approved_admins.append(committee_member_from_admin(doc))
+        for doc in admin_store.list_for_place(pid, status="pending"):
+            pending_admins.append(committee_member_from_admin(doc))
+    view["approvedAdmins"] = approved_admins
+    view["pendingAdmins"] = pending_admins
+
     if not include_raw:
         view.pop("raw", None)
     return view
