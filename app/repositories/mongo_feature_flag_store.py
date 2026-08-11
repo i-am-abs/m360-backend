@@ -89,10 +89,28 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
             queries.append({"country": country, "state": None, "city": None})
 
         for query in queries:
-            doc = self._col.find_one({**query, "enabled": True})
-            if doc:
-                return self._public(doc)
+            # Prefer higher-priority matches; compare region fields case-insensitively.
+            candidates = list(
+                self._col.find({"enabled": True}).sort("priority", DESCENDING)
+            )
+            for doc in candidates:
+                if self._region_matches(doc, query):
+                    return self._public(doc)
         return None
+
+    @staticmethod
+    def _region_matches(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
+        for key, expected in query.items():
+            actual = doc.get(key)
+            if expected is None:
+                if actual is not None:
+                    return False
+                continue
+            if actual is None:
+                return False
+            if str(actual).strip().lower() != str(expected).strip().lower():
+                return False
+        return True
 
     @staticmethod
     def _point_in_bounds(lat: float, lng: float, bounds: Dict[str, Any]) -> bool:
