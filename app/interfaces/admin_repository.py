@@ -18,6 +18,14 @@ class AdminRepository(ABC):
         pass
 
     @abstractmethod
+    def get_by_phone_and_place(
+            self,
+            phone: str,
+            place_id: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
     def list_by_phone(
             self,
             phone: str,

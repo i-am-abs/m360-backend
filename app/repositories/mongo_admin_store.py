@@ -21,7 +21,10 @@ class MongoAdminStore(AdminRepository):
 
     def _ensure_indexes(self) -> None:
         self._col.create_index([("admin_id", ASCENDING)], unique=True)
-        self._col.create_index([("phone", ASCENDING)], unique=True)
+        # One person may be a committee member for multiple masjids, so phone
+        # alone is not unique. Use a compound index on (phone, masjid_place_id)
+        # to enforce uniqueness per assignment instead.
+        self._col.create_index([("phone", ASCENDING), ("masjid_place_id", ASCENDING)], unique=True)
         self._col.create_index([("user_id", ASCENDING)], sparse=True)
         self._col.create_index([("status", ASCENDING)])
         self._col.create_index([("masjid_place_id", ASCENDING)], sparse=True)
@@ -57,7 +60,9 @@ class MongoAdminStore(AdminRepository):
         try:
             self._col.insert_one(payload)
         except DuplicateKeyError as exc:
-            raise ValueError("This phone number is already an admin") from exc
+            raise ValueError(
+                "This phone number is already registered for this masjid"
+            ) from exc
         return self._public(payload)
 
     def get_by_id(self, admin_id: str) -> Optional[Dict[str, Any]]:
@@ -67,6 +72,25 @@ class MongoAdminStore(AdminRepository):
     def get_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
         docs = self.list_by_phone(phone)
         return docs[0] if docs else None
+
+    def get_by_phone_and_place(
+            self,
+            phone: str,
+            place_id: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        variants = phone_lookup_variants(phone)
+        if not variants:
+            return None
+        query: Dict[str, Any] = {"phone": {"$in": variants}}
+        if place_id is not None:
+            query["masjid_place_id"] = str(place_id)
+        else:
+            query["$or"] = [
+                {"masjid_place_id": {"$exists": False}},
+                {"masjid_place_id": None},
+            ]
+        doc = self._col.find_one(query)
+        return self._public(doc) if doc else None
 
     def list_by_phone(
             self,
@@ -163,6 +187,13 @@ class NoOpAdminStore(AdminRepository):
         return None
 
     def get_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
+        return None
+
+    def get_by_phone_and_place(
+            self,
+            phone: str,
+            place_id: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
         return None
 
     def list_by_phone(
