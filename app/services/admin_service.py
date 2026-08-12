@@ -70,7 +70,10 @@ class AdminService:
                 if caller_phone and phones_match(str(caller_phone), phone):
                     user_id = str(current_user["user_id"])
 
-            existing = self._admin_store.get_by_phone(phone)
+            existing = self._admin_store.get_by_phone_and_place(
+                phone,
+                request.masjid_place_id,
+            )
             if existing:
                 stored = self._handle_existing_admin(
                     existing,
@@ -142,13 +145,6 @@ class AdminService:
 
         if request.masjid_place_id:
             existing_place = existing.get("masjid_place_id")
-            if existing_place and existing_place != request.masjid_place_id:
-                raise ApiException(
-                    "This phone number is already an admin for another masjid. "
-                    "Contact a super admin to change the assignment.",
-                    status_code=HTTPStatus.CONFLICT.value,
-                    code=ErrorCode.VALIDATION_ERROR,
-                )
             if not existing_place:
                 fields["masjid_place_id"] = request.masjid_place_id
                 if existing.get("role") != UserRole.SUPER_ADMIN.value:
@@ -173,7 +169,7 @@ class AdminService:
             return existing
 
         raise ApiException(
-            "This phone number is already an admin",
+            "This phone number is already registered",
             status_code=HTTPStatus.CONFLICT.value,
             code=ErrorCode.VALIDATION_ERROR,
         )

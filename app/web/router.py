@@ -321,6 +321,8 @@ def claims(
     q: str = "",
 ):
     svc = getattr(request.app.state, "claim_service", None)
+    admin_store = getattr(request.app.state, "admin_store", None)
+    mongo_client = getattr(request.app.state, "mongo_client", None)
     user_store = getattr(request.app.state, "user_store", None)
     claims_data = {"claims": [], "pagination": {"page": 1, "pages": 1}}
     if svc:
@@ -351,6 +353,56 @@ def claims(
                         pass
         except Exception:
             pass
+    # Merge pending admin registrations (submitted via /admins/register from the
+    # app) into the claims list so masjid committee claim requests are visible.
+    try:
+        pending_admins = admin_store.list_all(status="pending") if admin_store else []
+    except Exception:
+        pending_admins = []
+    if pending_admins:
+        from app.core.enums.committee_designation import CommitteeDesignation
+        masjid_name_cache: dict[str, str] = {}
+        masjid_city_cache: dict[str, str] = {}
+        for adm in pending_admins:
+            place_id = adm.get("masjid_place_id") or ""
+            name = masjid_name_cache.get(place_id)
+            city = masjid_city_cache.get(place_id)
+            if place_id and mongo_client and name is None:
+                try:
+                    database = mongo_client.get_database(_get_settings().mongodb_database)
+                    doc = database["masjids"].find_one({"place_id": place_id}, {"name": 1, "city": 1})
+                    name = (doc or {}).get("name", "Unknown")
+                    city = (doc or {}).get("city", "")
+                    masjid_name_cache[place_id] = name
+                    masjid_city_cache[place_id] = city
+                except Exception:
+                    name = "Unknown"
+            if not name:
+                name = "Unknown"
+            if not city:
+                city = ""
+            role = adm.get("designation") or "admin"
+            role_label = CommitteeDesignation.labels().get(role, role.replace("_", " ").title())
+            claim_item = {
+                "id": adm.get("admin_id", ""),
+                "kind": "admin_registration",
+                "user_id": adm.get("user_id") or "",
+                "user_phone": adm.get("phone") or "",
+                "user_name": adm.get("name") or "",
+                "masjid_id": place_id,
+                "masjid_name": name,
+                "masjid_city": city,
+                "claimed_role": role_label,
+                "applicant_note": "",
+                "status": adm.get("status", "pending"),
+                "created_at": adm.get("created_at"),
+            }
+            claims_data["claims"].append(claim_item)
+        # Sort merged list by created_at desc (best effort)
+        def _ts(item):
+            return item.get("created_at") or ""
+        claims_data["claims"].sort(key=_ts, reverse=True)
+        claims_data["pagination"]["total"] = len(claims_data["claims"])
     flash = _flash_from_query(request)
     return templates.get_template("claims.html").render(
         admin=session, active_tab="claims",
@@ -368,6 +420,23 @@ def approve_claim(
     session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "claim_service", None)
+    admin_store = getattr(request.app.state, "admin_store", None)
+    admin_svc = getattr(request.app.state, "admin_service", None)
+    # If this "claim" is actually an admin registration, route to the admin
+    # approval flow (which also populates the masjid committee + listing).
+    if admin_store and admin_store.get_by_id(claim_id):
+        if admin_svc:
+            try:
+                from app.core.enums.admin_status import AdminRegistrationStatus
+                from app.schemas.admin import AdminStatusUpdateRequest
+                admin_svc.update_status(
+                    claim_id,
+                    AdminStatusUpdateRequest(status=AdminRegistrationStatus.APPROVED),
+                    {"user_id": session.admin_id, "role": "super_admin"},
+                )
+            except Exception:
+                pass
+        return RedirectResponse(url="/admin/claims", status_code=303)
     if svc:
         try:
             svc.approve_claim(claim_id, session.admin_id)
@@ -649,6 +718,21 @@ def reject_claim(
     session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "claim_service", None)
+    admin_store = getattr(request.app.state, "admin_store", None)
+    admin_svc = getattr(request.app.state, "admin_service", None)
+    if admin_store and admin_store.get_by_id(claim_id):
+        if admin_svc:
+            try:
+                from app.core.enums.admin_status import AdminRegistrationStatus
+                from app.schemas.admin import AdminStatusUpdateRequest
+                admin_svc.update_status(
+                    claim_id,
+                    AdminStatusUpdateRequest(status=AdminRegistrationStatus.REJECTED, message="Rejected by admin"),
+                    {"user_id": session.admin_id, "role": "super_admin"},
+                )
+            except Exception:
+                pass
+        return RedirectResponse(url="/admin/claims", status_code=303)
     if svc:
         try:
             svc.reject_claim(claim_id, session.admin_id, "Rejected by admin")
