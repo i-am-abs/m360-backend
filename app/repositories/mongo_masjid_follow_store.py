@@ -48,6 +48,10 @@ class MongoMasjidFollowStore(MasjidFollowRepository):
         cursor = self._col.find({"masjid_id": masjid_id}, {"user_id": 1, "_id": 0})
         return [doc["user_id"] for doc in cursor if doc.get("user_id")]
 
+    def list_followed_masjid_ids(self, user_id: str) -> List[str]:
+        cursor = self._col.find({"user_id": user_id}, {"masjid_id": 1, "_id": 0})
+        return [doc["masjid_id"] for doc in cursor if doc.get("masjid_id")]
+
 
 class NoOpMasjidFollowStore(MasjidFollowRepository):
     def follow(self, user_id: str, masjid_id: str) -> None:
@@ -60,4 +64,7 @@ class NoOpMasjidFollowStore(MasjidFollowRepository):
         return False
 
     def list_follower_user_ids(self, masjid_id: str) -> List[str]:
+        return []
+
+    def list_followed_masjid_ids(self, user_id: str) -> List[str]:
         return []

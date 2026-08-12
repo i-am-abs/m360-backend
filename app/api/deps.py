@@ -14,8 +14,8 @@ from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.user_repository import UserRepository
 from app.services.admin_service import AdminService
-from app.services.broadcast_service import BroadcastService
 from app.services.broadcast_feed_service import BroadcastFeedService
+from app.services.broadcast_service import BroadcastService
 from app.services.claim_service import ClaimService
 from app.services.connection_manager import ConnectionManager
 from app.services.donation_service import DonationService
@@ -26,6 +26,7 @@ from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_listing_service import MasjidListingService
+from app.services.masjid_tab_service import MasjidTabService
 from app.services.masjid_timings_service import MasjidTimingsService
 from app.services.notification_service import NotificationService
 from app.services.phone_auth_service import PhoneAuthService
@@ -136,6 +137,10 @@ def get_feature_flag_service(request: Request) -> FeatureFlagService:
     return request.app.state.feature_flag_service
 
 
+def get_masjid_tab_service(request: Request) -> MasjidTabService:
+    return request.app.state.masjid_tab_service
+
+
 def get_admin_service(request: Request) -> AdminService:
     return request.app.state.admin_service
 
@@ -220,7 +225,7 @@ def verify_internal_api_key(
 
 
 def require_platform_admin(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+        current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> Dict[str, Any]:
     if current_user.get("global_role") != "platform_admin":
         raise ApiException(

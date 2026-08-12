@@ -4,8 +4,6 @@ from enum import Enum
 
 
 class CommitteeDesignation(str, Enum):
-    """Masjid committee titles shown in designs (not system RBAC roles)."""
-
     IMAM = "imam"
     KHATIB = "khatib"
     MUEZZIN = "muezzin"

@@ -12,7 +12,8 @@ from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.audit_log_repository import AuditLogRepository
 from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
-from app.schemas.admin import AdminRegisterRequest, AdminResponse, AdminStatusUpdateRequest
+from app.api.v1.model.admin_status_model import AdminResponse, AdminStatusUpdateRequest
+from app.schemas.admin import AdminRegisterRequest
 from app.services.rbac_service import RbacService
 from app.utils.admin_link import committee_member_from_admin, phones_match
 from app.utils.phone import canonicalize_india_phone

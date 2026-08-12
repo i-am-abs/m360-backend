@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import ceil
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
-from pymongo import DESCENDING
+from math import ceil
 from pymongo.database import Database
 
 from app.interfaces.donation_repository import DonationRepository
@@ -78,7 +77,7 @@ class MongoDonationRepository(DonationRepository):
         return self._as_dict(doc) if doc else {}
 
     def create_donation(
-        self, campaign_id: str, masjid_id: str, donor: dict, amount: int, payment_method: str
+            self, campaign_id: str, masjid_id: str, donor: dict, amount: int, payment_method: str
     ) -> dict:
         now_iso = self._now_iso()
         doc = {
@@ -98,7 +97,7 @@ class MongoDonationRepository(DonationRepository):
         return self._as_dict(doc)
 
     def update_donation_status(
-        self, donation_id: str, status: str, transaction_id: Optional[str]
+            self, donation_id: str, status: str, transaction_id: Optional[str]
     ) -> dict:
         set_fields: Dict[str, Any] = {"payment_status": status}
         if transaction_id:

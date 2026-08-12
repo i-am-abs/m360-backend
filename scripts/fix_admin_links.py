@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Link existing admins to users by phone and optionally assign a masjid place_id."""
-
 from __future__ import annotations
 
 import argparse

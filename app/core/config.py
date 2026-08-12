@@ -99,18 +99,14 @@ class Settings(BaseSettings):
     cors_allow_methods: Tuple[str, ...] = ("*",)
     cors_allow_headers: Tuple[str, ...] = ("*",)
 
-    # Payment Gateway (Razorpay)
     razorpay_key_id: Optional[str] = None
     razorpay_key_secret: Optional[str] = None
     razorpay_webhook_secret: Optional[str] = None
 
-    # Donation default
     donation_cache_ttl_seconds: int = 60
 
-    # Platform admin
     platform_admin_env: str = ""
 
-    # Admin panel (web UI)
     super_admins: Optional[str] = None
     admin_panel_enabled: bool = Field(
         default=True,
@@ -140,7 +136,6 @@ class Settings(BaseSettings):
     upload_max_image_bytes: int = 10 * 1024 * 1024
     upload_max_video_bytes: int = 200 * 1024 * 1024
 
-    # FCM Push Notifications
     fcm_service_account_path: str = ""
     fcm_enabled: bool = Field(
         default=False,
@@ -149,7 +144,6 @@ class Settings(BaseSettings):
     firebase_credentials_file: Optional[str] = None
     broadcast_default_page_size: int = Field(default=20, ge=1, le=100)
 
-    # Mux Video
     mux_token_id: str = ""
     mux_token_secret: str = ""
     mux_webhook_secret: str = ""
@@ -171,6 +165,7 @@ class Settings(BaseSettings):
             "auth_force_infinite_sessions",
         ),
     )
+
     @property
     def quran_api_configured(self) -> bool:
         return bool(self.quran_client_id and self.quran_client_secret)

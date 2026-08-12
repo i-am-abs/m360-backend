@@ -21,9 +21,6 @@ class MongoAdminStore(AdminRepository):
 
     def _ensure_indexes(self) -> None:
         self._col.create_index([("admin_id", ASCENDING)], unique=True)
-        # One person may be a committee member for multiple masjids, so phone
-        # alone is not unique. Use a compound index on (phone, masjid_place_id)
-        # to enforce uniqueness per assignment instead.
         self._col.create_index([("phone", ASCENDING), ("masjid_place_id", ASCENDING)], unique=True)
         self._col.create_index([("user_id", ASCENDING)], sparse=True)
         self._col.create_index([("status", ASCENDING)])

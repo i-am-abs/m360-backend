@@ -10,40 +10,53 @@ sys.path.insert(0, str(ROOT))
 
 from pymongo import MongoClient
 
-_ENABLED_FEATURES = {
+COLLECTION = "feature_flag_locations"
+
+_LAUNCHED_FEATURES = {
     "verification": True,
     "timings": True,
     "committee_registration": True,
+    "masjid_discovery": True,
 }
 
+# Circles beat rectangles for cities: a box around Delhi reaches far into Haryana at
+# its corners, whereas "within N km of the centre" degrades predictably. Overlaps are
+# still expected (Faridabad sits inside Delhi's radius) and are resolved by preferring
+# the tightest matching region, so keep each radius as small as the city allows.
 LOCATIONS = [
     {
         "location_key": "*",
         "country": None,
         "state": None,
         "city": None,
+        "aliases": None,
         "bounds": None,
+        "center": None,
+        "radius_km": None,
         "features": {
             "verification": True,
             "timings": True,
             "committee_registration": True,
+            "masjid_discovery": False,
         },
         "priority": 0,
         "enabled": True,
     },
-    # --- Delhi (state-level + city variants) ---
     {
+        # State-level fallback for country/state queries; deliberately shapeless so it
+        # never competes with a city on a coordinate lookup.
         "location_key": "IN-DL",
         "country": "IN",
         "state": "DL",
         "city": None,
-        "bounds": {
-            "lat_min": 28.4,
-            "lat_max": 28.9,
-            "lng_min": 76.8,
-            "lng_max": 77.4,
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": ["DL", "Delhi", "NCT of Delhi"],
         },
-        "features": dict(_ENABLED_FEATURES),
+        "bounds": None,
+        "center": None,
+        "radius_km": None,
+        "features": dict(_LAUNCHED_FEATURES),
         "priority": 10,
         "enabled": True,
     },
@@ -52,93 +65,60 @@ LOCATIONS = [
         "country": "IN",
         "state": "DL",
         "city": "Delhi",
-        "bounds": {
-            "lat_min": 28.4,
-            "lat_max": 28.9,
-            "lng_min": 76.8,
-            "lng_max": 77.4,
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": ["DL", "Delhi", "NCT of Delhi"],
+            "city": ["Delhi", "New Delhi"],
         },
-        "features": dict(_ENABLED_FEATURES),
+        "bounds": None,
+        "center": {"latitude": 28.6139, "longitude": 77.2090},
+        "radius_km": 30,
+        "features": dict(_LAUNCHED_FEATURES),
         "priority": 20,
         "enabled": True,
     },
-    {
-        "location_key": "IN-Delhi-Delhi",
-        "country": "IN",
-        "state": "Delhi",
-        "city": "Delhi",
-        "bounds": {
-            "lat_min": 28.4,
-            "lat_max": 28.9,
-            "lng_min": 76.8,
-            "lng_max": 77.4,
-        },
-        "features": dict(_ENABLED_FEATURES),
-        "priority": 20,
-        "enabled": True,
-    },
-    # --- Aligarh, Uttar Pradesh ---
     {
         "location_key": "IN-UP-Aligarh",
         "country": "IN",
         "state": "UP",
         "city": "Aligarh",
-        "bounds": {
-            "lat_min": 27.80,
-            "lat_max": 28.00,
-            "lng_min": 77.95,
-            "lng_max": 78.20,
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": ["UP", "Uttar Pradesh"],
+            "city": ["Aligarh"],
         },
-        "features": dict(_ENABLED_FEATURES),
+        "bounds": None,
+        "center": {"latitude": 27.8974, "longitude": 78.0880},
+        "radius_km": 18,
+        "features": dict(_LAUNCHED_FEATURES),
         "priority": 20,
         "enabled": True,
     },
-    {
-        "location_key": "IN-UttarPradesh-Aligarh",
-        "country": "IN",
-        "state": "Uttar Pradesh",
-        "city": "Aligarh",
-        "bounds": {
-            "lat_min": 27.80,
-            "lat_max": 28.00,
-            "lng_min": 77.95,
-            "lng_max": 78.20,
-        },
-        "features": dict(_ENABLED_FEATURES),
-        "priority": 20,
-        "enabled": True,
-    },
-    # --- Faridabad, Haryana ---
     {
         "location_key": "IN-HR-Faridabad",
         "country": "IN",
         "state": "HR",
         "city": "Faridabad",
-        "bounds": {
-            "lat_min": 28.30,
-            "lat_max": 28.50,
-            "lng_min": 77.20,
-            "lng_max": 77.40,
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": ["HR", "Haryana"],
+            "city": ["Faridabad", "Ballabgarh"],
         },
-        "features": dict(_ENABLED_FEATURES),
+        "bounds": None,
+        "center": {"latitude": 28.4089, "longitude": 77.3178},
+        "radius_km": 16,
+        "features": dict(_LAUNCHED_FEATURES),
         "priority": 20,
         "enabled": True,
     },
-    {
-        "location_key": "IN-Haryana-Faridabad",
-        "country": "IN",
-        "state": "Haryana",
-        "city": "Faridabad",
-        "bounds": {
-            "lat_min": 28.30,
-            "lat_max": 28.50,
-            "lng_min": 77.20,
-            "lng_max": 77.40,
-        },
-        "features": dict(_ENABLED_FEATURES),
-        "priority": 20,
-        "enabled": True,
-    },
+]
+
+# Superseded by the alias lists above; leaving them would reintroduce ambiguous
+# duplicate regions for the same city.
+OBSOLETE_LOCATION_KEYS = [
+    "IN-Delhi-Delhi",
+    "IN-UttarPradesh-Aligarh",
+    "IN-Haryana-Faridabad",
 ]
 
 
@@ -151,7 +131,7 @@ def main() -> None:
     db_name = os.environ.get("MONGODB_DATABASE", "m360")
     now = datetime.now(timezone.utc).isoformat()
     client = MongoClient(uri, serverSelectionTimeoutMS=10_000)
-    col = client[db_name]["feature_flag_locations"]
+    col = client[db_name][COLLECTION]
 
     for doc in LOCATIONS:
         key = doc["location_key"]
@@ -164,6 +144,10 @@ def main() -> None:
             upsert=True,
         )
         print(f"upserted location_key={key}")
+
+    removed = col.delete_many({"location_key": {"$in": OBSOLETE_LOCATION_KEYS}})
+    if removed.deleted_count:
+        print(f"removed {removed.deleted_count} obsolete duplicate location(s)")
 
     client.close()
     print("done")

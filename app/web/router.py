@@ -428,7 +428,7 @@ def approve_claim(
         if admin_svc:
             try:
                 from app.core.enums.admin_status import AdminRegistrationStatus
-                from app.schemas.admin import AdminStatusUpdateRequest
+                from app.api.v1.model.admin_status_model import AdminStatusUpdateRequest
                 admin_svc.update_status(
                     claim_id,
                     AdminStatusUpdateRequest(status=AdminRegistrationStatus.APPROVED),
@@ -724,7 +724,7 @@ def reject_claim(
         if admin_svc:
             try:
                 from app.core.enums.admin_status import AdminRegistrationStatus
-                from app.schemas.admin import AdminStatusUpdateRequest
+                from app.api.v1.model.admin_status_model import AdminStatusUpdateRequest
                 admin_svc.update_status(
                     claim_id,
                     AdminStatusUpdateRequest(status=AdminRegistrationStatus.REJECTED, message="Rejected by admin"),

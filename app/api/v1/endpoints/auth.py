@@ -40,17 +40,19 @@ def handle_request_otp(request: PhoneLoginRequest, svc: PhoneAuthService) -> JSO
 
 
 @router.post(ApiEndpoint.AUTH_PHONE_REQUEST_OTP.value, summary="Send OTP to phone")
-def request_phone_otp(request: PhoneLoginRequest, svc: PhoneAuthService = Depends(get_phone_auth_service),) -> JSONResponse:
+def request_phone_otp(request: PhoneLoginRequest,
+                      svc: PhoneAuthService = Depends(get_phone_auth_service), ) -> JSONResponse:
     return handle_request_otp(request, svc)
 
 
 @router.post(ApiEndpoint.AUTH_LOGIN.value, summary="Phone login (alias)")
-def auth_login(request: PhoneLoginRequest, svc: PhoneAuthService = Depends(get_phone_auth_service),) -> JSONResponse:
+def auth_login(request: PhoneLoginRequest, svc: PhoneAuthService = Depends(get_phone_auth_service), ) -> JSONResponse:
     return handle_request_otp(request, svc)
 
 
 @router.post(ApiEndpoint.AUTH_PHONE_RETRY_OTP.value, summary="Retry / resend OTP")
-def retry_phone_otp(request: OtpRetryRequest, svc: PhoneAuthService = Depends(get_phone_auth_service),) -> JSONResponse:
+def retry_phone_otp(request: OtpRetryRequest,
+                    svc: PhoneAuthService = Depends(get_phone_auth_service), ) -> JSONResponse:
     channel = request.retry_channel.value if request.retry_channel else None
     data = svc.retry_otp(request.phone_number, request.req_id, channel)
     return success_response(data, message="OTP resent")
@@ -58,9 +60,9 @@ def retry_phone_otp(request: OtpRetryRequest, svc: PhoneAuthService = Depends(ge
 
 @router.post(ApiEndpoint.AUTH_PHONE_VERIFY_OTP.value, summary="Verify OTP")
 def verify_phone_otp(
-    request: OtpVerifyRequest,
-    svc: PhoneAuthService = Depends(get_phone_auth_service),
-    fastapi_request: Request = None,
+        request: OtpVerifyRequest,
+        svc: PhoneAuthService = Depends(get_phone_auth_service),
+        fastapi_request: Request = None,
 ) -> JSONResponse:
     data = svc.verify_otp(request.phone_number, request.req_id, request.otp)
     if fastapi_request and request.fcm_token:
@@ -71,6 +73,7 @@ def verify_phone_otp(
 
 
 @router.post(ApiEndpoint.AUTH_REFRESH.value, summary="Refresh bearer access token")
-def refresh_access_token(credentials: HTTPAuthorizationCredentials = Depends(get_bearer_credentials), svc: PhoneAuthService = Depends(get_phone_auth_service),) -> JSONResponse:
+def refresh_access_token(credentials: HTTPAuthorizationCredentials = Depends(get_bearer_credentials),
+                         svc: PhoneAuthService = Depends(get_phone_auth_service), ) -> JSONResponse:
     data = svc.refresh_access_token(credentials.credentials)
     return success_response(data, message="Token refreshed")

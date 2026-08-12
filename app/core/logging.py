@@ -3,16 +3,17 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
 from typing import Final
+
+from contextvars import ContextVar
 
 _request_id_ctx: Final[ContextVar[str | None]] = ContextVar(
     "request_id", default=None
 )
 
 _CONFIGURED: bool = False
-_LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MB
+_LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
 _LOG_BACKUP_COUNT: int = 5
 
 

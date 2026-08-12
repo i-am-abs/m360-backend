@@ -27,9 +27,11 @@ api_v1_router.include_router(health.router)
 api_v1_router.include_router(auth.router)
 api_v1_router.include_router(msg91_webhook.router)
 api_v1_router.include_router(quran.router)
+# Registered before masjid.router: routes match in order, so the literal
+# /masjids/tab must be declared ahead of /masjids/{masjid_id}.
+api_v1_router.include_router(features.router)
 api_v1_router.include_router(masjid.router)
 api_v1_router.include_router(masjid_content.router)
-api_v1_router.include_router(features.router)
 api_v1_router.include_router(admins.router)
 api_v1_router.include_router(verification_requests.router)
 api_v1_router.include_router(uploads.router)

@@ -39,16 +39,16 @@ class UserRepository(ABC):
 
     @abstractmethod
     def block_user(self, user_id: str) -> None:
-        ...
+        pass
 
     @abstractmethod
     def unblock_user(self, user_id: str) -> None:
-        ...
+        pass
 
     @abstractmethod
     def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
-        ...
+        pass
 
     @abstractmethod
     def search_users(self, query: str) -> List[Dict[str, Any]]:
-        ...
+        pass

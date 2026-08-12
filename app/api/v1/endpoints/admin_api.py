@@ -7,65 +7,14 @@ from uuid import uuid4
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
 
+from app.api.v1.model.admin_model import AdminLoginResponse, AdminLoginRequest, AdminProfile, DashboardResponse, \
+    UserItem, DashboardStats, UserListResponse, MessageResponse
 from app.core.config import get_settings
 from app.services.masjid_entity_service import MasjidEntityService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 bearer = HTTPBearer(auto_error=False)
-
-
-class AdminLoginRequest(BaseModel):
-    email: str
-    password: str
-
-
-class AdminLoginResponse(BaseModel):
-    token: str
-    admin_id: str
-    email: str
-    name: str
-    role: str
-    expires_at: str
-
-
-class AdminProfile(BaseModel):
-    admin_id: str
-    email: str
-    name: str
-    role: str
-
-
-class UserItem(BaseModel):
-    user_id: str
-    phone_number: str
-    created_at: Optional[str] = None
-    blocked_at: Optional[str] = None
-    global_role: Optional[str] = None
-
-
-class UserListResponse(BaseModel):
-    users: List[UserItem]
-    total: int
-    page: int
-    total_pages: int
-
-
-class DashboardStats(BaseModel):
-    total_users: int
-    total_masjids: int
-    total_claims: int
-    total_donations: int
-
-
-class DashboardResponse(BaseModel):
-    stats: DashboardStats
-    recent_users: List[UserItem]
-
-
-class MessageResponse(BaseModel):
-    message: str
 
 
 def _get_admin_creds():
@@ -82,8 +31,8 @@ def _get_admin_creds():
 
 
 def admin_api_required(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+        request: Request,
+        credentials: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> Dict[str, Any]:
     if credentials is None or not credentials.credentials:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
@@ -153,8 +102,8 @@ def admin_me(admin: Dict[str, Any] = Depends(admin_api_required)):
 
 @router.get("/dashboard", response_model=DashboardResponse)
 def admin_dashboard(
-    request: Request,
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     total_users = 0
@@ -190,10 +139,10 @@ def admin_dashboard(
 
 @router.get("/users", response_model=UserListResponse)
 def admin_users(
-    request: Request,
-    page: int = Query(1, ge=1),
-    q: str = Query("", alias="q"),
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        page: int = Query(1, ge=1),
+        q: str = Query("", alias="q"),
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     per_page = 20
@@ -219,9 +168,9 @@ def admin_users(
 
 @router.post("/users/{user_id}/block", response_model=MessageResponse)
 def admin_block_user(
-    request: Request,
-    user_id: str,
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        user_id: str,
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     if user_store:
@@ -234,9 +183,9 @@ def admin_block_user(
 
 @router.post("/users/{user_id}/unblock", response_model=MessageResponse)
 def admin_unblock_user(
-    request: Request,
-    user_id: str,
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        user_id: str,
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     if user_store:
@@ -249,10 +198,10 @@ def admin_unblock_user(
 
 @router.get("/masjids")
 def admin_masjids(
-    request: Request,
-    page: int = Query(1, ge=1),
-    q: str = Query("", alias="q"),
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        page: int = Query(1, ge=1),
+        q: str = Query("", alias="q"),
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     svc: Optional[MasjidEntityService] = getattr(request.app.state, "masjid_entity_service", None)
     if not svc:
@@ -275,10 +224,10 @@ def admin_masjids(
 
 @router.post("/masjids/import")
 def admin_import_masjids(
-    request: Request,
-    city: str = Query(..., description="City name to search masjids in"),
-    max_results: int = Query(10, ge=1, le=50),
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        city: str = Query(..., description="City name to search masjids in"),
+        max_results: int = Query(10, ge=1, le=50),
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     svc: Optional[MasjidEntityService] = getattr(request.app.state, "masjid_entity_service", None)
     if not svc:
@@ -298,8 +247,8 @@ def admin_import_masjids(
 
 @router.get("/donations")
 def admin_donations(
-    request: Request,
-    admin: Dict[str, Any] = Depends(admin_api_required),
+        request: Request,
+        admin: Dict[str, Any] = Depends(admin_api_required),
 ):
     return {"donations": [], "total": 0, "page": 1, "total_pages": 1}
 

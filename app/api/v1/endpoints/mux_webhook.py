@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, Request
 
+from app.api.deps import get_broadcast_feed_service
 from app.services.broadcast_feed_service import BroadcastFeedService
 from app.services.mux_service import MuxService
 from app.utils.response import success_response
-from app.api.deps import get_broadcast_feed_service
 
 router = APIRouter(tags=["webhooks"])
 
 
 @router.post("/webhook/mux", summary="Mux webhook")
 async def mux_webhook(
-    request: Request,
-    webhook_signature: str = Header(..., alias="Mux-Signature"),
-    broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        request: Request,
+        webhook_signature: str = Header(..., alias="Mux-Signature"),
+        broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     body = await request.body()
     mux = MuxService()

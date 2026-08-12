@@ -79,7 +79,6 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "error": {
                     "code": ErrorCode.VALIDATION_ERROR.value,
                     "message": "Invalid request payload",
-                    # "exact_message_from_service_provider": None,
                     "fields": fields,
                 },
             },

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import ceil
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from bson import ObjectId
+from math import ceil
 from pymongo import ASCENDING
 from pymongo.database import Database
 

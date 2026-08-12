@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
-from pymongo import DESCENDING
 from pymongo.database import Database
 
 from app.interfaces.broadcast_feed_repository import BroadcastFeedRepository
@@ -23,16 +22,16 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
         self._messages.create_index([("sender.user_id", 1)])
 
     def create_message(
-        self,
-        masjid_id: str,
-        sender: dict,
-        msg_type: str,
-        text: Optional[str],
-        video_url: Optional[str],
-        campaign_id: Optional[str],
-        thumbnail_url: Optional[str] = None,
-        mux_asset_id: Optional[str] = None,
-        mux_upload_id: Optional[str] = None,
+            self,
+            masjid_id: str,
+            sender: dict,
+            msg_type: str,
+            text: Optional[str],
+            video_url: Optional[str],
+            campaign_id: Optional[str],
+            thumbnail_url: Optional[str] = None,
+            mux_asset_id: Optional[str] = None,
+            mux_upload_id: Optional[str] = None,
     ) -> dict:
         now_iso = self._now_iso()
         doc: Dict[str, Any] = {
@@ -63,12 +62,12 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
         return self._as_dict(doc)
 
     def get_messages(
-        self,
-        masjid_id: str,
-        cursor: Optional[datetime],
-        since: Optional[datetime],
-        limit: int,
-        user_id: Optional[str] = None,
+            self,
+            masjid_id: str,
+            cursor: Optional[datetime],
+            since: Optional[datetime],
+            limit: int,
+            user_id: Optional[str] = None,
     ) -> dict:
         query: Dict[str, Any] = {"masjid_id": masjid_id}
         if cursor:
@@ -161,12 +160,12 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
         }
 
     def update_mux_playback(
-        self,
-        asset_id: str,
-        playback_id: str,
-        video_url: str,
-        thumbnail_url: str,
-        upload_id: str | None = None,
+            self,
+            asset_id: str,
+            playback_id: str,
+            video_url: str,
+            thumbnail_url: str,
+            upload_id: str | None = None,
     ) -> None:
         updates = {
             "mux_playback_id": playback_id,

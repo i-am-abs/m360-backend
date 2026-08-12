@@ -20,3 +20,7 @@ class MasjidFollowRepository(ABC):
     @abstractmethod
     def list_follower_user_ids(self, masjid_id: str) -> List[str]:
         pass
+
+    @abstractmethod
+    def list_followed_masjid_ids(self, user_id: str) -> List[str]:
+        pass

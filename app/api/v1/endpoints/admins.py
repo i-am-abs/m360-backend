@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_admin_service, get_current_user, get_optional_current_user
 from app.core.enums.api_endpoints import ApiEndpoint
-from app.schemas.admin import AdminRegisterRequest, AdminStatusUpdateRequest
+from app.api.v1.model.admin_status_model import AdminStatusUpdateRequest
+from app.schemas.admin import AdminRegisterRequest
 from app.services.admin_service import AdminService
 from app.utils.response import success_response
 
@@ -39,8 +40,8 @@ def list_admins(
         status: Optional[str] = Query(
             None,
             description=(
-                "Filter by status (pending|approved|rejected). "
-                "Omit to return pending + approved (union)."
+                    "Filter by status (pending|approved|rejected). "
+                    "Omit to return pending + approved (union)."
             ),
         ),
         current_user: Dict[str, Any] = Depends(get_current_user),

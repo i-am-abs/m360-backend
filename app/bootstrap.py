@@ -22,6 +22,7 @@ from app.repositories.local_cache_user_store import LocalCacheUserStore
 from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
+from app.repositories.cached_feature_flag_store import CachedFeatureFlagStore
 from app.repositories.mongo_feature_flag_store import MongoFeatureFlagStore, NoOpFeatureFlagStore
 from app.repositories.mongo_admin_store import MongoAdminStore, NoOpAdminStore
 from app.repositories.mongo_verification_store import MongoVerificationStore, NoOpVerificationStore
@@ -51,6 +52,7 @@ from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
 from app.services.user_masjid_service import UserMasjidService
 from app.services.feature_flag_service import FeatureFlagService
+from app.services.masjid_tab_service import MasjidTabService
 from app.services.rbac_service import RbacService
 from app.services.admin_service import AdminService
 from app.services.verification_service import VerificationService
@@ -372,7 +374,10 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     )
 
     platform = _create_platform_stores(settings, app.state.mongo_client)
-    app.state.feature_flag_store = platform["feature_flag_store"]
+    app.state.feature_flag_store = CachedFeatureFlagStore(
+        platform["feature_flag_store"],
+        ttl_seconds=settings.api_get_cache_ttl_seconds,
+    )
     app.state.admin_store = platform["admin_store"]
     app.state.verification_store = platform["verification_store"]
     app.state.audit_store = platform["audit_store"]
@@ -409,10 +414,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.rbac_service = rbac
 
     app.state.feature_flag_service = FeatureFlagService(
-        platform["feature_flag_store"],
-        redis_client=app.state.redis,
-        cache_ttl_seconds=settings.api_get_cache_ttl_seconds,
-        cache_key_prefix=settings.redis_key_prefix,
+        app.state.feature_flag_store,
     )
     app.state.admin_service = AdminService(
         platform["admin_store"],
@@ -468,6 +470,13 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         broadcast_stores["fcm_token_store"],
         broadcast_stores["follow_store"],
         notification_sender,
+    )
+    app.state.masjid_tab_service = MasjidTabService(
+        app.state.feature_flag_service,
+        broadcast_stores["follow_store"],
+        user_store,
+        platform["admin_store"],
+        rbac,
     )
     app.state.broadcast_service = BroadcastService(
         broadcast_stores["broadcast_store"],

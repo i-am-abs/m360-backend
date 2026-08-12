@@ -26,11 +26,11 @@ def _require_committee(masjid_id: str, user_id: str, masjid_svc: MasjidEntitySer
 
 @router.post(ApiEndpoint.CAMPAIGN_CREATE.value, summary="Create campaign")
 def create_campaign(
-    masjid_id: str,
-    req: CampaignCreate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    donation_svc: DonationService = Depends(get_donation_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        masjid_id: str,
+        req: CampaignCreate,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        donation_svc: DonationService = Depends(get_donation_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     _require_committee(masjid_id, current_user["user_id"], masjid_svc)
     campaign = donation_svc.create_campaign(masjid_id, current_user["user_id"], req.model_dump())
@@ -39,9 +39,9 @@ def create_campaign(
 
 @router.get(ApiEndpoint.CAMPAIGN_LIST.value, summary="List active campaigns")
 def list_campaigns(
-    masjid_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        masjid_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     campaigns = svc.get_active_campaigns(masjid_id)
     return success_response({"campaigns": campaigns})
@@ -49,20 +49,20 @@ def list_campaigns(
 
 @router.get(ApiEndpoint.CAMPAIGN_GET.value, summary="Get campaign detail")
 def get_campaign(
-    campaign_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        campaign_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     return success_response(svc.get_campaign(campaign_id))
 
 
 @router.put(ApiEndpoint.CAMPAIGN_UPDATE.value, summary="Update campaign")
 def update_campaign(
-    campaign_id: str,
-    req: CampaignUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        campaign_id: str,
+        req: CampaignUpdate,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     campaign = svc._donation_repo.get_campaign(campaign_id)
     if not campaign:
@@ -74,10 +74,10 @@ def update_campaign(
 
 @router.delete(ApiEndpoint.CAMPAIGN_CANCEL.value, summary="Cancel campaign")
 def cancel_campaign(
-    campaign_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        campaign_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     campaign = svc._donation_repo.get_campaign(campaign_id)
     if not campaign:
@@ -89,10 +89,10 @@ def cancel_campaign(
 
 @router.post(ApiEndpoint.DONATION_INITIATE.value, summary="Initiate donation")
 def initiate_donation(
-    campaign_id: str,
-    req: DonationInitiate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        campaign_id: str,
+        req: DonationInitiate,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     result = svc.initiate_donation(
         campaign_id, current_user["user_id"], req.amount, req.payment_method, req.is_anonymous,
@@ -102,28 +102,28 @@ def initiate_donation(
 
 @router.get(ApiEndpoint.DONATION_STATUS.value, summary="Donation status")
 def donation_status(
-    donation_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        donation_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     return success_response(svc.get_donation_status(donation_id))
 
 
 @router.get(ApiEndpoint.DONATION_HISTORY.value, summary="User donation history")
 def donation_history(
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=50),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        page: int = Query(1, ge=1),
+        limit: int = Query(20, ge=1, le=50),
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     return success_response(svc.get_user_donations(current_user["user_id"], page, limit))
 
 
 @router.get(ApiEndpoint.CAMPAIGN_DONORS.value, summary="Campaign donors")
 def campaign_donors(
-    campaign_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: DonationService = Depends(get_donation_service),
+        campaign_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: DonationService = Depends(get_donation_service),
 ):
     campaign = svc._donation_repo.get_campaign(campaign_id)
     if not campaign:
@@ -134,8 +134,8 @@ def campaign_donors(
 
 @router.post(ApiEndpoint.PAYMENT_WEBHOOK.value, summary="Payment webhook")
 async def payment_webhook(
-    request: Request,
-    svc: DonationService = Depends(get_donation_service),
+        request: Request,
+        svc: DonationService = Depends(get_donation_service),
 ):
     body = await request.json()
     event = body.get("event", "")

@@ -27,9 +27,9 @@ router = APIRouter(tags=["broadcast"])
 
 @router.get("/broadcast/public/{message_id}", summary="Get public broadcast")
 def get_public_broadcast(
-    message_id: str,
-    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        message_id: str,
+        svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     msg = svc.get_message_raw(message_id)
     masjid = masjid_svc.get_masjid(msg["masjid_id"])
@@ -46,35 +46,32 @@ def get_public_broadcast(
 
 @router.get(ApiEndpoint.BROADCAST_LIST.value, summary="Get broadcast feed")
 def get_broadcast_feed(
-    masjid_id: str,
-    cursor: Optional[datetime] = Query(None),
-    since: Optional[datetime] = Query(None),
-    limit: int = Query(50, ge=1, le=100),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        masjid_id: str,
+        cursor: Optional[datetime] = Query(None),
+        since: Optional[datetime] = Query(None),
+        limit: int = Query(50, ge=1, le=100),
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     return success_response(svc.get_feed(masjid_id, cursor, since, limit, user_id=current_user["user_id"]))
 
 
 @router.post(ApiEndpoint.BROADCAST_POST.value, summary="Post message")
 def post_broadcast_message(
-    masjid_id: str,
-    req: BroadcastMessageCreate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
-    admin_store: AdminRepository = Depends(get_admin_store),
+        masjid_id: str,
+        req: BroadcastMessageCreate,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        admin_store: AdminRepository = Depends(get_admin_store),
 ):
     masjid = masjid_svc.get_masjid(masjid_id)
     masjid_data = masjid.get("masjid", {})
     place_id = masjid_data.get("place_id") or masjid_data.get("id") or masjid_id
-
-    # Authorize against the authoritative admin store (admins/masjid_committees),
-    # not `masjids.management.committee` which is only populated by the claim flow.
     if not is_user_admin_for_place(
-        place_id,
-        current_user=current_user,
-        admin_store=admin_store,
+            place_id,
+            current_user=current_user,
+            admin_store=admin_store,
     ):
         raise ApiException("Only committee members can post", status_code=HTTPStatus.FORBIDDEN)
 
@@ -92,7 +89,8 @@ def post_broadcast_message(
         }
 
     if req.message_type == "video" and not req.video_url and not req.mux_asset_id and not req.mux_upload_id:
-        raise ApiException("video_url, mux_asset_id, or mux_upload_id is required for video messages", status_code=HTTPStatus.BAD_REQUEST)
+        raise ApiException("video_url, mux_asset_id, or mux_upload_id is required for video messages",
+                           status_code=HTTPStatus.BAD_REQUEST)
     if req.message_type == "campaign_card" and not req.campaign_id:
         raise ApiException("campaign_id is required for campaign_card messages", status_code=HTTPStatus.BAD_REQUEST)
 
@@ -102,11 +100,11 @@ def post_broadcast_message(
 
 @router.post(ApiEndpoint.BROADCAST_POST.value + "/campaign-card", summary="Post campaign card to broadcast")
 def post_campaign_card(
-    masjid_id: str,
-    req: CampaignCardCreate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
-    masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
+        masjid_id: str,
+        req: CampaignCardCreate,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        broadcast_svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     masjid = masjid_svc.get_masjid(masjid_id)
     masjid_data = masjid.get("masjid", {})
@@ -125,9 +123,9 @@ def post_campaign_card(
 
 @router.delete(ApiEndpoint.BROADCAST_DELETE.value, summary="Delete message")
 def delete_broadcast_message(
-    message_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        message_id: str,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     svc.delete_message(message_id, current_user["user_id"])
     return success_response({"deleted": True})
@@ -135,10 +133,10 @@ def delete_broadcast_message(
 
 @router.post(ApiEndpoint.BROADCAST_REACT.value, summary="React to message")
 def react_to_message(
-    message_id: str,
-    req: ReactionToggle,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        message_id: str,
+        req: ReactionToggle,
+        current_user: Dict[str, Any] = Depends(get_current_user),
+        svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     result = svc.toggle_reaction(message_id, current_user["user_id"], req.emoji)
     return success_response(result)
@@ -146,8 +144,8 @@ def react_to_message(
 
 @router.post("/broadcast/{message_id}/view", summary="Increment view count")
 def increment_view_count(
-    message_id: str,
-    svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
+        message_id: str,
+        svc: BroadcastFeedService = Depends(get_broadcast_feed_service),
 ):
     count = svc.increment_view_count(message_id)
     return success_response({"view_count": count})
@@ -155,9 +153,9 @@ def increment_view_count(
 
 @router.websocket("/v1/ws/masjid/{masjid_id}")
 async def masjid_websocket(
-    websocket: WebSocket,
-    masjid_id: str,
-    token: str = Query(...),
+        websocket: WebSocket,
+        masjid_id: str,
+        token: str = Query(...),
 ):
     app = websocket.app
     user_store = app.state.user_store
@@ -193,7 +191,8 @@ async def masjid_websocket(
                         sender_info = {"user_id": m["user_id"], "name": m.get("name", ""), "role": m.get("role", "")}
                         break
                 if not sender_info:
-                    await websocket.send_json({"type": "error", "payload": {"message": "Only committee members can post"}})
+                    await websocket.send_json(
+                        {"type": "error", "payload": {"message": "Only committee members can post"}})
                     continue
 
                 message = broadcast_svc.post_message(masjid_id, sender_info, payload)

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import ceil
 from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
+from math import ceil
 from pymongo import ASCENDING
 from pymongo.database import Database
 
@@ -161,7 +161,6 @@ class MongoMasjidRepository(MasjidEntityRepository):
         return self._as_dict(doc)
 
     def get_by_id(self, masjid_id: str) -> Optional[dict]:
-        # Try MongoDB ObjectId first
         try:
             doc = self._masjids.find_one({"_id": ObjectId(masjid_id)})
             if doc:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 
 class DonationRepository(ABC):
@@ -27,13 +27,13 @@ class DonationRepository(ABC):
 
     @abstractmethod
     def create_donation(
-        self, campaign_id: str, masjid_id: str, donor: dict, amount: int, payment_method: str
+            self, campaign_id: str, masjid_id: str, donor: dict, amount: int, payment_method: str
     ) -> dict:
         pass
 
     @abstractmethod
     def update_donation_status(
-        self, donation_id: str, status: str, transaction_id: Optional[str]
+            self, donation_id: str, status: str, transaction_id: Optional[str]
     ) -> dict:
         pass
 

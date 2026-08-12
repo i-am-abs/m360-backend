@@ -38,7 +38,6 @@ class ApiEndpoint(Enum):
     MY_MASJID_ADD = "/users/me/masjids/{place_id}"
     MY_MASJID_REMOVE = "/users/me/masjids/{place_id}"
 
-    # Masjid entity (Phase 1)
     MASJID_LIST = "/masjids"
     MASJID_GET = "/masjids/{masjid_id}"
     MASJID_SYNC = "/masjids/sync"
@@ -48,7 +47,6 @@ class ApiEndpoint(Enum):
     MASJID_COMMITTEE_ADD = "/masjids/{masjid_id}/committee"
     MASJID_COMMITTEE_REMOVE = "/masjids/{masjid_id}/committee/{user_id}"
 
-    # Claims (Phase 2)
     CLAIM_SUBMIT = "/masjids/{masjid_id}/claim"
     CLAIM_STATUS = "/masjids/{masjid_id}/claim/status"
     ADMIN_CLAIMS_LIST = "/admin/claims"
@@ -57,7 +55,6 @@ class ApiEndpoint(Enum):
     ADMIN_CLAIM_REJECT = "/admin/claims/{claim_id}/reject"
     ADMIN_CLAIM_STATS = "/admin/claims/stats"
 
-    # Broadcast (Phase 3)
     BROADCAST_LIST = "/masjids/{masjid_id}/broadcast"
     BROADCAST_POST = "/masjids/{masjid_id}/broadcast"
     BROADCAST_DELETE = "/broadcast/{message_id}"
@@ -67,7 +64,6 @@ class ApiEndpoint(Enum):
     FOLLOW_STATUS = "/masjids/{masjid_id}/follow/status"
     FOLLOWER_COUNT = "/masjids/{masjid_id}/followers/count"
 
-    # Donations (Phase 4)
     CAMPAIGN_CREATE = "/masjids/{masjid_id}/campaigns"
     CAMPAIGN_LIST = "/masjids/{masjid_id}/campaigns"
     CAMPAIGN_GET = "/campaigns/{campaign_id}"
@@ -80,6 +76,7 @@ class ApiEndpoint(Enum):
     CAMPAIGN_DONORS = "/campaigns/{campaign_id}/donors"
 
     FEATURES = "/features"
+    FEATURE_MODULE = "/features/{module}"
 
     ADMINS_REGISTER = "/admins/register"
     ADMINS_LIST = "/admins"
@@ -96,10 +93,10 @@ class ApiEndpoint(Enum):
     MASJID_TIMINGS = "/masjids/{place_id}/timings"
     MASJID_AMENITIES = "/masjids/{place_id}/amenities"
     MASJID_ANNOUNCEMENTS_ENABLED = "/masjids/{place_id}/announcements-enabled"
+    MASJID_TAB = "/masjids/tab"
 
     INTERNAL_MASJID_TIMINGS = "/internal/masjids/{place_id}/timings"
 
-    # Broadcast / push notifications
     FCM_TOKENS = "/fcm/tokens"
     MASJID_FOLLOW = "/masjids/{place_id}/follow"
     MASJID_BROADCASTS = "/masjids/{place_id}/broadcasts"

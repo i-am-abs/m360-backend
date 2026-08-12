@@ -7,6 +7,11 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.database import Database
 
 from app.interfaces.feature_flag_repository import FeatureFlagRepository
+from app.utils.region_match import (
+    best_coordinate_match,
+    best_region_match,
+    specificity_key,
+)
 
 
 class MongoFeatureFlagStore(FeatureFlagRepository):
@@ -36,10 +41,13 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
             "state": None,
             "city": None,
             "bounds": None,
+            "center": None,
+            "radius_km": None,
             "features": {
                 "verification": True,
                 "timings": True,
                 "committee_registration": True,
+                "masjid_discovery": False,
             },
             "priority": 0,
             "enabled": True,
@@ -52,8 +60,9 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
         return datetime.now(timezone.utc).isoformat()
 
     def list_all(self) -> List[Dict[str, Any]]:
-        docs = self._col.find({"enabled": True}).sort("priority", DESCENDING)
-        return [self._public(doc) for doc in docs]
+        docs = [self._public(doc) for doc in self._col.find({"enabled": True})]
+        docs.sort(key=specificity_key)
+        return docs
 
     def find_by_location_key(self, location_key: str) -> Optional[Dict[str, Any]]:
         doc = self._col.find_one({"location_key": location_key, "enabled": True})
@@ -64,15 +73,7 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
             latitude: float,
             longitude: float,
     ) -> Optional[Dict[str, Any]]:
-        candidates = list(self._col.find({
-            "enabled": True,
-            "bounds": {"$ne": None},
-        }).sort("priority", DESCENDING))
-        for doc in candidates:
-            bounds = doc.get("bounds") or {}
-            if self._point_in_bounds(latitude, longitude, bounds):
-                return self._public(doc)
-        return None
+        return best_coordinate_match(self.list_all(), latitude, longitude)
 
     def find_by_region(
             self,
@@ -80,47 +81,7 @@ class MongoFeatureFlagStore(FeatureFlagRepository):
             state: Optional[str],
             city: Optional[str],
     ) -> Optional[Dict[str, Any]]:
-        queries = []
-        if country and state and city:
-            queries.append({"country": country, "state": state, "city": city})
-        if country and state:
-            queries.append({"country": country, "state": state, "city": None})
-        if country:
-            queries.append({"country": country, "state": None, "city": None})
-
-        for query in queries:
-            # Prefer higher-priority matches; compare region fields case-insensitively.
-            candidates = list(
-                self._col.find({"enabled": True}).sort("priority", DESCENDING)
-            )
-            for doc in candidates:
-                if self._region_matches(doc, query):
-                    return self._public(doc)
-        return None
-
-    @staticmethod
-    def _region_matches(doc: Dict[str, Any], query: Dict[str, Any]) -> bool:
-        for key, expected in query.items():
-            actual = doc.get(key)
-            if expected is None:
-                if actual is not None:
-                    return False
-                continue
-            if actual is None:
-                return False
-            if str(actual).strip().lower() != str(expected).strip().lower():
-                return False
-        return True
-
-    @staticmethod
-    def _point_in_bounds(lat: float, lng: float, bounds: Dict[str, Any]) -> bool:
-        try:
-            return (
-                    float(bounds["lat_min"]) <= lat <= float(bounds["lat_max"])
-                    and float(bounds["lng_min"]) <= lng <= float(bounds["lng_max"])
-            )
-        except (KeyError, TypeError, ValueError):
-            return False
+        return best_region_match(self.list_all(), country, state, city)
 
     @staticmethod
     def _public(doc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
