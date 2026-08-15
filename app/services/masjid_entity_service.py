@@ -11,6 +11,7 @@ from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidEntityRepository, MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.utils.admin_link import is_user_admin_for_place
+from app.utils.amenities import build_amenity_status
 from app.utils.masjid import normalize_place_id
 
 log = get_logger(__name__)
@@ -237,20 +238,16 @@ class MasjidEntityService:
         return self._repo.upsert_from_google_places(place_data)
 
     def _with_amenities(self, masjids: list) -> list:
-        if self._masjid_store is None:
-            for masjid in masjids:
-                if isinstance(masjid, dict):
-                    masjid.setdefault("amenities", [])
-            return masjids
         for masjid in masjids:
             if not isinstance(masjid, dict):
                 continue
             pid = normalize_place_id(
                 str(masjid.get("place_id") or masjid.get("id") or ""),
             )
-            masjid["amenities"] = (
-                self._masjid_store.get_amenities(pid) or []
-            ) if pid else []
+            stored = None
+            if pid and self._masjid_store is not None:
+                stored = self._masjid_store.get_amenities(pid)
+            masjid["amenities"] = build_amenity_status(stored, masjid)
         return masjids
 
     def _can_manage_masjid(

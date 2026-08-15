@@ -12,11 +12,13 @@ class GooglePlacesUrl(str, Enum):
 class GooglePlacesFieldMask(str, Enum):
     SEARCH_NEARBY = (
         "places.id,places.name,places.displayName,places.formattedAddress,"
-        "places.location,places.photos"
+        "places.location,places.photos,places.parkingOptions,"
+        "places.accessibilityOptions,places.restroom"
     )
     SEARCH_TEXT = (
         "places.id,places.name,places.displayName,places.formattedAddress,"
-        "places.location,places.photos"
+        "places.location,places.photos,places.parkingOptions,"
+        "places.accessibilityOptions,places.restroom"
     )
     PLACE_DETAILS = (
         "id,displayName,formattedAddress,location,photos,name,"

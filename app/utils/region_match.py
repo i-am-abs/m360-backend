@@ -172,6 +172,27 @@ def region_matches(
     return True
 
 
+def city_matches(
+        doc: RegionDoc,
+        city: str,
+        country: Optional[str] = None,
+) -> bool:
+    """Match a launched city even when the client sends the wrong state.
+
+    Reverse-geocoders often attach Aligarh to Rajasthan; the city name is still
+    enough to enable the module.
+    """
+    if not _field_values(doc, "city"):
+        return False
+    if normalize_name(city) not in _field_values(doc, "city"):
+        return False
+    if country:
+        countries = _field_values(doc, "country")
+        if countries and normalize_name(country) not in countries:
+            return False
+    return True
+
+
 def region_tiers(
         country: Optional[str],
         state: Optional[str],
@@ -204,6 +225,15 @@ def best_region_match(
                 state=tier_state,
                 city=tier_city,
             )
+        )
+        if matched is not None:
+            return matched
+
+    # Client state is often wrong (e.g. Aligarh + Rajasthan). City still wins.
+    if city:
+        matched = best_match(
+            doc for doc in candidates
+            if city_matches(doc, city, country)
         )
         if matched is not None:
             return matched

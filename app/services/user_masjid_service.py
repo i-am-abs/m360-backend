@@ -11,6 +11,7 @@ from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
 from app.repositories.user_store_helpers import resolve_canonical_phone
 from app.utils.admin_link import user_is_approved_masjid_admin
+from app.utils.amenities import empty_amenity_status
 from app.utils.masjid_view import build_masjid_detail_view
 
 _MASJID_SAVE_LIMIT_MESSAGE = (
@@ -69,7 +70,7 @@ class UserMasjidService:
                     "announcementUpdatesCount": 0,
                     "timings": [],
                     "prayerTimings": [],
-                    "amenities": [],
+                    "amenities": empty_amenity_status(),
                     "onboardingDone": False,
                     "isAdmin": False,
                     "isCurrentUserAdmin": False,

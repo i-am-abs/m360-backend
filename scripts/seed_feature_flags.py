@@ -78,7 +78,13 @@ LOCATIONS = [
         "city": "Aligarh",
         "aliases": {
             "country": ["IN", "India"],
-            "state": ["UP", "Uttar Pradesh", "UttarPradesh", "Utter Pradesh"],
+            "state": [
+                "UP",
+                "Uttar Pradesh",
+                "UttarPradesh",
+                "Utter Pradesh",
+                "Rajasthan",
+            ],
             "city": ["Aligarh", "Aligarh District", "Koil", "Aligarh City"],
         },
         "bounds": {
@@ -100,7 +106,7 @@ LOCATIONS = [
         "city": "Aligarh",
         "aliases": {
             "country": ["IN", "India"],
-            "state": ["UP", "Uttar Pradesh", "UttarPradesh"],
+            "state": ["UP", "Uttar Pradesh", "UttarPradesh", "Rajasthan"],
             "city": ["Aligarh", "Aligarh District", "Koil"],
         },
         "bounds": {
