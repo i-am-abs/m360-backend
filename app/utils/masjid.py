@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import zlib
+
+
+def normalize_place_id(place_id: Optional[str]) -> str:
+    raw = (place_id or "").strip()
+    if raw.startswith("places/"):
+        raw = raw[len("places/"):]
+    return raw
 
 
 def get_deterministic_masjid_metadata(place_id: str) -> Dict[str, Any]:

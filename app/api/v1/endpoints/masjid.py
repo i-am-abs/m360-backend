@@ -199,7 +199,12 @@ def update_timings(
         svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     return success_response(
-        svc.update_timings(masjid_id, timings.model_dump(exclude_none=True), current_user["user_id"])
+        svc.update_timings(
+            masjid_id,
+            timings.model_dump(exclude_none=True),
+            current_user["user_id"],
+            current_user=current_user,
+        )
     )
 
 

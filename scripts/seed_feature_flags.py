@@ -19,10 +19,6 @@ _LAUNCHED_FEATURES = {
     "masjid_discovery": True,
 }
 
-# Circles beat rectangles for cities: a box around Delhi reaches far into Haryana at
-# its corners, whereas "within N km of the centre" degrades predictably. Overlaps are
-# still expected (Faridabad sits inside Delhi's radius) and are resolved by preferring
-# the tightest matching region, so keep each radius as small as the city allows.
 LOCATIONS = [
     {
         "location_key": "*",
@@ -43,8 +39,6 @@ LOCATIONS = [
         "enabled": True,
     },
     {
-        # State-level fallback for country/state queries; deliberately shapeless so it
-        # never competes with a city on a coordinate lookup.
         "location_key": "IN-DL",
         "country": "IN",
         "state": "DL",
@@ -84,12 +78,39 @@ LOCATIONS = [
         "city": "Aligarh",
         "aliases": {
             "country": ["IN", "India"],
-            "state": ["UP", "Uttar Pradesh"],
-            "city": ["Aligarh"],
+            "state": ["UP", "Uttar Pradesh", "UttarPradesh", "Utter Pradesh"],
+            "city": ["Aligarh", "Aligarh District", "Koil", "Aligarh City"],
         },
-        "bounds": None,
+        "bounds": {
+            "lat_min": 27.70,
+            "lat_max": 28.15,
+            "lng_min": 77.80,
+            "lng_max": 78.35,
+        },
         "center": {"latitude": 27.8974, "longitude": 78.0880},
-        "radius_km": 18,
+        "radius_km": 32,
+        "features": dict(_LAUNCHED_FEATURES),
+        "priority": 20,
+        "enabled": True,
+    },
+    {
+        "location_key": "IN-UttarPradesh-Aligarh",
+        "country": "IN",
+        "state": "Uttar Pradesh",
+        "city": "Aligarh",
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": ["UP", "Uttar Pradesh", "UttarPradesh"],
+            "city": ["Aligarh", "Aligarh District", "Koil"],
+        },
+        "bounds": {
+            "lat_min": 27.70,
+            "lat_max": 28.15,
+            "lng_min": 77.80,
+            "lng_max": 78.35,
+        },
+        "center": {"latitude": 27.8974, "longitude": 78.0880},
+        "radius_km": 32,
         "features": dict(_LAUNCHED_FEATURES),
         "priority": 20,
         "enabled": True,
@@ -117,7 +138,6 @@ LOCATIONS = [
 # duplicate regions for the same city.
 OBSOLETE_LOCATION_KEYS = [
     "IN-Delhi-Delhi",
-    "IN-UttarPradesh-Aligarh",
     "IN-Haryana-Faridabad",
 ]
 

@@ -6,6 +6,7 @@ from app.core.enums.committee_designation import CommitteeDesignation
 from app.core.enums.role import UserRole
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_repository import MasjidRepository
+from app.utils.masjid import normalize_place_id
 from app.utils.phone import phone_lookup_variants
 
 
@@ -104,32 +105,66 @@ def resolve_committee_for_place(
     return {"hasCommittee": False, "has_committee": False, "details": []}
 
 
+def _approved_admin_docs(
+        *,
+        current_user: Optional[Dict[str, Any]],
+        admin_store: Optional[AdminRepository],
+) -> List[Dict[str, Any]]:
+    if not current_user or admin_store is None:
+        return []
+
+    seen: set[str] = set()
+    docs: List[Dict[str, Any]] = []
+    user_id = str(current_user.get("user_id") or "")
+    phone = current_user.get("phone_number")
+
+    candidates: List[Dict[str, Any]] = []
+    if user_id:
+        candidates.extend(ensure_admin_user_link(
+            admin_store,
+            user_id=user_id,
+            phone=str(phone) if phone else None,
+        ))
+    if phone:
+        candidates.extend(admin_store.list_by_phone(str(phone), status="approved"))
+
+    for doc in candidates:
+        if doc.get("status") != "approved":
+            continue
+        admin_id = str(doc.get("admin_id") or "")
+        key = admin_id or f"{doc.get('phone')}:{doc.get('masjid_place_id')}"
+        if key in seen:
+            continue
+        seen.add(key)
+        docs.append(doc)
+    return docs
+
+
 def is_user_admin_for_place(
         place_id: str,
         *,
         current_user: Optional[Dict[str, Any]],
         admin_store: Optional[AdminRepository],
 ) -> bool:
-    """True when the current user has an approved admin assignment for this place."""
-    if not current_user or admin_store is None or not place_id:
+    target = normalize_place_id(place_id)
+    if not target:
         return False
-
-    user_id = str(current_user.get("user_id") or "")
-    phone = current_user.get("phone_number")
-    if user_id:
-        for doc in ensure_admin_user_link(
-                admin_store,
-                user_id=user_id,
-                phone=str(phone) if phone else None,
-        ):
-            if str(doc.get("masjid_place_id") or "") == place_id and doc.get("status") == "approved":
-                return True
-
-    if phone:
-        for doc in admin_store.list_by_phone(str(phone), status="approved"):
-            if str(doc.get("masjid_place_id") or "") == place_id:
-                return True
+    for doc in _approved_admin_docs(current_user=current_user, admin_store=admin_store):
+        if normalize_place_id(str(doc.get("masjid_place_id") or "")) == target:
+            return True
     return False
+
+
+def user_is_approved_masjid_admin(
+        *,
+        current_user: Optional[Dict[str, Any]],
+        admin_store: Optional[AdminRepository],
+) -> bool:
+    """True when the user is an approved admin of at least one masjid."""
+    return any(
+        doc.get("masjid_place_id")
+        for doc in _approved_admin_docs(current_user=current_user, admin_store=admin_store)
+    )
 
 
 def ensure_admin_user_link(

@@ -16,9 +16,19 @@ class PrayerTimingItem(BaseModel):
     @field_validator("prayer")
     @classmethod
     def valid_prayer(cls, value: str) -> str:
-        if value not in PrayerName.values():
+        key = (value or "").strip().lower().replace(" ", "_")
+        aliases = {
+            "zuhr": PrayerName.DHUHR.value,
+            "zohr": PrayerName.DHUHR.value,
+            "dhuhr": PrayerName.DHUHR.value,
+            "asar": PrayerName.ASR.value,
+            "magrib": PrayerName.MAGHRIB.value,
+            "ishaah": PrayerName.ISHA.value,
+        }
+        key = aliases.get(key, key)
+        if key not in PrayerName.values():
             raise ValueError(f"prayer must be one of: {', '.join(PrayerName.values())}")
-        return value
+        return key
 
 
 class MasjidTimingsRequest(BaseModel):

@@ -46,6 +46,7 @@ from app.repositories.mongo_donation_repository import MongoDonationRepository
 from app.repositories.mongo_follower_repository import MongoFollowerRepository
 from app.repositories.mongo_masjid_repository import MongoMasjidRepository
 from app.services.cached_masjid_search_service import CachedMasjidSearchService
+from app.services.amenity_masjid_search_service import AmenityMasjidSearchService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
@@ -403,6 +404,11 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.masjid_store = _create_masjid_store(
         settings, app.state.mongo_client
     )
+    masjid_search = AmenityMasjidSearchService(
+        masjid_search,
+        app.state.masjid_store,
+    )
+    app.state.masjid_search_service = masjid_search
     app.state.user_masjid_service = UserMasjidService(
         store=user_store,
         places_reader=masjid_search,
@@ -508,6 +514,8 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         app.state.masjid_entity_service = MasjidEntityService(
             masjid_repo=masjid_repo,
             google_places=app.state.masjid_search_service,
+            masjid_store=app.state.masjid_store,
+            admin_store=platform["admin_store"],
         )
         app.state.claim_service = ClaimService(
             claim_repo=claim_repo,

@@ -3,11 +3,16 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, Iterable
 
+from app.core.enums.admin_status import AdminRegistrationStatus
 from app.core.enums.error_code import ErrorCode
 from app.core.enums.role import UserRole
 from app.exceptions.base import ApiException
 from app.interfaces.admin_repository import AdminRepository
-from app.utils.admin_link import ensure_admin_user_link
+from app.utils.admin_link import (
+    ensure_admin_user_link,
+    is_user_admin_for_place,
+)
+from app.utils.masjid import normalize_place_id
 from app.utils.structured_log import log_event
 
 
@@ -17,26 +22,33 @@ class RbacService:
 
     def resolve_user_role(self, user: Dict[str, Any]) -> str:
         explicit = user.get("role")
-        if explicit in UserRole.values():
-            return explicit
+        if explicit == UserRole.SUPER_ADMIN.value:
+            return UserRole.SUPER_ADMIN.value
 
         user_id = user.get("user_id")
-        if not user_id:
-            return UserRole.USER.value
+        phone = user.get("phone_number")
+        admins: list = []
+        if user_id:
+            admins = ensure_admin_user_link(
+                self._admin_store,
+                user_id=str(user_id),
+                phone=str(phone) if phone else None,
+            )
+        if not admins and phone:
+            admins = self._admin_store.list_by_phone(str(phone), status="approved")
 
-        admins = ensure_admin_user_link(
-            self._admin_store,
-            user_id=str(user_id),
-            phone=user.get("phone_number"),
-        )
-        if not admins:
-            return UserRole.USER.value
-
-        roles = {doc.get("role") for doc in admins}
-        if UserRole.SUPER_ADMIN.value in roles:
-            return UserRole.SUPER_ADMIN.value
-        if UserRole.ADMIN.value in roles:
+        approved = [
+            doc for doc in admins
+            if doc.get("status") == AdminRegistrationStatus.APPROVED.value
+        ]
+        if approved:
+            roles = {doc.get("role") for doc in approved}
+            if UserRole.SUPER_ADMIN.value in roles:
+                return UserRole.SUPER_ADMIN.value
             return UserRole.ADMIN.value
+
+        if explicit in UserRole.values():
+            return explicit
         return UserRole.USER.value
 
     def require_roles(
@@ -66,36 +78,26 @@ class RbacService:
             user: Dict[str, Any],
             place_id: str,
     ) -> Dict[str, Any]:
-        user_with_role = self.require_roles(
-            user,
-            UserRole.admin_roles() | {UserRole.SUPER_ADMIN.value},
-        )
-        role = user_with_role["role"]
-        if role == UserRole.SUPER_ADMIN.value:
-            return user_with_role
-
+        target = normalize_place_id(place_id)
         user_id = str(user.get("user_id") or "")
-        assignments = ensure_admin_user_link(
-            self._admin_store,
-            user_id=user_id,
-            phone=user.get("phone_number"),
-        )
-        place_ids = {
-            str(doc.get("masjid_place_id"))
-            for doc in assignments
-            if doc.get("masjid_place_id")
-        }
+        role = self.resolve_user_role(user)
         log_event(
             "rbac",
             "masjid_access_check",
             user_id=user_id,
-            resource_id=place_id,
-            assigned_places=list(place_ids),
+            resource_id=target,
+            role=role,
         )
-        if place_id not in place_ids:
-            raise ApiException(
-                "You are not an admin for this masjid",
-                status_code=HTTPStatus.FORBIDDEN.value,
-                code=ErrorCode.FORBIDDEN,
-            )
-        return user_with_role
+        if role == UserRole.SUPER_ADMIN.value:
+            return {**user, "role": role}
+        if is_user_admin_for_place(
+                target,
+                current_user=user,
+                admin_store=self._admin_store,
+        ):
+            return {**user, "role": UserRole.ADMIN.value}
+        raise ApiException(
+            "You are not an admin for this masjid",
+            status_code=HTTPStatus.FORBIDDEN.value,
+            code=ErrorCode.FORBIDDEN,
+        )

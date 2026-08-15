@@ -6,6 +6,7 @@ from app.interfaces.audit_log_repository import AuditLogRepository
 from app.interfaces.masjid_repository import MasjidRepository
 from app.schemas.masjid_content import MasjidTimingsRequest, PrayerTimingItem
 from app.services.rbac_service import RbacService
+from app.utils.masjid import normalize_place_id
 from app.utils.structured_log import log_event, log_timing
 
 
@@ -44,6 +45,7 @@ class MasjidTimingsService:
             *,
             action: str,
     ) -> Dict[str, Any]:
+        place_id = normalize_place_id(place_id)
         user = self._rbac.require_masjid_admin(current_user, place_id)
         timings = [item.model_dump() for item in body.timings]
 

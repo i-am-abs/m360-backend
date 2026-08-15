@@ -7,8 +7,11 @@ from bson import ObjectId
 
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
-from app.interfaces.masjid_repository import MasjidEntityRepository
+from app.interfaces.admin_repository import AdminRepository
+from app.interfaces.masjid_repository import MasjidEntityRepository, MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
+from app.utils.admin_link import is_user_admin_for_place
+from app.utils.masjid import normalize_place_id
 
 log = get_logger(__name__)
 
@@ -30,9 +33,13 @@ class MasjidEntityService:
         self,
         masjid_repo: MasjidEntityRepository,
         google_places: MasjidSearchService,
+        masjid_store: Optional[MasjidRepository] = None,
+        admin_store: Optional[AdminRepository] = None,
     ) -> None:
         self._repo = masjid_repo
         self._places = google_places
+        self._masjid_store = masjid_store
+        self._admin_store = admin_store
 
     def get_masjid(self, masjid_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         masjid = None
@@ -79,7 +86,7 @@ class MasjidEntityService:
                 log.warning("Google Places fallback failed for nearby search: %s", e)
 
         return {
-            "masjids": masjids,
+            "masjids": self._with_amenities(masjids),
             "pagination": {
                 "page": page,
                 "limit": limit,
@@ -110,7 +117,7 @@ class MasjidEntityService:
                 log.warning("Google Places fallback failed for name search: %s", e)
 
         return {
-            "masjids": masjids,
+            "masjids": self._with_amenities(masjids),
             "pagination": {
                 "page": page,
                 "limit": limit,
@@ -151,14 +158,19 @@ class MasjidEntityService:
             )
         return self._repo.update_facilities(str(masjid["id"]), facilities)
 
-    def update_timings(self, masjid_id: str, timings: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    def update_timings(
+            self,
+            masjid_id: str,
+            timings: Dict[str, Any],
+            user_id: str,
+            current_user: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         masjid = self._lookup_masjid(masjid_id)
         if not masjid:
             raise ApiException("Masjid not found", status_code=HTTPStatus.NOT_FOUND)
-        committee = masjid.get("management", {}).get("committee", [])
-        if not any(m.get("user_id") == user_id for m in committee):
+        if not self._can_manage_masjid(masjid, user_id, current_user):
             raise ApiException(
-                "Only committee members can update timings",
+                "Only masjid admins can update timings",
                 status_code=HTTPStatus.FORBIDDEN,
             )
         return self._repo.update_timings(str(masjid["id"]), timings)
@@ -223,6 +235,40 @@ class MasjidEntityService:
                 status_code=HTTPStatus.NOT_FOUND,
             )
         return self._repo.upsert_from_google_places(place_data)
+
+    def _with_amenities(self, masjids: list) -> list:
+        if self._masjid_store is None:
+            for masjid in masjids:
+                if isinstance(masjid, dict):
+                    masjid.setdefault("amenities", [])
+            return masjids
+        for masjid in masjids:
+            if not isinstance(masjid, dict):
+                continue
+            pid = normalize_place_id(
+                str(masjid.get("place_id") or masjid.get("id") or ""),
+            )
+            masjid["amenities"] = (
+                self._masjid_store.get_amenities(pid) or []
+            ) if pid else []
+        return masjids
+
+    def _can_manage_masjid(
+            self,
+            masjid: Dict[str, Any],
+            user_id: str,
+            current_user: Optional[Dict[str, Any]],
+    ) -> bool:
+        committee = (masjid.get("management") or {}).get("committee") or []
+        if any(m.get("user_id") == user_id for m in committee):
+            return True
+        place_id = normalize_place_id(str(masjid.get("place_id") or ""))
+        actor = current_user or {"user_id": user_id}
+        return is_user_admin_for_place(
+            place_id,
+            current_user=actor,
+            admin_store=self._admin_store,
+        )
 
     def _resolve_relationship(self, user_id: str, masjid_id: str) -> str:
         masjid = self._repo.get_by_id(masjid_id)
