@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import MasjidSearchService
-from app.utils.amenities import build_amenity_status, facilities_from_google
+from app.utils.amenities import apply_amenity_fields
 from app.utils.masjid import normalize_place_id
 
 
@@ -61,17 +61,13 @@ class AmenityMasjidSearchService(MasjidSearchService):
         for place in places:
             if not isinstance(place, dict):
                 continue
-            pid = normalize_place_id(
-                str(place.get("id") or place.get("place_id") or ""),
-            )
-            stored = None
-            if pid and self._masjid_store is not None:
-                stored = self._masjid_store.get_amenities(pid)
-            place["amenities"] = build_amenity_status(stored, place)
-            place["facilities"] = facilities_from_google(place)
-            meters = place.get("distanceMeters")
-            if meters is not None:
-                try:
-                    place["distanceKm"] = round(float(meters) / 1000.0, 1)
-                except (TypeError, ValueError):
-                    place["distanceKm"] = None
+            try:
+                pid = normalize_place_id(
+                    str(place.get("id") or place.get("place_id") or ""),
+                )
+                stored = None
+                if pid and self._masjid_store is not None:
+                    stored = self._masjid_store.get_amenities(pid)
+                apply_amenity_fields(place, stored)
+            except Exception:
+                apply_amenity_fields(place, None)

@@ -76,6 +76,27 @@ def build_amenity_status(
     return status
 
 
+def enabled_amenity_keys(status: Dict[str, Optional[bool]]) -> list[str]:
+    return [key for key, value in status.items() if value is True]
+
+
+def apply_amenity_fields(
+        place: Dict[str, Any],
+        stored: Optional[Iterable[str]] = None,
+) -> None:
+    """Keep listing fields; add amenity list + full status map."""
+    status = build_amenity_status(stored, place)
+    place["amenityStatus"] = status
+    place["amenities"] = enabled_amenity_keys(status)
+    place["facilities"] = facilities_from_google(place)
+    meters = place.get("distanceMeters")
+    if meters is not None:
+        try:
+            place["distanceKm"] = round(float(meters) / 1000.0, 1)
+        except (TypeError, ValueError):
+            place["distanceKm"] = None
+
+
 def _tri(value: Any) -> Optional[bool]:
     if value is True:
         return True

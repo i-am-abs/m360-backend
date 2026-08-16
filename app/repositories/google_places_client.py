@@ -68,7 +68,6 @@ class GooglePlacesClient:
             rank_preference: str,
     ) -> Dict[str, Any]:
         api_key = self._require_api_key()
-        headers = self._search_headers(api_key, GooglePlacesFieldMask.SEARCH_NEARBY)
         body: Dict[str, Any] = {
             "includedTypes": included_types,
             "maxResultCount": max_result_count,
@@ -80,7 +79,13 @@ class GooglePlacesClient:
                 }
             },
         }
-        return self._post_json(GooglePlacesUrl.SEARCH_NEARBY.value, headers, body, api_key)
+        return self._post_json_with_field_fallback(
+            GooglePlacesUrl.SEARCH_NEARBY.value,
+            api_key,
+            body,
+            GooglePlacesFieldMask.SEARCH_NEARBY_WITH_AMENITIES,
+            GooglePlacesFieldMask.SEARCH_NEARBY,
+        )
 
     def search_text(
             self,
@@ -91,7 +96,6 @@ class GooglePlacesClient:
             location_restriction: Dict[str, Any],
     ) -> Dict[str, Any]:
         api_key = self._require_api_key()
-        headers = self._search_headers(api_key, GooglePlacesFieldMask.SEARCH_TEXT)
         body: Dict[str, Any] = {
             "textQuery": text_query,
             "includedType": included_type,
@@ -99,7 +103,13 @@ class GooglePlacesClient:
             "regionCode": region_code,
             "locationRestriction": location_restriction,
         }
-        return self._post_json(GooglePlacesUrl.SEARCH_TEXT.value, headers, body, api_key)
+        return self._post_json_with_field_fallback(
+            GooglePlacesUrl.SEARCH_TEXT.value,
+            api_key,
+            body,
+            GooglePlacesFieldMask.SEARCH_TEXT_WITH_AMENITIES,
+            GooglePlacesFieldMask.SEARCH_TEXT,
+        )
 
     def geocode(self, address: str) -> Optional[Tuple[float, float]]:
         q = (address or "").strip()
@@ -166,6 +176,32 @@ class GooglePlacesClient:
             )
         except HTTPStatusError as exc:
             self._handle_http_error(exc)
+
+    def _post_json_with_field_fallback(
+            self,
+            url: str,
+            api_key: str,
+            body: Dict[str, Any],
+            preferred: GooglePlacesFieldMask,
+            fallback: GooglePlacesFieldMask,
+    ) -> Dict[str, Any]:
+        try:
+            return self._post_json(
+                url, self._search_headers(api_key, preferred), body, api_key,
+            )
+        except ApiException as exc:
+            if exc.status_code not in (
+                    HTTPStatus.BAD_REQUEST.value,
+                    HTTPStatus.FORBIDDEN.value,
+            ):
+                raise
+            _log.warning(
+                "Google Places search with amenity fields failed (%s); retrying listing fields",
+                exc,
+            )
+            return self._post_json(
+                url, self._search_headers(api_key, fallback), body, api_key,
+            )
 
     def _post_json(
             self, url: str, headers: Dict[str, str], body: Dict[str, Any], api_key: str,

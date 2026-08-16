@@ -10,15 +10,24 @@ class GooglePlacesUrl(str, Enum):
 
 
 class GooglePlacesFieldMask(str, Enum):
+    # Listing-only fields. Extra SKU fields on Search Nearby can 400 the whole call.
     SEARCH_NEARBY = (
         "places.id,places.name,places.displayName,places.formattedAddress,"
+        "places.location,places.photos"
+    )
+    SEARCH_NEARBY_WITH_AMENITIES = (
+        "places.id,places.name,places.displayName,places.formattedAddress,"
         "places.location,places.photos,places.parkingOptions,"
-        "places.accessibilityOptions,places.restroom"
+        "places.accessibilityOptions"
     )
     SEARCH_TEXT = (
         "places.id,places.name,places.displayName,places.formattedAddress,"
+        "places.location,places.photos"
+    )
+    SEARCH_TEXT_WITH_AMENITIES = (
+        "places.id,places.name,places.displayName,places.formattedAddress,"
         "places.location,places.photos,places.parkingOptions,"
-        "places.accessibilityOptions,places.restroom"
+        "places.accessibilityOptions"
     )
     PLACE_DETAILS = (
         "id,displayName,formattedAddress,location,photos,name,"

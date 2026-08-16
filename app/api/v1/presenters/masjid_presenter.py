@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from app.utils.amenities import build_amenity_status, facilities_from_google
+from app.utils.amenities import (
+    build_amenity_status,
+    enabled_amenity_keys,
+    facilities_from_google,
+)
 
 
 class MasjidDetailsPresenter:
@@ -21,6 +25,7 @@ class MasjidDetailsPresenter:
     ) -> Dict[str, Any]:
         prayers = list(prayer_timings or [])
         members = list(committee_data or [])
+        status = build_amenity_status(amenities, place)
         return {
             "place_id": place.get("id"),
             "name": (place.get("displayName") or {}).get("text"),
@@ -32,7 +37,8 @@ class MasjidDetailsPresenter:
                 "current": place.get("currentOpeningHours"),
                 "regular": place.get("regularOpeningHours"),
             },
-            "amenities": build_amenity_status(amenities, place),
+            "amenities": enabled_amenity_keys(status),
+            "amenityStatus": status,
             "management": {
                 "phone_number": place.get("internationalPhoneNumber"),
                 "website": place.get("websiteUri"),
