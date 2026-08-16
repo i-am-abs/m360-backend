@@ -14,13 +14,12 @@ def normalize_place_id(place_id: Optional[str]) -> str:
 
 def get_deterministic_masjid_metadata(place_id: str) -> Dict[str, Any]:
     h = zlib.crc32((place_id or "").encode("utf-8"))
-    has_donations = (h % 5) < 3
-    donation_count = (h % 5) if has_donations else 0
     announcement_count = h % 7
-    # Always enabled for every place_id (including ChIJKwBXQIekdDkRMBaNzvmL3dw).
+    # Donations are opt-in: never enabled by default. Announcements are
+    # always enabled for every place_id (including ChIJKwBXQIekdDkRMBaNzvmL3dw).
     return {
-        "hasDonationsEnabled": has_donations,
+        "hasDonationsEnabled": False,
         "hasAnnouncementsEnabled": True,
-        "donationUpdatesCount": donation_count,
+        "donationUpdatesCount": 0,
         "announcementUpdatesCount": announcement_count,
     }
