@@ -46,7 +46,7 @@ class MasjidDetailsPresenter:
             },
             "facilities": facilities_from_google(place),
             "hasDonationsEnabled": has_donations,
-            "hasAnnouncementsEnabled": True,  # always on
+            "hasAnnouncementsEnabled": has_announcements,  # requires committee member
             "donationUpdatesCount": donation_count,
             "announcementUpdatesCount": announcement_count,
             "isAddedToMyMasjid": is_added,
