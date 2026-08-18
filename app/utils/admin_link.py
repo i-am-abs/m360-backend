@@ -155,18 +155,6 @@ def is_user_admin_for_place(
     return False
 
 
-def user_is_approved_masjid_admin(
-        *,
-        current_user: Optional[Dict[str, Any]],
-        admin_store: Optional[AdminRepository],
-) -> bool:
-    """True when the user is an approved admin of at least one masjid."""
-    return any(
-        doc.get("masjid_place_id")
-        for doc in _approved_admin_docs(current_user=current_user, admin_store=admin_store)
-    )
-
-
 def ensure_admin_user_link(
         admin_store: AdminRepository,
         *,

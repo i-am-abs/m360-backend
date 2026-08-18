@@ -10,7 +10,7 @@ from app.interfaces.masjid_repository import MasjidRepository
 from app.interfaces.masjid_service import PlacesReader
 from app.interfaces.user_repository import UserRepository
 from app.repositories.user_store_helpers import resolve_canonical_phone
-from app.utils.admin_link import user_is_approved_masjid_admin
+from app.utils.admin_link import is_user_admin_for_place
 from app.utils.amenities import empty_amenity_status
 from app.utils.masjid_view import build_masjid_detail_view
 
@@ -18,7 +18,7 @@ _MASJID_SAVE_LIMIT_MESSAGE = (
     "You are not allowed to save more than 3 masjids at a time."
 )
 _MASJID_ADMIN_CANNOT_ADD_MESSAGE = (
-    "You already manage a masjid as an admin, so it cannot be added to My Masjid."
+    "You are an admin of this masjid, so it cannot be added to My Masjid."
 )
 
 
@@ -85,7 +85,8 @@ class UserMasjidService:
         return {"count": len(masjids), "masjids": masjids}
 
     def add_my_masjid(self, user: Dict[str, Any], place_id: str) -> Dict[str, Any]:
-        if user_is_approved_masjid_admin(
+        if is_user_admin_for_place(
+                place_id,
                 current_user=user,
                 admin_store=self._admin_store,
         ):
