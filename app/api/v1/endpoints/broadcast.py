@@ -37,9 +37,14 @@ def get_public_broadcast(
     return success_response({
         "message": msg,
         "masjid": {
+            "id": masjid_data.get("id", ""),
+            "place_id": masjid_data.get("place_id", ""),
             "name": masjid_data.get("name", ""),
             "city": masjid_data.get("city", ""),
+            "state": masjid_data.get("state", ""),
             "address": masjid_data.get("address", ""),
+            "photo_url": masjid_data.get("photo_url", ""),
+            "verified": bool((masjid_data.get("management") or {}).get("is_claimed")),
         },
     })
 
