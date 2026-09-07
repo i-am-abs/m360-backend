@@ -26,6 +26,12 @@ def client() -> TestClient:
         "video_url": "https://stream.mux.com/a.m3u8",
         "thumbnail_url": "https://image.mux.com/a/thumbnail.jpg",
         "created_at": "2026-09-07T10:00:00+00:00", "masjid_id": "mid1",
+        # sensitive fields that must NOT leak to unauthenticated callers
+        "reactions": {"like": ["u1", "u2"]},
+        "comments": [{"user_id": "u9", "text": "secret"}],
+        "sender": {"user_id": "u_admin", "name": "Admin"},
+        "mux_asset_id": "asset_123", "mux_upload_id": "upload_123",
+        "view_count": 42,
     }
     masjid_svc = MagicMock()
     masjid_svc.get_masjid.return_value = {
@@ -33,6 +39,7 @@ def client() -> TestClient:
             "id": "mid1", "place_id": "ChIJ1", "name": "Masjid Al Noor",
             "city": "Moradabad", "state": "UP", "address": "Civil Lines",
             "photo_url": "https://cdn/x.jpg", "management": {"is_claimed": True},
+            "location": {"type": "Point", "coordinates": [78.7733, 28.8386]},
         }
     }
     app.dependency_overrides[get_broadcast_feed_service] = lambda: feed_svc
@@ -50,3 +57,33 @@ def test_public_broadcast_includes_masjid_extras(client: TestClient):
     assert masjid["verified"] is True
     assert masjid["photo_url"] == "https://cdn/x.jpg"
     assert masjid["name"] == "Masjid Al Noor"
+
+
+def test_public_broadcast_includes_coordinates(client: TestClient):
+    resp = client.get("/api/v1/broadcast/public/m1")
+    assert resp.status_code == 200
+    masjid = resp.json()["data"]["masjid"]
+    assert masjid["latitude"] == pytest.approx(28.8386)
+    assert masjid["longitude"] == pytest.approx(78.7733)
+
+
+def test_public_broadcast_lat_lng_dict_shape():
+    from app.api.v1.endpoints.broadcast import _masjid_lat_lng
+
+    assert _masjid_lat_lng({"location": {"lat": 12.5, "lng": 77.1}}) == (12.5, 77.1)
+    assert _masjid_lat_lng({"location": {"type": "Point", "coordinates": [77.1, 12.5]}}) == (12.5, 77.1)
+    assert _masjid_lat_lng({}) == (0.0, 0.0)
+    assert _masjid_lat_lng({"location": {"lat": None, "lng": None}}) == (0.0, 0.0)
+
+
+def test_public_broadcast_does_not_leak_sensitive_message_fields(client: TestClient):
+    resp = client.get("/api/v1/broadcast/public/m1")
+    assert resp.status_code == 200
+    message = resp.json()["data"]["message"]
+    for leaked in ("reactions", "comments", "sender", "mux_asset_id", "mux_upload_id", "view_count"):
+        assert leaked not in message
+    assert set(message) <= {
+        "id", "masjid_id", "message_type", "text", "video_url", "thumbnail_url", "created_at",
+    }
+    assert message["id"] == "m1"
+    assert message["text"] == "hello"

@@ -24,6 +24,29 @@ from app.utils.response import success_response
 
 router = APIRouter(tags=["broadcast"])
 
+# Fields safe to expose to unauthenticated callers of the public endpoint. The
+# raw Mongo document also carries reactions (reactor user ids), comments,
+# sender.user_id, and mux_* ids which must never leak.
+_PUBLIC_MSG_FIELDS = (
+    "id", "masjid_id", "message_type", "text", "video_url", "thumbnail_url", "created_at",
+)
+
+
+def _masjid_lat_lng(masjid_data: dict) -> tuple[float, float]:
+    location = masjid_data.get("location") or {}
+    if not isinstance(location, dict):
+        return 0.0, 0.0
+    lat = location.get("lat")
+    lng = location.get("lng")
+    if lat is None or lng is None:
+        coords = location.get("coordinates")
+        if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+            lng, lat = coords[0], coords[1]
+    try:
+        return float(lat), float(lng)
+    except (TypeError, ValueError):
+        return 0.0, 0.0
+
 
 @router.get("/broadcast/public/{message_id}", summary="Get public broadcast")
 def get_public_broadcast(
@@ -32,10 +55,15 @@ def get_public_broadcast(
         masjid_svc: MasjidEntityService = Depends(get_masjid_entity_service),
 ):
     msg = svc.get_message_raw(message_id)
+    safe_msg = {k: msg.get(k) for k in _PUBLIC_MSG_FIELDS if k in msg or msg.get(k) is not None}
+    if "id" not in safe_msg and msg.get("_id"):
+        safe_msg["id"] = str(msg["_id"])
+
     masjid = masjid_svc.get_masjid(msg["masjid_id"])
     masjid_data = masjid.get("masjid", {}) if masjid else {}
+    latitude, longitude = _masjid_lat_lng(masjid_data)
     return success_response({
-        "message": msg,
+        "message": safe_msg,
         "masjid": {
             "id": masjid_data.get("id", ""),
             "place_id": masjid_data.get("place_id", ""),
@@ -43,6 +71,8 @@ def get_public_broadcast(
             "city": masjid_data.get("city", ""),
             "state": masjid_data.get("state", ""),
             "address": masjid_data.get("address", ""),
+            "latitude": latitude,
+            "longitude": longitude,
             "photo_url": masjid_data.get("photo_url", ""),
             "verified": bool((masjid_data.get("management") or {}).get("is_claimed")),
         },
