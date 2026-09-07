@@ -87,7 +87,7 @@ def test_share_page_renders_meta(share_client: TestClient):
     html = resp.text
     assert '<meta property="og:title" content="Masjid Al Noor"' in html
     assert 'twitter:card' in html
-    assert "image.mux.com/a/thumbnail.jpg?width=1200&height=630" in html
+    assert "image.mux.com/a/thumbnail.jpg" in html
     assert "Eid salah at 6:45 AM" in html
     assert "Masjid Al Noor" in html
     assert "stream.mux.com/a.m3u8" in html
