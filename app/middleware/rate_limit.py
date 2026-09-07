@@ -21,6 +21,15 @@ _HEALTH_PATHS = {
     "/api/v1/health/ready",
 }
 
+# Public web surfaces (association files, static assets, server-rendered share
+# pages) are cheap, cacheable, and crawled by link-preview bots that would
+# otherwise trip the limiter for every user on a shared NAT / CDN IP.
+_SKIP_PREFIXES = (
+    "/.well-known/",
+    "/share-static/",
+    "/s/",
+)
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, rate_limiter: Optional[RateLimiter] = None) -> None:
@@ -67,7 +76,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def _should_skip(path: str) -> bool:
         normalized = path.rstrip("/") or "/"
-        return normalized in _HEALTH_PATHS
+        if normalized in _HEALTH_PATHS:
+            return True
+        return any(path.startswith(prefix) for prefix in _SKIP_PREFIXES)
 
     @staticmethod
     def _client_key(request: Request) -> str:
