@@ -48,8 +48,15 @@ We want:
   app opens to its normal home screen; the specific announcement target is **not**
   preserved through the install. (Best-effort only, per decision.)
 - Making the in-app broadcast feed publicly viewable — a logged-out user who deep-links in
-  is routed through the **login screen** first, then lands on the announcement feed
-  (per decision).
+  is routed through the **login screen** first, then continues into the app (per decision).
+- Bypassing the "add to My Masjid first" gate on the broadcast feed — a deep link for a
+  masjid the user has **not** followed lands on the **masjid detail page** (announcement
+  section + "Add to My Masjid / Follow" prompt visible), not the feed. Only when the
+  masjid is already followed **and** has announcements enabled does the deep link push the
+  feed on top (per decision).
+- The web page's "Follow Masjid" button does **not** follow anything server-side — it is
+  purely an app-open / store CTA (same action as tapping the video). The real follow
+  happens inside the app (per decision).
 - Analytics/attribution beyond the existing `AnalyticsService.trackShareAnnouncement()`.
 - iOS App Store submission / the numeric App Store ID (provided later by the owner).
 
@@ -346,17 +353,23 @@ Responsibilities:
   has a context.
 - **Resolve & navigate** — `_openAnnouncement(messageId)`:
   1. `GET /api/v1/broadcast/public/{messageId}` (new method on `BroadcastService`,
-     unauthenticated) → `masjid_id` (+ `masjid_name`, `follower_count` if available).
-  2. `MasjidEntityService.instance.getMasjid(masjidId)` → masjid entity.
+     unauthenticated) → `masjid_id` (+ masjid name/photo from the same payload).
+  2. `MasjidEntityService.instance.getMasjid(masjidId)` → masjid entity; build a
+     `Masjid` (`masjid_service.dart`) from it for `MasjidDetailsScreen`.
   3. If `StoreManager` has no auth token → navigate to `LoginScreen` with
      `return_route`/args that resume `_openAnnouncement(messageId)` post-login
      (reuse existing `return_route` / `pop_on_success` login-args pattern from
      `routes.dart`).
   4. Build the stack with `NavigationService` (global navigator key):
-     - ensure the **Masjid tab** of `BottomNav` is selected;
+     - `pushNamedAndRemoveUntil(AppRoutes.bottomNav, arguments: {'tab': 'masjid'})`
+       so the **Masjid tab** is the root (requires a small `BottomNav` change — see
+       §6.7);
      - `push(MaterialPageRoute(MasjidDetailsScreen(masjid: masjid, hasDetails: true)))`;
-     - `push(MaterialPageRoute(BroadcastFeedScreen(masjidId: …, masjidName: …,
-       followerCount: …, masjidPhotoUrl: …)))`.
+     - **only if** the masjid's `currentUserRelationship` indicates it is followed/saved
+       **and** announcements are enabled: `push(MaterialPageRoute(BroadcastFeedScreen(
+       masjidId: …, masjidName: …, followerCount: …, masjidPhotoUrl: …)))`.
+       Otherwise stop at the detail page (its Broadcast section shows the
+       "Add to My Masjid / Follow" prompt).
      Result: **Back** → masjid details → Masjid tab (list). Matches requirement.
   5. Errors (network, 404, deleted) → land on the Masjid tab and show a snackbar
      ("This announcement is no longer available").
@@ -368,7 +381,23 @@ After Firebase init + `StoreManager` load + `runApp`, call
 `DeepLinkService.instance.init()` (guarded so it only runs once). The service defers actual
 navigation until `WidgetsBinding.instance.addPostFrameCallback`.
 
-### 6.6 Replace the Mux link in shares
+### 6.6 `BottomNav` root-tab selection
+
+`BottomNav` (`lib/features/home/bottom_nav.dart`) currently has no way to open on a
+specific tab. Add an optional `initialIndex`:
+
+```dart
+class BottomNav extends StatefulWidget {
+  const BottomNav({super.key, this.initialIndex = 0});
+  final int initialIndex;
+}
+// in _BottomNavState: int _currentIndex = widget.initialIndex;  (was = 0)
+```
+
+And in `routes.dart` `case bottomNav:` read `args['tab']` (`'masjid'` → index 2) and pass
+`BottomNav(initialIndex: …)`. Default stays 0 (Home) when no arg.
+
+### 6.7 Replace the Mux link in shares
 
 - Add `SHARE_BASE_URL` to `.env.dev` (and document it for `.env.staging` / `.env.prod`).
 - New helper: `BroadcastService.instance.shareUrlFor(String messageId)` →
