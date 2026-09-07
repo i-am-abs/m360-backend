@@ -52,6 +52,18 @@ def test_apple_app_site_association(client: TestClient):
     assert details["paths"] == ["/s/*"]
 
 
+def test_apple_app_site_association_empty_when_team_id_unset():
+    import json as _json
+
+    from app.core.config import Settings
+    from app.web.share import apple_app_site_association
+
+    resp = apple_app_site_association(Settings(apple_team_id=""))
+    body = _json.loads(resp.body)
+    assert body["applinks"]["details"] == []
+    assert body["applinks"]["apps"] == []
+
+
 from unittest.mock import MagicMock
 
 from app.api.deps import get_broadcast_feed_service, get_masjid_entity_service
@@ -92,6 +104,21 @@ def test_share_page_renders_meta(share_client: TestClient):
     assert "Masjid Al Noor" in html
     assert "stream.mux.com/a.m3u8" in html
     assert resp.headers["cache-control"] == "public, max-age=300"
+
+
+def test_share_page_text_only_has_no_media_and_article_og_type(share_client: TestClient):
+    feed = MagicMock()
+    feed.get_message_raw.return_value = {
+        "id": "m2", "message_type": "text", "text": "Jummah is at 1:30 PM",
+        "video_url": None, "thumbnail_url": None,
+        "created_at": "2026-09-07T10:00:00+00:00", "masjid_id": "mid1",
+    }
+    share_client.app.dependency_overrides[get_broadcast_feed_service] = lambda: feed
+    resp = share_client.get("/s/m2")
+    assert resp.status_code == 200
+    html = resp.text
+    assert 'class="media"' not in html
+    assert '<meta property="og:type" content="article">' in html
 
 
 def test_share_page_404_for_missing(share_client: TestClient):

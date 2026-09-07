@@ -1890,6 +1890,7 @@ git commit -m "feat(share): share the web page URL instead of the raw Mux link"
 - [ ] **Step 4: Web page** — open the URL in mobile Chrome + Safari → video plays on tap;
   "Follow Masjid" opens the app (installed) or the store (not installed); "Share" invokes
   the native sheet.
+  - [ ] verify iOS + desktop "Follow Masjid" CTA reaches the correct store
 
 - [ ] **Step 5: Deep link, app installed + masjid followed** → lands on the broadcast feed;
   Back → masjid detail → Back → masjid list (Masjid tab).

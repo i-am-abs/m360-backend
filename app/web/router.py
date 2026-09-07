@@ -8,11 +8,11 @@ import jwt
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from jinja2 import Environment, FileSystemLoader
 from pydantic import BaseModel
 
 from app.core.config import get_settings, Settings
 from app.web.deps import AdminSession, admin_required
+from app.web.templating import env
 
 router = APIRouter(prefix="/admin")
 
@@ -29,10 +29,7 @@ def _flash_from_query(request: Request):
         msgs.append(("error", error))
     return msgs
 
-templates = Environment(
-    loader=FileSystemLoader("app/web/templates"),
-    autoescape=True,
-)
+templates = env
 templates.globals["get_flashed_messages"] = _noop_flashed
 
 _settings: Settings | None = None

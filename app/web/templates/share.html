@@ -9,7 +9,7 @@
 <meta property="og:site_name" content="Muslim 360">
 <meta property="og:title" content="{{ masjid_name }}">
 <meta property="og:description" content="{{ og_description }}">
-<meta property="og:type" content="video.other">
+<meta property="og:type" content="{% if is_video %}video.other{% else %}article{% endif %}">
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:image" content="{{ og_image_url }}">
 <meta property="og:image:width" content="1200">
@@ -55,8 +55,9 @@
   .time{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
   .text{margin:14px 2px 0;font-size:14px;line-height:1.5}
   .btns{display:flex;gap:10px;padding:16px}
-  .btns button{flex:1;padding:13px 0;border-radius:12px;font-size:14px;font-weight:600;
-    cursor:pointer;font-family:inherit}
+  .btns button,.btns a{flex:1;padding:13px 0;border-radius:12px;font-size:14px;font-weight:600;
+    cursor:pointer;font-family:inherit;text-align:center;text-decoration:none}
+  .store-row{padding-top:0}
   .primary{border:0;background:linear-gradient(#61D47D,#ADFF8D);color:#091914}
   .ghost{border:1px solid var(--green);background:#fff;color:#0B7C43}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
@@ -75,15 +76,17 @@
     <a class="close" href="{{ marketing_site_url }}" aria-label="Close">&times;</a>
   </div>
 
+  {% if is_video or poster_url %}
   <div class="media" id="media">
     {% if is_video %}
       <img class="poster" src="{{ poster_url or og_image_url }}" alt="">
       <button class="playbtn" id="play" aria-label="Play"></button>
       <video id="v" playsinline preload="none" poster="{{ poster_url or '' }}" hidden></video>
     {% else %}
-      <img class="poster" src="{{ poster_url or og_image_url }}" alt="">
+      <img class="poster" src="{{ poster_url }}" alt="">
     {% endif %}
   </div>
+  {% endif %}
 
   <div class="card">
     <div class="row">
@@ -105,6 +108,9 @@
     <button class="primary" onclick="openApp()">Follow Masjid</button>
     <button class="ghost" onclick="sharePage()">Share</button>
   </div>
+  <div class="btns store-row" id="storeRow" hidden>
+    <a class="ghost" href="{{ app_store_url }}" rel="noopener" target="_blank">Get it on the App Store</a>
+  </div>
 </div>
 <div class="toast" id="toast">Link copied</div>
 
@@ -116,23 +122,44 @@
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
 
+  var UA = navigator.userAgent || "";
+  var IS_ANDROID = /android/i.test(UA);
+  var IS_IOS = /iphone|ipad|ipod/i.test(UA) ||
+    (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+
+  if (IS_IOS) {
+    var storeRow = document.getElementById("storeRow");
+    if (storeRow) storeRow.hidden = false;
+  }
+
   function openApp() {
-    var ua = navigator.userAgent || "";
-    var isAndroid = /android/i.test(ua);
-    var isIOS = /iphone|ipad|ipod/i.test(ua);
-    var store = isIOS ? APPSTORE_URL : PLAY_URL;
-    var start = Date.now();
-    setTimeout(function () {
-      if (Date.now() - start < 2000 && !document.hidden) window.location = store;
-    }, 1100);
-    if (isAndroid) {
+    if (IS_ANDROID) {
+      var start = Date.now();
+      setTimeout(function () {
+        if (Date.now() - start < 2000 && !document.hidden) window.location = PLAY_URL;
+      }, 1100);
       window.location =
         "intent://" + SHARE_HOST + DEEP_PATH +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
-        ";S.browser_fallback_url=" + encodeURIComponent(store) + ";end";
-    } else {
-      window.location = "https://" + SHARE_HOST + DEEP_PATH;
+        ";S.browser_fallback_url=" + encodeURIComponent(PLAY_URL) + ";end";
+      return;
     }
+
+    if (IS_IOS) {
+      var fallback = setTimeout(function () {
+        window.location = APPSTORE_URL;
+      }, 1200);
+      var cancel = function () { clearTimeout(fallback); };
+      window.addEventListener("pagehide", cancel, { once: true });
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) cancel();
+      });
+      window.location = "https://" + SHARE_HOST + DEEP_PATH;
+      return;
+    }
+
+    // Desktop / other: no app to open — go straight to the store.
+    window.location = PLAY_URL;
   }
 
   function sharePage() {
@@ -163,6 +190,8 @@
       } else {
         var s = document.createElement("script");
         s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+        s.integrity = "sha384-w6Gb3fXHb5e1LUYa/hYA5Q41bEDglN5ZPCG7Jvnoo8/X90oGnlPqBlBJCe38mEMm";
+        s.crossOrigin = "anonymous";
         s.onload = function () {
           if (window.Hls && window.Hls.isSupported()) {
             var hls = new window.Hls();
