@@ -149,6 +149,28 @@ class Settings(BaseSettings):
     mux_webhook_secret: str = ""
     mux_env_key: str = "deb2jrkrr735ufr00gdtrf8j9"
 
+    share_web_base_url: str = Field(
+        default="https://share.vyapari.link",
+        validation_alias=AliasChoices("SHARE_WEB_BASE_URL", "share_web_base_url"),
+    )
+    android_package_name: str = "com.starkinnovations.m360"
+    android_sha256_cert_fingerprints_raw: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "ANDROID_SHA256_CERT_FINGERPRINTS",
+            "android_sha256_cert_fingerprints_raw",
+        ),
+    )
+    apple_team_id: str = Field(
+        default="", validation_alias=AliasChoices("APPLE_TEAM_ID", "apple_team_id")
+    )
+    apple_bundle_id: str = "com.starkinnovations.m360"
+    play_store_url: str = (
+        "https://play.google.com/store/apps/details?id=com.starkinnovations.m360"
+    )
+    app_store_url: str = "https://apps.apple.com/app/muslim-360/id6608000000"
+    marketing_site_url: str = "https://muslim360.app"
+
     rate_limit_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("RATE_LIMIT_ENABLED", "rate_limit_enabled"),
@@ -214,6 +236,26 @@ class Settings(BaseSettings):
     @property
     def payment_configured(self) -> bool:
         return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
+    @property
+    def share_host(self) -> str:
+        from urllib.parse import urlparse
+
+        return urlparse(self.share_web_base_url).netloc or self.share_web_base_url
+
+    @property
+    def android_sha256_cert_fingerprints(self) -> list[str]:
+        return [
+            f.strip()
+            for f in self.android_sha256_cert_fingerprints_raw.split(",")
+            if f.strip()
+        ]
+
+    @property
+    def apple_app_id(self) -> str:
+        return (
+            f"{self.apple_team_id}.{self.apple_bundle_id}" if self.apple_team_id else ""
+        )
 
     @field_validator("quran_base_url", "quran_oauth_url", mode="before")
     @classmethod

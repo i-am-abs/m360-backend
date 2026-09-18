@@ -243,6 +243,15 @@ Settings live in `app/core/config.py` and are loaded from environment / `.env`.
 | `ADMIN_SESSION_TTL_SECONDS` | `86400` | |
 | `INTERNAL_API_KEY` | — | Header `X-Internal-Api-Key` |
 
+### Share page / deep links
+
+The backend serves `GET /s/{broadcastMessageId}` (branded share page with Open Graph
+metadata) plus `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`
+for Android App Links / iOS Universal Links. Configure via `SHARE_WEB_BASE_URL`,
+`ANDROID_SHA256_CERT_FINGERPRINTS`, `APPLE_TEAM_ID` (see `.env`). The host in
+`SHARE_WEB_BASE_URL` must serve this app over HTTPS and match the Flutter app's
+intent-filter / associated-domain.
+
 ### Integrations (set when needed)
 
 | Area | Variables |

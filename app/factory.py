@@ -66,6 +66,16 @@ def create_app() -> FastAPI:
     register_exception_handlers(application)
     application.include_router(api_v1_router, prefix="/api/v1")
 
+    from fastapi.staticfiles import StaticFiles as _ShareStatic
+    from app.web.share import router as share_router
+
+    application.mount(
+        "/share-static",
+        _ShareStatic(directory="app/web/static"),
+        name="share_static",
+    )
+    application.include_router(share_router)
+
     if settings.admin_panel_enabled:
         from fastapi.staticfiles import StaticFiles
         from app.web.router import router as admin_router
