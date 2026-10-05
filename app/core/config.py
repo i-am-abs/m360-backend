@@ -177,6 +177,7 @@ class Settings(BaseSettings):
     )
     rate_limit_requests_per_minute: int = Field(default=120, ge=1)
     rate_limit_auth_requests_per_minute: int = Field(default=20, ge=1)
+    rate_limit_otp_verify_requests_per_minute: int = Field(default=60, ge=1)
     rate_limit_window_seconds: int = Field(default=60, ge=1)
 
     auth_force_infinite_sessions: bool = Field(

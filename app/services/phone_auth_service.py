@@ -7,6 +7,7 @@ from app.core.enums.error_code import ErrorCode
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
+from app.integrations.otp_verified_cache import VerifiedOtpCache
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.otp_gateway import OtpGateway
 from app.interfaces.phone_validator import PhoneValidator
@@ -27,7 +28,9 @@ class PhoneAuthService:
             msg91_pending: Optional[Msg91PendingReqIdStore] = None,
             msg91_async_req_id_wait_seconds: float = 0.0,
             admin_store: Optional[AdminRepository] = None,
+            verified_cache: Optional[VerifiedOtpCache] = None,
     ) -> None:
+        self._verified_cache = verified_cache
         self._store = store
         self._otp_gateway = otp_gateway
         self._phone_validator = phone_validator
@@ -66,8 +69,24 @@ class PhoneAuthService:
 
     def verify_otp(self, phone_number: str, req_id: str, otp: str) -> Dict[str, Any]:
         formatted_phone = self._phone_validator.validate_and_format(phone_number)
-        data = self._otp_gateway.verify_otp(req_id, otp)
-        self._assert_verification_success(data)
+        req_id = (req_id or "").strip()
+        otp = "".join(ch for ch in str(otp or "") if ch.isdigit())
+        if not req_id or not otp:
+            raise ApiException(
+                "OTP verification failed",
+                status_code=HTTPStatus.UNAUTHORIZED.value,
+                code=ErrorCode.OTP_INVALID,
+                provider_message="reqId and otp are required",
+            )
+
+        cache = self._verified_cache
+        if cache is not None and cache.was_verified(formatted_phone, req_id, otp):
+            log.info("OTP verify replay accepted for %s | reqId=%s", formatted_phone, req_id)
+        else:
+            data = self._otp_gateway.verify_otp(req_id, otp)
+            self._assert_verification_success(data)
+            if cache is not None:
+                cache.mark_verified(formatted_phone, req_id, otp)
         user = self._store.ensure_user(formatted_phone)
         session = self._store.create_session(user["user_id"], self._session_ttl)
         user["phone_number"] = formatted_phone

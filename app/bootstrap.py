@@ -22,6 +22,7 @@ from app.repositories.local_cache_user_store import LocalCacheUserStore
 from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
+from app.integrations.otp_verified_cache import VerifiedOtpCache
 from app.repositories.cached_feature_flag_store import CachedFeatureFlagStore
 from app.repositories.mongo_feature_flag_store import MongoFeatureFlagStore, NoOpFeatureFlagStore
 from app.repositories.mongo_admin_store import MongoAdminStore, NoOpAdminStore
@@ -211,6 +212,7 @@ def _create_phone_auth_service(
         user_store: UserRepository,
         msg91_pending: Msg91PendingReqIdStore,
         admin_store=None,
+        redis_client: Optional[Redis] = None,
 ) -> PhoneAuthService:
     return PhoneAuthService(
         store=user_store,
@@ -223,6 +225,10 @@ def _create_phone_auth_service(
         msg91_pending=msg91_pending,
         msg91_async_req_id_wait_seconds=settings.msg91_async_req_id_wait_seconds,
         admin_store=admin_store,
+        verified_cache=VerifiedOtpCache(
+            redis_client=redis_client,
+            key_prefix=settings.redis_key_prefix,
+        ),
     )
 
 
@@ -272,6 +278,7 @@ def _create_rate_limiter(
         backend,
         default_limit=settings.rate_limit_requests_per_minute,
         auth_limit=settings.rate_limit_auth_requests_per_minute,
+        otp_verify_limit=settings.rate_limit_otp_verify_requests_per_minute,
         window_seconds=settings.rate_limit_window_seconds,
     )
 
@@ -390,6 +397,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         user_store,
         msg91_pending,
         admin_store=platform["admin_store"],
+        redis_client=app.state.redis,
     )
     if (
             settings.uvicorn_workers > 1

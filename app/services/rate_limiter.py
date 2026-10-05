@@ -4,7 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from threading import Lock
-from typing import Deque, Dict, Tuple
+from typing import Deque, Dict, Optional, Tuple
 
 from redis import Redis
 
@@ -35,12 +35,17 @@ class RedisRateLimitBackend(RateLimitBackend):
     ) -> Tuple[bool, int]:
         redis_key = f"{self._prefix}:ratelimit:{key}"
         try:
-            count = int(self._redis.incr(redis_key))
-            if count == 1:
+            pipe = self._redis.pipeline()
+            pipe.incr(redis_key)
+            pipe.ttl(redis_key)
+            count, ttl = pipe.execute()
+            count, ttl = int(count), int(ttl)
+            # ttl == -1 means the key has no expiry (first hit, or a lost EXPIRE);
+            # without one the counter would block this client forever.
+            if ttl < 0:
                 self._redis.expire(redis_key, window_seconds)
-            ttl = int(self._redis.ttl(redis_key))
-            retry_after = max(ttl, 1) if ttl > 0 else window_seconds
-            return count <= limit, retry_after
+                ttl = window_seconds
+            return count <= limit, max(ttl, 1)
         except Exception as exc:
             log_event(
                 "rate_limit",
@@ -83,15 +88,22 @@ class RateLimiter:
             *,
             default_limit: int,
             auth_limit: int,
+            otp_verify_limit: Optional[int] = None,
             window_seconds: int = 60,
     ) -> None:
         self._backend = backend
         self._default_limit = default_limit
         self._auth_limit = auth_limit
+        self._otp_verify_limit = otp_verify_limit or auth_limit
         self._window_seconds = window_seconds
 
     def check(self, client_key: str, path: str) -> Tuple[bool, int]:
-        limit = self._auth_limit if self._is_auth_path(path) else self._default_limit
+        if self._is_otp_verify_path(path):
+            limit = self._otp_verify_limit
+        elif self._is_auth_path(path):
+            limit = self._auth_limit
+        else:
+            limit = self._default_limit
         allowed, retry_after = self._backend.check_and_increment(
             f"{client_key}:{self._bucket(path)}",
             limit,
@@ -118,5 +130,12 @@ class RateLimiter:
         )
 
     @staticmethod
+    def _is_otp_verify_path(path: str) -> bool:
+        return path.rstrip("/").endswith("/auth/phone/verify-otp")
+
+    @staticmethod
     def _bucket(path: str) -> str:
-        return "auth" if RateLimiter._is_auth_path(path) else "default"
+        # One bucket per auth endpoint so OTP sends/resends never starve verify.
+        if RateLimiter._is_auth_path(path):
+            return "auth:" + path.rstrip("/").rsplit("/auth/", 1)[-1]
+        return "default"

@@ -5,7 +5,7 @@ import time
 from http import HTTPStatus
 from typing import Any, Dict, Optional, Union
 
-from httpx import Client, ConnectError, TimeoutException
+from httpx import Client, ConnectError, ConnectTimeout, Limits, Timeout, TimeoutException
 
 from app.core.config import Settings, create_ssl_context
 from app.core.enums.error_code import ErrorCode
@@ -17,7 +17,12 @@ from app.interfaces.otp_gateway import OtpGateway
 _log = get_logger(__name__)
 
 _MAX_RETRIES = 1
-_RETRY_DELAY_S = 1
+_RETRY_DELAY_S = 0.3
+_CONNECT_TIMEOUT_S = 3.0
+
+# verifyOtp consumes the OTP on MSG91's side; re-sending it after the request
+# may have reached MSG91 turns a successful login into "already verified".
+_NON_IDEMPOTENT = frozenset({Msg91Endpoint.VERIFY_OTP})
 
 
 class Msg91OtpGateway(OtpGateway):
@@ -26,6 +31,12 @@ class Msg91OtpGateway(OtpGateway):
         self._widget_id = (settings.msg91_widget_id or "").strip()
         self._timeout = settings.request_timeout_seconds
         self._ssl_ctx = create_ssl_context()
+        self._client = Client(
+            timeout=Timeout(self._timeout, connect=min(_CONNECT_TIMEOUT_S, self._timeout)),
+            verify=self._ssl_ctx,
+            limits=Limits(max_keepalive_connections=10, keepalive_expiry=60.0),
+            headers={"Content-Type": "application/json", "authkey": self._auth_key},
+        )
 
         if not self._auth_key:
             raise ApiException(
@@ -99,12 +110,6 @@ class Msg91OtpGateway(OtpGateway):
         key = raw.lower()
         return MSG91_RETRY_CHANNEL_CODE.get(key)
 
-    def _headers(self) -> Dict[str, str]:
-        return {
-            "Content-Type": "application/json",
-            "authkey": self._auth_key,
-        }
-
     @staticmethod
     def _normalize_response_json(body: Union[None, Dict[str, Any], list, str, Any]) -> Dict[str, Any]:
         if body is None:
@@ -131,29 +136,28 @@ class Msg91OtpGateway(OtpGateway):
             error_status: int,
             _attempt: int = 0,
     ) -> Dict[str, Any]:
+        started = time.monotonic()
         try:
-            with Client(timeout=self._timeout, verify=self._ssl_ctx) as client:
-                response = client.post(
-                    endpoint.value,
-                    json=payload,
-                    headers=self._headers(),
-                )
-                body_raw = None
-                if response.content:
-                    try:
-                        body_raw = response.json()
-                    except ValueError:
-                        body_raw = None
-                data = self._normalize_response_json(body_raw)
-                if endpoint == Msg91Endpoint.SEND_OTP:
-                    _log.info(
-                        "MSG91 sendOtp response keys=%s",
-                        list(data.keys()) if data else [],
-                    )
+            response = self._client.post(endpoint.value, json=payload)
+            body_raw = None
+            if response.content:
+                try:
+                    body_raw = response.json()
+                except ValueError:
+                    body_raw = None
+            data = self._normalize_response_json(body_raw)
+            _log.info(
+                "MSG91 %s status=%s elapsed_ms=%d keys=%s",
+                endpoint.name,
+                response.status_code,
+                (time.monotonic() - started) * 1000,
+                list(data.keys()) if data else [],
+            )
 
         except (ConnectError, TimeoutException) as exc:
-            if _attempt < _MAX_RETRIES:
-                _log.warning("MSG91 retry: %s", exc)
+            never_sent = isinstance(exc, (ConnectError, ConnectTimeout))
+            if _attempt < _MAX_RETRIES and (never_sent or endpoint not in _NON_IDEMPOTENT):
+                _log.warning("MSG91 %s retry: %r", endpoint.name, exc)
                 time.sleep(_RETRY_DELAY_S)
                 return self._post(endpoint, payload, error_status, _attempt + 1)
 
