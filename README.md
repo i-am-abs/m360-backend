@@ -408,7 +408,8 @@ Latitude and longitude must be supplied **together**.
 | Method | Path |
 |--------|------|
 | POST | `/admins/register` |
-| GET | `/admins` |
+| GET | `/admins` (approved only; `?status=pending` also accepted) |
+| GET | `/admins/pending` |
 | PATCH | `/admins/{admin_id}/status` |
 | GET | `/roles`, `/designations` |
 | POST | `/verification-requests` |

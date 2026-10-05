@@ -80,6 +80,7 @@ class ApiEndpoint(Enum):
 
     ADMINS_REGISTER = "/admins/register"
     ADMINS_LIST = "/admins"
+    ADMINS_PENDING = "/admins/pending"
     ADMINS_STATUS = "/admins/{admin_id}/status"
 
     VERIFICATION_REQUESTS = "/verification-requests"

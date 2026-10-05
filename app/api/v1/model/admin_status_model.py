@@ -16,6 +16,10 @@ class AdminResponse(BaseModel):
     committee_id: Optional[str] = Field(None, serialization_alias="committeeId")
     masjid_place_id: Optional[str] = Field(None, serialization_alias="masjidPlaceId")
     status: AdminRegistrationStatus
+    message: Optional[str] = Field(
+        None,
+        description="Reviewer message; holds the rejection reason when status is rejected",
+    )
     onboarding_done: bool = Field(
         False,
         serialization_alias="onboardingDone",

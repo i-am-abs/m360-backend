@@ -24,7 +24,7 @@ from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.masjid_entity_service import MasjidEntityService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_timings_service import MasjidTimingsService
-from app.utils.response import success_response
+from app.utils.response import no_store, success_response
 
 router = APIRouter(tags=["masjids"])
 
@@ -46,8 +46,8 @@ def list_masjids(
     if city:
         return success_response(svc_entity.search_by_name(city, limit, page))
     if current_user is not None:
-        items = svc_listing.list_masjids_for_user(current_user)
-        return success_response(items)
+        items, rejection_message = svc_listing.list_masjids_for_user(current_user)
+        return no_store(success_response(items, message=rejection_message or "OK"))
     return success_response(svc_entity.get_masjid_list(page, limit))
 
 

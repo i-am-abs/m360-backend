@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+from app.core.enums.admin_status import AdminRegistrationStatus
 from app.core.enums.role import UserRole
 from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.masjid_listing_repository import MasjidListingRepository
@@ -12,6 +13,11 @@ from app.services.rbac_service import RbacService
 from app.utils.admin_link import ensure_admin_user_link
 from app.utils.masjid_view import build_masjid_detail_view
 from app.utils.structured_log import log_event, log_timing
+
+_LISTED_STATUSES = frozenset({
+    AdminRegistrationStatus.PENDING.value,
+    AdminRegistrationStatus.APPROVED.value,
+})
 
 
 class MasjidListingService:
@@ -31,21 +37,29 @@ class MasjidListingService:
         self._masjid_store = masjid_store
         self._rbac = rbac
 
-    def list_masjids_for_user(self, user: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """List masjids for the user.
+    def list_masjids_for_user(
+            self,
+            user: Dict[str, Any],
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """List masjids for the user, plus a rejection message if any request was rejected.
 
-        Super admins see every masjid that has any admin assignment.
-        Regular admins see only masjids they administer.
+        Super admins see every masjid that has a pending or approved admin.
+        Regular admins see only masjids where their request is pending or approved.
         """
         user_id = str(user.get("user_id") or "")
         phone = str(user.get("phone_number") or "")
 
         with log_timing("masjid_listing", "list", user_id=user_id):
-            admin_docs = ensure_admin_user_link(
+            linked_docs = ensure_admin_user_link(
                 self._admin_store,
                 user_id=user_id,
                 phone=phone or None,
             )
+            admin_docs = [
+                doc for doc in linked_docs
+                if doc.get("status") in _LISTED_STATUSES
+            ]
+            rejection_message = self._rejection_message(linked_docs, admin_docs)
             favorite_ids = self._user_store.list_favorites(phone) if phone else []
 
             role = (
@@ -85,14 +99,35 @@ class MasjidListingService:
             user_id=user_id,
             role=role,
             count=len(items),
+            rejected=rejection_message is not None,
         )
-        return items
+        return items, rejection_message
+
+    @staticmethod
+    def _rejection_message(
+            linked_docs: List[Dict[str, Any]],
+            listed_docs: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Latest rejection for a masjid the user has no other live request for."""
+        live_places = {str(doc.get("masjid_place_id")) for doc in listed_docs}
+        rejected = [
+            doc for doc in linked_docs
+            if doc.get("status") == AdminRegistrationStatus.REJECTED.value
+            and str(doc.get("masjid_place_id")) not in live_places
+        ]
+        if not rejected:
+            return None
+        latest = max(rejected, key=lambda d: str(d.get("updated_at") or ""))
+        reason = (latest.get("status_message") or "").strip()
+        if reason:
+            return f"Your admin request has been rejected. Reason: {reason}"
+        return "Your admin request has been rejected."
 
     def _place_ids_with_any_admin(self) -> Set[str]:
         place_ids: Set[str] = set()
         for doc in self._admin_store.list_all():
             pid = doc.get("masjid_place_id")
-            if pid:
+            if pid and doc.get("status") in _LISTED_STATUSES:
                 place_ids.add(str(pid))
         return place_ids
 

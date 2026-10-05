@@ -150,6 +150,9 @@ class AdminService:
                 fields["masjid_place_id"] = request.masjid_place_id
                 if existing.get("role") != UserRole.SUPER_ADMIN.value:
                     fields["status"] = AdminRegistrationStatus.PENDING.value
+            elif existing.get("status") == AdminRegistrationStatus.REJECTED.value:
+                fields["status"] = AdminRegistrationStatus.PENDING.value
+                fields["status_message"] = None
             if request.name:
                 fields["name"] = request.name
             if request.profile_image is not None:
@@ -185,58 +188,38 @@ class AdminService:
             current_user,
             {UserRole.SUPER_ADMIN.value, UserRole.ADMIN.value},
         )
-        # Blank status → union of pending + approved (not rejected).
-        normalized = (status or "").strip().lower() or None
-        if normalized and normalized not in AdminRegistrationStatus.values():
+        # Blank status → approved only. Rejected requests are never listed.
+        normalized = (status or "").strip().lower() or AdminRegistrationStatus.APPROVED.value
+        listable = {
+            AdminRegistrationStatus.APPROVED.value,
+            AdminRegistrationStatus.PENDING.value,
+        }
+        if normalized not in listable:
             raise ApiException(
-                f"status must be one of: {', '.join(AdminRegistrationStatus.values())}",
+                f"status must be one of: {', '.join(sorted(listable))}",
                 status_code=HTTPStatus.BAD_REQUEST.value,
                 code=ErrorCode.VALIDATION_ERROR,
             )
 
-        if normalized:
-            docs = self._admin_store.list_all(status=normalized)
-            items = [self._to_response(doc).model_dump(by_alias=True) for doc in docs]
-            pending = [
-                item for item in items
-                if item.get("status") == AdminRegistrationStatus.PENDING.value
-            ]
-            approved = [
-                item for item in items
-                if item.get("status") == AdminRegistrationStatus.APPROVED.value
-            ]
-            rejected = [
-                item for item in items
-                if item.get("status") == AdminRegistrationStatus.REJECTED.value
-            ]
-        else:
-            pending_docs = self._admin_store.list_all(
-                status=AdminRegistrationStatus.PENDING.value,
-            )
-            approved_docs = self._admin_store.list_all(
-                status=AdminRegistrationStatus.APPROVED.value,
-            )
-            pending = [
-                self._to_response(doc).model_dump(by_alias=True)
-                for doc in pending_docs
-            ]
-            approved = [
-                self._to_response(doc).model_dump(by_alias=True)
-                for doc in approved_docs
-            ]
-            rejected = []
-            items = pending + approved
-
+        # Re-check status so a stale or loosely-filtered store can't mix buckets.
+        items = [
+            self._to_response(doc).model_dump(by_alias=True)
+            for doc in self._admin_store.list_all(status=normalized)
+            if doc.get("status") == normalized
+        ]
+        is_pending = normalized == AdminRegistrationStatus.PENDING.value
+        pending = items if is_pending else []
+        approved = [] if is_pending else items
         return {
             "admins": items,
             "pending": pending,
             "approved": approved,
-            "rejected": rejected,
+            "rejected": [],
             "counts": {
                 "total": len(items),
                 "pending": len(pending),
                 "approved": len(approved),
-                "rejected": len(rejected),
+                "rejected": 0,
             },
         }
 
@@ -272,6 +255,7 @@ class AdminService:
 
         fields: Dict[str, Any] = {
             "status": body.status.value,
+            "status_message": body.message,
             "updated_by": str(current_user.get("user_id") or ""),
         }
         # Approving a masjid committee member must keep system role as admin.
@@ -321,6 +305,9 @@ class AdminService:
                 body.status == AdminRegistrationStatus.REJECTED
                 and stored.get("masjid_place_id")
                 and self._listing_store is not None
+                and not self._admin_store.list_approved_for_place(
+                    str(stored["masjid_place_id"]),
+                )
         ):
             self._listing_store.upsert_listing(
                 str(stored["masjid_place_id"]),
@@ -375,5 +362,6 @@ class AdminService:
             committee_id=doc.get("committee_id"),
             masjid_place_id=doc.get("masjid_place_id"),
             status=AdminRegistrationStatus(doc["status"]),
+            message=doc.get("status_message"),
             onboarding_done=self._is_onboarding_done(doc),
         )
