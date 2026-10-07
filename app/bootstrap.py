@@ -12,6 +12,7 @@ from app.gateways.http_client import HttpxClient
 from app.gateways.msg91_gateway import Msg91OtpGateway
 from app.gateways.oauth_token_provider import OAuthTokenProvider
 from app.gateways.redis_caching_http_client import RedisCachingHttpClient
+from app.gateways.truecaller_gateway import HttpTruecallerGateway
 from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
 from app.interfaces.http_client import HttpClient
 from app.interfaces.masjid_service import MasjidSearchService
@@ -52,6 +53,7 @@ from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
+from app.services.truecaller_auth_service import TruecallerAuthService
 from app.services.user_masjid_service import UserMasjidService
 from app.services.feature_flag_service import FeatureFlagService
 from app.services.masjid_tab_service import MasjidTabService
@@ -232,6 +234,25 @@ def _create_phone_auth_service(
     )
 
 
+def _create_truecaller_auth_service(
+        settings: Settings,
+        phone_auth: PhoneAuthService,
+) -> Optional[TruecallerAuthService]:
+    if not settings.truecaller_configured:
+        _log.warning("Truecaller login disabled — set TRUECALLER_CLIENT_ID.")
+        return None
+    _log.info(
+        "Truecaller login enabled client_id=%s base_url=%s",
+        _mask_secret(settings.truecaller_client_id or ""),
+        settings.truecaller_oauth_base_url,
+    )
+    return TruecallerAuthService(
+        gateway=HttpTruecallerGateway(settings),
+        phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
+        phone_auth=phone_auth,
+    )
+
+
 def _create_platform_stores(
         settings: Settings,
         mongo_client: Optional[MongoClient],
@@ -400,6 +421,9 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         msg91_pending,
         admin_store=platform["admin_store"],
         redis_client=app.state.redis,
+    )
+    app.state.truecaller_auth_service = _create_truecaller_auth_service(
+        settings, app.state.phone_auth_service,
     )
     if (
             settings.uvicorn_workers > 1

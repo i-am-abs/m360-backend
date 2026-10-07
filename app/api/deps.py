@@ -32,6 +32,7 @@ from app.services.notification_service import NotificationService
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran.client import QuranApiClient
 from app.services.quran_oauth_service import QuranOAuthService
+from app.services.truecaller_auth_service import TruecallerAuthService
 from app.services.upload_service import UploadService
 from app.services.user_masjid_service import UserMasjidService
 from app.services.verification_service import VerificationService
@@ -80,6 +81,17 @@ def get_user_masjid_service(request: Request) -> UserMasjidService:
 
 def get_phone_auth_service(request: Request) -> PhoneAuthService:
     return request.app.state.phone_auth_service
+
+
+def get_truecaller_auth_service(request: Request) -> TruecallerAuthService:
+    svc = getattr(request.app.state, "truecaller_auth_service", None)
+    if svc is None:
+        raise ApiException(
+            "Truecaller login is not configured. Set TRUECALLER_CLIENT_ID.",
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE.value,
+            code=ErrorCode.TRUECALLER_NOT_CONFIGURED,
+        )
+    return svc
 
 
 def get_user_store(request: Request) -> UserRepository:

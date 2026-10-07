@@ -6,11 +6,23 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.responses import JSONResponse
 
-from app.api.deps import get_bearer_credentials, get_phone_auth_service, get_quran_oauth_service
+from app.api.deps import (
+    get_bearer_credentials,
+    get_phone_auth_service,
+    get_quran_oauth_service,
+    get_truecaller_auth_service,
+)
 from app.core.enums.api_endpoints import ApiEndpoint
-from app.schemas.auth import OtpRetryRequest, OtpVerifyRequest, PhoneLoginRequest, TokenRequest
+from app.schemas.auth import (
+    OtpRetryRequest,
+    OtpVerifyRequest,
+    PhoneLoginRequest,
+    TokenRequest,
+    TruecallerLoginRequest,
+)
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran_oauth_service import QuranOAuthService
+from app.services.truecaller_auth_service import TruecallerAuthService
 from app.utils.response import success_response
 
 router = APIRouter(tags=["Authentication"])
@@ -71,6 +83,23 @@ def verify_phone_otp(
         if fcm:
             background.add_task(fcm.store_token, data["user"]["user_id"], request.fcm_token)
     response = success_response(data, message="OTP verified")
+    response.background = background
+    return response
+
+
+@router.post(ApiEndpoint.AUTH_TRUECALLER.value, summary="Login / sign up with Truecaller")
+def truecaller_login(
+        request: TruecallerLoginRequest,
+        background: BackgroundTasks,
+        svc: TruecallerAuthService = Depends(get_truecaller_auth_service),
+        fastapi_request: Request = None,
+) -> JSONResponse:
+    data = svc.login(request.authorization_code, request.code_verifier)
+    if fastapi_request and request.fcm_token:
+        fcm = getattr(fastapi_request.app.state, "fcm_service", None)
+        if fcm:
+            background.add_task(fcm.store_token, data["user"]["user_id"], request.fcm_token)
+    response = success_response(data, message="Truecaller login successful")
     response.background = background
     return response
 
