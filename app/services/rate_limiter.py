@@ -90,7 +90,9 @@ class RateLimiter:
             auth_limit: int,
             otp_verify_limit: Optional[int] = None,
             window_seconds: int = 60,
+            auth_enabled: bool = True,
     ) -> None:
+        self._auth_enabled = auth_enabled
         self._backend = backend
         self._default_limit = default_limit
         self._auth_limit = auth_limit
@@ -98,6 +100,8 @@ class RateLimiter:
         self._window_seconds = window_seconds
 
     def check(self, client_key: str, path: str) -> Tuple[bool, int]:
+        if not self._auth_enabled and self._is_auth_path(path):
+            return True, 0
         if self._is_otp_verify_path(path):
             limit = self._otp_verify_limit
         elif self._is_auth_path(path):

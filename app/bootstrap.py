@@ -264,9 +264,10 @@ def _create_rate_limiter(
     if redis_client is not None:
         backend = RedisRateLimitBackend(redis_client, settings.redis_key_prefix)
         _log.info(
-            "Rate limiting enabled (redis) default=%s/min auth=%s/min",
+            "Rate limiting enabled (redis) default=%s/min auth=%s",
             settings.rate_limit_requests_per_minute,
-            settings.rate_limit_auth_requests_per_minute,
+            f"{settings.rate_limit_auth_requests_per_minute}/min"
+            if settings.rate_limit_auth_enabled else "off",
         )
     else:
         backend = InMemoryRateLimitBackend()
@@ -280,6 +281,7 @@ def _create_rate_limiter(
         auth_limit=settings.rate_limit_auth_requests_per_minute,
         otp_verify_limit=settings.rate_limit_otp_verify_requests_per_minute,
         window_seconds=settings.rate_limit_window_seconds,
+        auth_enabled=settings.rate_limit_auth_enabled,
     )
 
 

@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     msg91_widget_id: Optional[str] = None
     msg91_country_code: str = "91"
     msg91_async_req_id_wait_seconds: float = 3.0
+    msg91_timeout_seconds: float = Field(default=5.0, gt=0)
 
     auth_session_ttl_seconds: int = Field(
         default=0,
@@ -176,6 +177,10 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("RATE_LIMIT_ENABLED", "rate_limit_enabled"),
     )
     rate_limit_requests_per_minute: int = Field(default=120, ge=1)
+    rate_limit_auth_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("RATE_LIMIT_AUTH_ENABLED", "rate_limit_auth_enabled"),
+    )
     rate_limit_auth_requests_per_minute: int = Field(default=20, ge=1)
     rate_limit_otp_verify_requests_per_minute: int = Field(default=60, ge=1)
     rate_limit_window_seconds: int = Field(default=60, ge=1)

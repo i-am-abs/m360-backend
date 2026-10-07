@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -16,6 +17,10 @@ from app.repositories.user_store_helpers import (
 )
 from app.utils.phone import phone_lookup_variants
 from app.utils.session_ttl import session_expires_in, session_never_expires
+from app.core.logging import get_logger
+
+_log = get_logger(__name__)
+_BACKGROUND = ThreadPoolExecutor(max_workers=2, thread_name_prefix="user-reconcile")
 
 
 class MongoUserStore(UserRepository):
@@ -45,7 +50,8 @@ class MongoUserStore(UserRepository):
                 "created_at": self._now_iso(),
             }
             try:
-                self._users.insert_one(payload)
+                # insert_one adds an ObjectId `_id` to the dict it is given.
+                self._users.insert_one(dict(payload))
             except DuplicateKeyError:
                 doc = self._users.find_one({"phone_number": canonical_phone})
                 if doc:
@@ -54,7 +60,31 @@ class MongoUserStore(UserRepository):
             return payload
 
         matches = [(str(doc["phone_number"]), self._as_user_dict(doc)) for doc in docs]
-        primary_key, primary_user, duplicates = pick_primary_user(matches)
+        _primary_key, primary_user, duplicates = pick_primary_user(matches)
+        stored_phone = primary_user.get("phone_number")
+        primary_user["phone_number"] = canonical_phone
+        # Favourite merging / duplicate cleanup is housekeeping; keep it off the
+        # login path (it costs several Mongo round trips).
+        _BACKGROUND.submit(
+            self._reconcile_user_safe,
+            canonical_phone,
+            dict(primary_user, phone_number=stored_phone),
+            duplicates,
+        )
+        return primary_user
+
+    def _reconcile_user_safe(self, *args: Any) -> None:
+        try:
+            self._reconcile_user(*args)
+        except Exception as exc:
+            _log.warning("User reconcile failed: %s", exc)
+
+    def _reconcile_user(
+            self,
+            canonical_phone: str,
+            primary_user: Dict[str, Any],
+            duplicates: List[Any],
+    ) -> None:
         primary_user_id = str(primary_user["user_id"])
         favorite_lists = [self.list_favorites(canonical_phone)]
         duplicate_user_ids: list[str] = []
@@ -85,8 +115,6 @@ class MongoUserStore(UserRepository):
                 {"user_id": primary_user_id},
                 {"$set": {"phone_number": canonical_phone}},
             )
-            primary_user["phone_number"] = canonical_phone
-        return primary_user
 
     def create_session(self, user_id: str, ttl_seconds: int) -> Dict[str, Any]:
         token = str(uuid4())

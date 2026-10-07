@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from starlette.responses import JSONResponse
 
@@ -61,6 +61,7 @@ def retry_phone_otp(request: OtpRetryRequest,
 @router.post(ApiEndpoint.AUTH_PHONE_VERIFY_OTP.value, summary="Verify OTP")
 def verify_phone_otp(
         request: OtpVerifyRequest,
+        background: BackgroundTasks,
         svc: PhoneAuthService = Depends(get_phone_auth_service),
         fastapi_request: Request = None,
 ) -> JSONResponse:
@@ -68,8 +69,10 @@ def verify_phone_otp(
     if fastapi_request and request.fcm_token:
         fcm = getattr(fastapi_request.app.state, "fcm_service", None)
         if fcm:
-            fcm.store_token(data["user"]["user_id"], request.fcm_token)
-    return success_response(data, message="OTP verified")
+            background.add_task(fcm.store_token, data["user"]["user_id"], request.fcm_token)
+    response = success_response(data, message="OTP verified")
+    response.background = background
+    return response
 
 
 @router.post(ApiEndpoint.AUTH_REFRESH.value, summary="Refresh bearer access token")

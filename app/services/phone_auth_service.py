@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
@@ -16,6 +17,7 @@ from app.utils.admin_link import ensure_admin_user_link
 from app.utils.session_ttl import session_never_expires
 
 log = get_logger(__name__)
+_BACKGROUND = ThreadPoolExecutor(max_workers=4, thread_name_prefix="auth-bg")
 
 
 class PhoneAuthService:
@@ -91,23 +93,22 @@ class PhoneAuthService:
         session = self._store.create_session(user["user_id"], self._session_ttl)
         user["phone_number"] = formatted_phone
         if self._admin_store is not None:
-            linked = ensure_admin_user_link(
-                self._admin_store,
-                user_id=str(user["user_id"]),
-                phone=formatted_phone,
-            )
-            if linked:
-                log.info(
-                    "Linked %s admin row(s) for phone=%s userId=%s",
-                    len(linked),
-                    formatted_phone,
-                    user["user_id"],
-                )
+            # Admin linking is re-run lazily by admin flows, so it need not block login.
+            _BACKGROUND.submit(self._link_admin_rows, str(user["user_id"]), formatted_phone)
         log.info("OTP verified for %s | userId=%s", formatted_phone, user["user_id"])
         return {
             "user": user,
             "auth": self._auth_payload(session),
         }
+
+    def _link_admin_rows(self, user_id: str, phone: str) -> None:
+        try:
+            linked = ensure_admin_user_link(self._admin_store, user_id=user_id, phone=phone)
+        except Exception as exc:
+            log.warning("Admin link failed for userId=%s: %s", user_id, exc)
+            return
+        if linked:
+            log.info("Linked %s admin row(s) for phone=%s userId=%s", len(linked), phone, user_id)
 
     def refresh_access_token(self, access_token: str) -> Dict[str, Any]:
         session = self._store.refresh_session(access_token, self._session_ttl)

@@ -263,7 +263,8 @@ intent-filter / associated-domain.
 | R2 | `R2_ENDPOINT_URL`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_BASE_URL` |
 | Mux | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_WEBHOOK_SECRET`, `MUX_ENV_KEY` |
 | Razorpay | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
-| Rate limit | `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS_PER_MINUTE`, `RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE` (per auth endpoint), `RATE_LIMIT_OTP_VERIFY_REQUESTS_PER_MINUTE` (default 60) |
+| MSG91 timeout | `MSG91_TIMEOUT_SECONDS` (default 5; connect capped at 3) |
+| Rate limit | `RATE_LIMIT_ENABLED`, `RATE_LIMIT_AUTH_ENABLED` (default `false` — `/auth/*` not limited), `RATE_LIMIT_REQUESTS_PER_MINUTE`, `RATE_LIMIT_AUTH_REQUESTS_PER_MINUTE` (per auth endpoint), `RATE_LIMIT_OTP_VERIFY_REQUESTS_PER_MINUTE` (default 60) |
 
 Derived flags (code properties): `mongodb_configured`, `redis_configured`, `quran_api_configured`, `masjid_module_enabled`, `r2_configured`, `mux_configured`, `fcm_configured`, `payment_configured`.
 

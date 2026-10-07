@@ -29,7 +29,7 @@ class Msg91OtpGateway(OtpGateway):
     def __init__(self, settings: Settings) -> None:
         self._auth_key = (settings.msg91_auth_key or "").strip()
         self._widget_id = (settings.msg91_widget_id or "").strip()
-        self._timeout = settings.request_timeout_seconds
+        self._timeout = float(getattr(settings, "msg91_timeout_seconds", 0) or settings.request_timeout_seconds)
         self._ssl_ctx = create_ssl_context()
         self._client = Client(
             timeout=Timeout(self._timeout, connect=min(_CONNECT_TIMEOUT_S, self._timeout)),
