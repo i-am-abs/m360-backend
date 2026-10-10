@@ -13,6 +13,8 @@ class BroadcastMessageCreate(BaseModel):
     mux_asset_id: Optional[str] = None
     mux_upload_id: Optional[str] = None
     campaign_id: Optional[str] = None
+    allow_sharing: bool = True
+    expires_in_days: Optional[int] = None
 
 
 class CampaignCardCreate(BaseModel):

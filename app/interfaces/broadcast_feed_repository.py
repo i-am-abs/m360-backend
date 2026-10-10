@@ -18,6 +18,8 @@ class BroadcastFeedRepository(ABC):
             thumbnail_url: Optional[str] = None,
             mux_asset_id: Optional[str] = None,
             mux_upload_id: Optional[str] = None,
+            allow_sharing: bool = True,
+            expires_at: Optional[str] = None,
     ) -> dict:
         pass
 

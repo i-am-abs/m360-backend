@@ -20,6 +20,7 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
         self._messages.create_index([("masjid_id", 1), ("created_at", -1)])
         self._messages.create_index([("masjid_id", 1), ("updated_at", -1)])
         self._messages.create_index([("sender.user_id", 1)])
+        self._messages.create_index([("expires_at", 1)], sparse=True)
 
     def create_message(
             self,
@@ -32,6 +33,8 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
             thumbnail_url: Optional[str] = None,
             mux_asset_id: Optional[str] = None,
             mux_upload_id: Optional[str] = None,
+            allow_sharing: bool = True,
+            expires_at: Optional[str] = None,
     ) -> dict:
         now_iso = self._now_iso()
         doc: Dict[str, Any] = {
@@ -50,6 +53,8 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
             "mux_asset_id": mux_asset_id,
             "mux_upload_id": mux_upload_id,
             "mux_playback_id": None,
+            "allow_sharing": allow_sharing,
+            "expires_at": expires_at,
             "comments": [],
             "reactions": {emoji: [] for emoji in ALLOWED_EMOJIS},
             "reaction_counts": {emoji: 0 for emoji in ALLOWED_EMOJIS},

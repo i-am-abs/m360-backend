@@ -8,6 +8,7 @@ from app.core.logging import get_logger
 from app.exceptions.base import ApiException
 from app.interfaces.broadcast_feed_repository import BroadcastFeedRepository
 from app.interfaces.follower_repository import FollowerRepository
+from app.utils.broadcast import compute_expires_at
 
 log = get_logger(__name__)
 
@@ -26,6 +27,7 @@ class BroadcastFeedService:
         self._fcm_service = fcm_service
 
     def post_message(self, masjid_id: str, sender_info: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+        expires_at = compute_expires_at(data.get("expires_in_days"))
         message = self._broadcast_repo.create_message(
             masjid_id=masjid_id,
             sender=sender_info,
@@ -36,6 +38,8 @@ class BroadcastFeedService:
             mux_asset_id=data.get("mux_asset_id"),
             mux_upload_id=data.get("mux_upload_id"),
             campaign_id=data.get("campaign_id"),
+            allow_sharing=bool(data.get("allow_sharing", True)),
+            expires_at=expires_at,
         )
         log.info(
             "Message posted: masjidId=%s sender=%s type=%s",
