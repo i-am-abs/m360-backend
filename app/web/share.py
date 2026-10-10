@@ -69,7 +69,6 @@ def share_page(
         )
         return HTMLResponse(html, status_code=500)
 
-    ctx = build_share_context(message, masjid, settings)
     state = resolve_share_state(message)
     if state in {"unavailable", "expired"}:
         template = (
@@ -80,7 +79,10 @@ def share_page(
             play_store_url=settings.play_store_url,
             app_store_url=settings.app_store_url,
         )
-        return HTMLResponse(html)
+        resp = HTMLResponse(html)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    ctx = build_share_context(message, masjid, settings)
     html = env.get_template("share.html").render(**ctx)
     resp = HTMLResponse(html)
     resp.headers["Cache-Control"] = "public, max-age=300"

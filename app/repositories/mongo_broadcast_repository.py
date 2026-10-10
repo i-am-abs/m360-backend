@@ -78,7 +78,6 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
         not_expired = {
             "$or": [
                 {"expires_at": None},
-                {"expires_at": {"$exists": False}},
                 {"expires_at": {"$gt": now_iso}},
             ]
         }
