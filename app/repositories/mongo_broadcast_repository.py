@@ -74,14 +74,20 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
             limit: int,
             user_id: Optional[str] = None,
     ) -> dict:
-        query: Dict[str, Any] = {"masjid_id": masjid_id}
+        now_iso = self._now_iso()
+        not_expired = {
+            "$or": [
+                {"expires_at": None},
+                {"expires_at": {"$exists": False}},
+                {"expires_at": {"$gt": now_iso}},
+            ]
+        }
+        conditions: List[Dict[str, Any]] = [{"masjid_id": masjid_id}, not_expired]
         if cursor:
-            query["created_at"] = {"$lt": cursor.isoformat()}
+            conditions.append({"created_at": {"$lt": cursor.isoformat()}})
         if since:
-            query.setdefault("$or", [])
-            query["$or"] = [{"updated_at": {"$gt": since.isoformat()}}]
-            if cursor:
-                query["created_at"] = {"$lt": cursor.isoformat()}
+            conditions.append({"updated_at": {"$gt": since.isoformat()}})
+        query: Dict[str, Any] = {"$and": conditions}
 
         docs = (
             list(self._messages.find(query).sort("created_at", -1).limit(limit))
