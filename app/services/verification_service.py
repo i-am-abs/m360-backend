@@ -82,7 +82,6 @@ class VerificationService:
             status: str,
             current_user: Dict[str, Any],
     ) -> VerificationRequestResponse:
-        from app.services.rbac_service import RbacService
 
         rbac = getattr(self, "_rbac", None)
         if rbac is not None:

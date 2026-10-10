@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     msg91_async_req_id_wait_seconds: float = 3.0
     msg91_timeout_seconds: float = Field(default=5.0, gt=0)
 
+    truecaller_client_id: Optional[str] = None
+    truecaller_oauth_base_url: str = "https://oauth-account-noneu.truecaller.com"
+    truecaller_timeout_seconds: float = Field(default=10.0, gt=0)
+
     auth_session_ttl_seconds: int = Field(
         default=0,
         description="Phone login bearer TTL in seconds. 0 = never expires.",
@@ -199,6 +203,10 @@ class Settings(BaseSettings):
         return bool(self.quran_client_id and self.quran_client_secret)
 
     @property
+    def truecaller_configured(self) -> bool:
+        return bool(self.truecaller_client_id and self.truecaller_client_id.strip())
+
+    @property
     def masjid_module_enabled(self) -> bool:
         return bool(self.google_places_api_key)
 
@@ -263,7 +271,7 @@ class Settings(BaseSettings):
             f"{self.apple_team_id}.{self.apple_bundle_id}" if self.apple_team_id else ""
         )
 
-    @field_validator("quran_base_url", "quran_oauth_url", mode="before")
+    @field_validator("quran_base_url", "quran_oauth_url", "truecaller_oauth_base_url", mode="before")
     @classmethod
     def _strip_trailing_slash(cls, v: str) -> str:
         return v.strip().rstrip("/") if isinstance(v, str) else v

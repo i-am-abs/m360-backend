@@ -164,6 +164,9 @@ MSG91_AUTH_KEY=
 MSG91_WIDGET_ID=
 MSG91_COUNTRY_CODE=91
 
+# Truecaller login (optional)
+TRUECALLER_CLIENT_ID=
+
 # Quran Foundation
 QURAN_CLIENT_ID=
 QURAN_CLIENT_SECRET=
@@ -257,6 +260,7 @@ intent-filter / associated-domain.
 | Area | Variables |
 |------|-----------|
 | MSG91 | `MSG91_AUTH_KEY`, `MSG91_WIDGET_ID`, `MSG91_COUNTRY_CODE` |
+| Truecaller | `TRUECALLER_CLIENT_ID`, `TRUECALLER_OAUTH_BASE_URL` (default `https://oauth-account-noneu.truecaller.com`), `TRUECALLER_TIMEOUT_SECONDS` |
 | Quran | `QURAN_CLIENT_ID`, `QURAN_CLIENT_SECRET`, `QURAN_BASE_URL`, `QURAN_OAUTH_URL` |
 | Places | `GOOGLE_PLACES_API_KEY`, `MASJID_SEARCH_RADIUS_METERS` |
 | FCM | `FCM_ENABLED`, `FIREBASE_CREDENTIALS_FILE` |
@@ -318,6 +322,19 @@ The API uses **several auth mechanisms** — do not mix them up.
 3. Response includes a **bearer session token**
 4. Client sends `Authorization: Bearer <token>`
 
+Alternative: **Truecaller** — the app runs the Truecaller OAuth SDK (PKCE) and sends
+`{authorization_code, code_verifier, oauth_state, fcm_token?}` to `POST /api/v1/auth/truecaller`.
+The backend exchanges the code with Truecaller (no retries), reads the verified `sub` + phone,
+signs the user up if new (same user store as OTP), refuses blocked users, and returns
+`{"status":"success","data":{"user":{user_id, phone_number:"+91..."},"auth":{access_token}}}`.
+Every failure is HTTP 200 with `{"status":"error","error":{code,message}}` — codes include
+`TRUECALLER_EXCHANGE_FAILED`, `TRUECALLER_PROFILE_FAILED`, `TRUECALLER_STATE_MISMATCH`,
+`TRUECALLER_UNAVAILABLE`, `TRUECALLER_ACCOUNT_CONFLICT`, `TRUECALLER_NOT_CONFIGURED`,
+`INVALID_PHONE`, `VALIDATION_ERROR`, `USER_CREATION_FAILED`, `USER_NOT_ALLOWED`,
+`TOKEN_GENERATION_FAILED`, `INTERNAL_ERROR`. `oauth_state` must be a UUID and is single-use
+(15 min, Redis when available). Truecaller identities live in the `truecaller_identities`
+collection (unique index on `sub`, created at startup).
+
 Optional: MSG91 webhook `POST /api/v1/webhooks/msg91/otp-events` for async request IDs.  
 Refresh: `POST /api/v1/auth/refresh`.
 
@@ -370,6 +387,7 @@ All mobile/API routes are under **`/api/v1`**. Interactive docs: `/docs`.
 | POST | `/auth/token`, `/auth/token/status` |
 | POST | `/auth/phone/request-otp`, `/auth/phone/retry-otp`, `/auth/phone/verify-otp` |
 | POST | `/auth/login`, `/auth/refresh` |
+| POST | `/auth/truecaller` |
 
 ### Feature flags
 

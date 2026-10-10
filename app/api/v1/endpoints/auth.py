@@ -4,16 +4,31 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
 
 from app.api.deps import get_bearer_credentials, get_phone_auth_service, get_quran_oauth_service
 from app.core.enums.api_endpoints import ApiEndpoint
-from app.schemas.auth import OtpRetryRequest, OtpVerifyRequest, PhoneLoginRequest, TokenRequest
+from app.core.enums.error_code import ErrorCode
+from app.core.logging import get_logger
+from app.schemas.auth import (
+    OtpRetryRequest,
+    OtpVerifyRequest,
+    PhoneLoginRequest,
+    TokenRequest,
+    TruecallerLoginRequest,
+)
 from app.services.phone_auth_service import PhoneAuthService
 from app.services.quran_oauth_service import QuranOAuthService
-from app.utils.response import success_response
+from app.services.truecaller_auth_service import (
+    ERROR_MESSAGES,
+    TruecallerAuthService,
+    TruecallerLoginError,
+)
+from app.utils.response import error_envelope, no_store, success_response
 
 router = APIRouter(tags=["Authentication"])
+_log = get_logger(__name__)
 
 
 @router.post(ApiEndpoint.AUTH_TOKEN.value, summary="Generate OAuth2 Access Token")
@@ -71,6 +86,51 @@ def verify_phone_otp(
         if fcm:
             background.add_task(fcm.store_token, data["user"]["user_id"], request.fcm_token)
     response = success_response(data, message="OTP verified")
+    response.background = background
+    return response
+
+
+def _truecaller_error(code: ErrorCode) -> JSONResponse:
+    return no_store(error_envelope(code.value, ERROR_MESSAGES[code]))
+
+
+@router.post(
+    ApiEndpoint.AUTH_TRUECALLER.value,
+    summary="Login / sign up with Truecaller",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": TruecallerLoginRequest.model_json_schema()}},
+        },
+    },
+)
+async def truecaller_login(request: Request, background: BackgroundTasks) -> JSONResponse:
+    # Parsed by hand so that every failure uses the HTTP 200 envelope and the global
+    # validation handler never logs the authorization code or PKCE verifier.
+    try:
+        body = TruecallerLoginRequest.model_validate(await request.json())
+    except ValueError:
+        return _truecaller_error(ErrorCode.VALIDATION_ERROR)
+
+    svc: Optional[TruecallerAuthService] = getattr(request.app.state, "truecaller_auth_service", None)
+    if svc is None:
+        return _truecaller_error(ErrorCode.TRUECALLER_NOT_CONFIGURED)
+
+    try:
+        data = await run_in_threadpool(
+            svc.login, body.authorization_code, body.code_verifier, body.oauth_state,
+        )
+    except TruecallerLoginError as exc:
+        _log.info("truecaller_login_failed code=%s", exc.code.value)
+        return _truecaller_error(exc.code)
+    except Exception:
+        _log.exception("truecaller_login_unexpected_error")
+        return _truecaller_error(ErrorCode.INTERNAL_ERROR)
+
+    fcm = getattr(request.app.state, "fcm_service", None)
+    if fcm and body.fcm_token:
+        background.add_task(fcm.store_token, data["user"]["user_id"], body.fcm_token)
+    response = no_store(JSONResponse(content={"status": "success", "data": data}))
     response.background = background
     return response
 

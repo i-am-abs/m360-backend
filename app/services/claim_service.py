@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
@@ -14,10 +13,10 @@ log = get_logger(__name__)
 
 class ClaimService:
     def __init__(
-        self,
-        claim_repo: ClaimRepository,
-        masjid_repo: MasjidEntityRepository,
-        fcm_service=None,
+            self,
+            claim_repo: ClaimRepository,
+            masjid_repo: MasjidEntityRepository,
+            fcm_service=None,
     ) -> None:
         self._claim_repo = claim_repo
         self._masjid_repo = masjid_repo
