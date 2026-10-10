@@ -14,7 +14,9 @@ from app.gateways.oauth_token_provider import OAuthTokenProvider
 from app.gateways.redis_caching_http_client import RedisCachingHttpClient
 from app.gateways.truecaller_gateway import HttpTruecallerGateway
 from app.integrations.msg91_pending_req import Msg91PendingReqIdStore
+from app.integrations.truecaller_state_store import TruecallerStateStore
 from app.interfaces.http_client import HttpClient
+from app.interfaces.truecaller_identity_repository import TruecallerIdentityRepository
 from app.interfaces.masjid_service import MasjidSearchService
 from app.interfaces.token_provider import TokenProvider
 from app.interfaces.user_repository import UserRepository
@@ -23,6 +25,10 @@ from app.repositories.local_cache_user_store import LocalCacheUserStore
 from app.repositories.mongo_masjid_store import MongoMasjidStore, NoOpMasjidStore
 from app.repositories.mongo_user_store import MongoUserStore
 from app.repositories.redis_user_store import RedisUserStore
+from app.repositories.truecaller_identity_store import (
+    InMemoryTruecallerIdentityStore,
+    MongoTruecallerIdentityStore,
+)
 from app.integrations.otp_verified_cache import VerifiedOtpCache
 from app.repositories.cached_feature_flag_store import CachedFeatureFlagStore
 from app.repositories.mongo_feature_flag_store import MongoFeatureFlagStore, NoOpFeatureFlagStore
@@ -237,10 +243,19 @@ def _create_phone_auth_service(
 def _create_truecaller_auth_service(
         settings: Settings,
         phone_auth: PhoneAuthService,
+        mongo_client: Optional[MongoClient],
+        redis_client: Optional[Redis],
 ) -> Optional[TruecallerAuthService]:
     if not settings.truecaller_configured:
         _log.warning("Truecaller login disabled — set TRUECALLER_CLIENT_ID.")
         return None
+    if settings.mongodb_configured and mongo_client is not None:
+        identities: TruecallerIdentityRepository = MongoTruecallerIdentityStore(
+            mongo_client.get_database(settings.mongodb_database),
+        )
+    else:
+        _log.warning("Truecaller identities kept in process memory — enable MongoDB to persist them.")
+        identities = InMemoryTruecallerIdentityStore()
     _log.info(
         "Truecaller login enabled client_id=%s base_url=%s",
         _mask_secret(settings.truecaller_client_id or ""),
@@ -248,6 +263,11 @@ def _create_truecaller_auth_service(
     )
     return TruecallerAuthService(
         gateway=HttpTruecallerGateway(settings),
+        identities=identities,
+        state_store=TruecallerStateStore(
+            redis_client=redis_client,
+            key_prefix=settings.redis_key_prefix,
+        ),
         phone_validator=IndiaPhoneValidator(settings.msg91_country_code),
         phone_auth=phone_auth,
     )
@@ -423,7 +443,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         redis_client=app.state.redis,
     )
     app.state.truecaller_auth_service = _create_truecaller_auth_service(
-        settings, app.state.phone_auth_service,
+        settings, app.state.phone_auth_service, app.state.mongo_client, app.state.redis,
     )
     if (
             settings.uvicorn_workers > 1

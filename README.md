@@ -323,9 +323,17 @@ The API uses **several auth mechanisms** — do not mix them up.
 4. Client sends `Authorization: Bearer <token>`
 
 Alternative: **Truecaller** — the app runs the Truecaller OAuth SDK (PKCE) and sends
-`{authorization_code, code_verifier, fcm_token?}` to `POST /api/v1/auth/truecaller`. The backend
-exchanges the code with Truecaller, reads the verified phone number, signs the user up if new,
-and returns the same `{user, auth}` payload as verify-otp (plus `profile` with Truecaller name/email/picture).
+`{authorization_code, code_verifier, oauth_state, fcm_token?}` to `POST /api/v1/auth/truecaller`.
+The backend exchanges the code with Truecaller (no retries), reads the verified `sub` + phone,
+signs the user up if new (same user store as OTP), refuses blocked users, and returns
+`{"status":"success","data":{"user":{user_id, phone_number:"+91..."},"auth":{access_token}}}`.
+Every failure is HTTP 200 with `{"status":"error","error":{code,message}}` — codes include
+`TRUECALLER_EXCHANGE_FAILED`, `TRUECALLER_PROFILE_FAILED`, `TRUECALLER_STATE_MISMATCH`,
+`TRUECALLER_UNAVAILABLE`, `TRUECALLER_ACCOUNT_CONFLICT`, `TRUECALLER_NOT_CONFIGURED`,
+`INVALID_PHONE`, `VALIDATION_ERROR`, `USER_CREATION_FAILED`, `USER_NOT_ALLOWED`,
+`TOKEN_GENERATION_FAILED`, `INTERNAL_ERROR`. `oauth_state` must be a UUID and is single-use
+(15 min, Redis when available). Truecaller identities live in the `truecaller_identities`
+collection (unique index on `sub`, created at startup).
 
 Optional: MSG91 webhook `POST /api/v1/webhooks/msg91/otp-events` for async request IDs.  
 Refresh: `POST /api/v1/auth/refresh`.

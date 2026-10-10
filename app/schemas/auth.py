@@ -38,4 +38,5 @@ class OtpVerifyRequest(BaseModel):
 class TruecallerLoginRequest(BaseModel):
     authorization_code: str = Field(min_length=1)
     code_verifier: str = Field(min_length=1)
+    oauth_state: str = Field(min_length=1)
     fcm_token: str = ""

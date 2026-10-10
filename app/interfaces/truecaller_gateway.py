@@ -1,7 +1,20 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, Dict
+
+
+class TruecallerFailure(str, Enum):
+    EXCHANGE = "exchange"
+    PROFILE = "profile"
+    UNAVAILABLE = "unavailable"
+
+
+class TruecallerGatewayError(Exception):
+    def __init__(self, failure: TruecallerFailure) -> None:
+        super().__init__(failure.value)
+        self.failure = failure
 
 
 class TruecallerGateway(ABC):
