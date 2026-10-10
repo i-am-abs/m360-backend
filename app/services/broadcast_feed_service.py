@@ -14,11 +14,11 @@ log = get_logger(__name__)
 
 class BroadcastFeedService:
     def __init__(
-        self,
-        broadcast_repo: BroadcastFeedRepository,
-        follower_repo: FollowerRepository,
-        masjid_repo=None,
-        fcm_service=None,
+            self,
+            broadcast_repo: BroadcastFeedRepository,
+            follower_repo: FollowerRepository,
+            masjid_repo=None,
+            fcm_service=None,
     ) -> None:
         self._broadcast_repo = broadcast_repo
         self._follower_repo = follower_repo
@@ -63,12 +63,12 @@ class BroadcastFeedService:
         return msg
 
     def get_feed(
-        self,
-        masjid_id: str,
-        cursor: Optional[datetime],
-        since: Optional[datetime],
-        limit: int,
-        user_id: Optional[str] = None,
+            self,
+            masjid_id: str,
+            cursor: Optional[datetime],
+            since: Optional[datetime],
+            limit: int,
+            user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         result = self._broadcast_repo.get_messages(masjid_id, cursor, since, limit, user_id=user_id)
         log.info("get_feed: masjid=%s messages=%d", masjid_id, len(result.get("messages", [])))
@@ -88,7 +88,8 @@ class BroadcastFeedService:
             from app.core.config import get_settings
             settings = get_settings()
             client = MongoClient(settings.mongodb_uri)
-            db_name = getattr(settings, "mongodb_database", None) or getattr(settings, "mongodb_db_name", None) or "m360"
+            db_name = getattr(settings, "mongodb_database", None) or getattr(settings, "mongodb_db_name",
+                                                                             None) or "m360"
             db = client[db_name]
             from bson import ObjectId
             obj_ids = []

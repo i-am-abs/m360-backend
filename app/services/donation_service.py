@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.core.logging import get_logger
 from app.exceptions.base import ApiException
@@ -13,9 +13,9 @@ log = get_logger(__name__)
 
 class DonationService:
     def __init__(
-        self,
-        donation_repo: DonationRepository,
-        broadcast_service: BroadcastFeedService,
+            self,
+            donation_repo: DonationRepository,
+            broadcast_service: BroadcastFeedService,
     ) -> None:
         self._donation_repo = donation_repo
         self._broadcast_service = broadcast_service
@@ -65,12 +65,12 @@ class DonationService:
         return self._donation_repo.cancel_campaign(campaign_id)
 
     def initiate_donation(
-        self,
-        campaign_id: str,
-        user_id: str,
-        amount: int,
-        payment_method: str,
-        is_anonymous: bool = False,
+            self,
+            campaign_id: str,
+            user_id: str,
+            amount: int,
+            payment_method: str,
+            is_anonymous: bool = False,
     ) -> Dict[str, Any]:
         campaign = self._donation_repo.get_campaign(campaign_id)
         if not campaign:

@@ -234,4 +234,3 @@ def require_platform_admin(
             code=ErrorCode.FORBIDDEN,
         )
     return current_user
-

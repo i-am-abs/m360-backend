@@ -53,7 +53,7 @@ def _sized_og_image(thumbnail_url: Optional[str], settings: Settings) -> str:
 
 
 def build_share_context(
-    message: dict, masjid: dict, settings: Settings
+        message: dict, masjid: dict, settings: Settings
 ) -> dict:
     message_id = str(message.get("id") or message.get("_id") or "")
     name = (masjid.get("name") or "").strip() or "This masjid"
@@ -64,8 +64,8 @@ def build_share_context(
 
     text = (message.get("text") or "").strip()
     og_description = (
-        (text[: _OG_DESC_MAX - 1] + "…") if len(text) > _OG_DESC_MAX else text
-    ) or f"New announcement from {name}"
+                         (text[: _OG_DESC_MAX - 1] + "…") if len(text) > _OG_DESC_MAX else text
+                     ) or f"New announcement from {name}"
 
     msg_type = message.get("message_type") or "text"
     video_url = message.get("video_url") or None
@@ -78,7 +78,7 @@ def build_share_context(
         "masjid_location": location,
         "masjid_verified": verified,
         "masjid_avatar_url": masjid.get("photo_url")
-        or f"{settings.share_web_base_url}/share-static/masjid-default.png",
+                             or f"{settings.share_web_base_url}/share-static/masjid-default.png",
         "is_video": is_video,
         "video_hls_url": video_url,
         "poster_url": thumbnail_url,

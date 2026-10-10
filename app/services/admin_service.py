@@ -3,6 +3,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
+from app.api.v1.model.admin_status_model import AdminResponse, AdminStatusUpdateRequest
 from app.core.enums.admin_status import AdminRegistrationStatus
 from app.core.enums.committee_designation import CommitteeDesignation
 from app.core.enums.error_code import ErrorCode
@@ -12,7 +13,6 @@ from app.interfaces.admin_repository import AdminRepository
 from app.interfaces.audit_log_repository import AuditLogRepository
 from app.interfaces.masjid_listing_repository import MasjidListingRepository
 from app.interfaces.masjid_repository import MasjidRepository
-from app.api.v1.model.admin_status_model import AdminResponse, AdminStatusUpdateRequest
 from app.schemas.admin import AdminRegisterRequest
 from app.services.rbac_service import RbacService
 from app.utils.admin_link import committee_member_from_admin, phones_match
@@ -306,8 +306,8 @@ class AdminService:
                 and stored.get("masjid_place_id")
                 and self._listing_store is not None
                 and not self._admin_store.list_approved_for_place(
-                    str(stored["masjid_place_id"]),
-                )
+            str(stored["masjid_place_id"]),
+        )
         ):
             self._listing_store.upsert_listing(
                 str(stored["masjid_place_id"]),

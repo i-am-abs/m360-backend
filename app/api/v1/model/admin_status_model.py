@@ -1,6 +1,9 @@
 from typing import Optional
-from app.core.enums.admin_status import AdminRegistrationStatus
+
 from pydantic import BaseModel, Field
+
+from app.core.enums.admin_status import AdminRegistrationStatus
+
 
 class AdminResponse(BaseModel):
     id: str

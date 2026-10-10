@@ -113,7 +113,7 @@ class MasjidListingService:
         rejected = [
             doc for doc in linked_docs
             if doc.get("status") == AdminRegistrationStatus.REJECTED.value
-            and str(doc.get("masjid_place_id")) not in live_places
+               and str(doc.get("masjid_place_id")) not in live_places
         ]
         if not rejected:
             return None
