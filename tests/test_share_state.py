@@ -47,3 +47,16 @@ def test_resolve_unavailable_beats_expired():
 def test_resolve_expired_when_past():
     msg = {"expires_at": (NOW - timedelta(days=1)).isoformat()}
     assert resolve_share_state(msg, now=NOW) == "expired"
+
+
+def test_templates_render_with_context():
+    from app.web.templating import env
+
+    for name in ("share_unavailable.html", "share_expired.html"):
+        html = env.get_template(name).render(
+            marketing_site_url="https://m360.app",
+            play_store_url="https://play.google.com/x",
+            app_store_url="https://apps.apple.com/x",
+        )
+        assert "Get it on Google Play" in html
+        assert "Get it on the App Store" in html
