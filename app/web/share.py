@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from app.api.deps import get_broadcast_feed_service, get_masjid_entity_service
 from app.core.config import Settings, get_settings
 from app.exceptions.base import ApiException
+from app.utils.broadcast import resolve_share_state
 from app.web.share_context import build_share_context
 from app.web.templating import env
 
@@ -68,6 +69,19 @@ def share_page(
         )
         return HTMLResponse(html, status_code=500)
 
+    state = resolve_share_state(message)
+    if state in {"unavailable", "expired"}:
+        template = (
+            "share_unavailable.html" if state == "unavailable" else "share_expired.html"
+        )
+        html = env.get_template(template).render(
+            marketing_site_url=settings.marketing_site_url,
+            play_store_url=settings.play_store_url,
+            app_store_url=settings.app_store_url,
+        )
+        resp = HTMLResponse(html)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
     ctx = build_share_context(message, masjid, settings)
     html = env.get_template("share.html").render(**ctx)
     resp = HTMLResponse(html)
