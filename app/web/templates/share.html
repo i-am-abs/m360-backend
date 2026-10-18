@@ -32,105 +32,112 @@
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:-apple-system,"Plus Jakarta Sans",system-ui,Segoe UI,Roboto,sans-serif}
   /* A definite height (not min-height) is what lets the media box shrink so the
-     card and buttons stay on screen. dvh tracks the mobile URL bar; the vh before
-     it is the fallback for browsers without dvh. The <meta viewport-fit=cover>
-     lets the page extend into the notch and home-indicator areas, so those insets
-     are reserved here; box-sizing is border-box, so the media box absorbs them. */
-  .wrap{max-width:480px;margin:0 auto;height:100vh;height:100dvh;background:#fff;
-    display:flex;flex-direction:column;overflow:hidden;
-    padding-top:env(safe-area-inset-top,0px);
-    padding-bottom:env(safe-area-inset-bottom,0px)}
-  .topbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
-    padding:12px 16px;border-bottom:1px solid var(--line)}
-  .brand{display:flex;align-items:center;gap:10px}
-  .brand img{width:36px;height:36px;border-radius:9px}
-  .brand small{display:block;color:var(--muted);font-size:11px;line-height:1.1}
-  .brand strong{font-size:15px}
-  .close{border:0;background:transparent;font-size:22px;color:var(--ink);
-    cursor:pointer;line-height:1;text-decoration:none}
+     footer and buttons stay on screen. dvh tracks the mobile URL bar; the vh
+     before it is the fallback for browsers without dvh. */
+  .page{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;
+    flex-direction:column;background:#fff;overflow:hidden;
+    padding-top:env(safe-area-inset-top,0px)}
+  .mhead{flex:0 0 auto;display:flex;align-items:center;gap:12px;
+    padding:12px 16px;border-bottom:1px solid var(--line);background:#fff;
+    position:relative;z-index:3}
+  .mavatar{width:44px;height:44px;border-radius:50%;object-fit:cover;
+    flex:0 0 44px;background:var(--bg)}
+  .mmeta{min-width:0;flex:1}
+  .mname{display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px;
+    line-height:1.25;min-width:0;overflow:hidden}
+  .mloc{color:var(--muted);font-size:12px;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vbadge{width:14px;height:14px;fill:#2D9CDB;flex:0 0 14px;
+    display:inline-block;vertical-align:middle}
+  .wa{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:0;
+    background:#25D366;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;padding:0}
   /* min-height:0 overrides the flex item's automatic content-based minimum,
-     so the media box gives space back to the card instead of forcing a scroll. */
-  .media{position:relative;flex:1 1 auto;min-height:0;background:#000;
-    display:flex;align-items:center;justify-content:center;overflow:hidden}
+     so the media box gives space back to the footer instead of forcing a scroll. */
+  .media{flex:1;min-height:0;position:relative;background:#000;overflow:hidden;
+    display:flex;align-items:center;justify-content:center}
   /* Taken out of flow: an in-flow img with height:100% against an indefinite
-     parent falls back to `auto`, and its intrinsic size (693px for a 720x1280
-     thumbnail at 390px wide) then dictates the layout. object-fit:contain keeps
-     the whole frame visible now that the box is no longer the full screen. */
-  .media video,.media img.poster{position:absolute;inset:0;width:100%;height:100%;
-    object-fit:contain}
+     parent falls back to `auto`, and its intrinsic size then dictates the
+     layout. Full-bleed cover fills the media box. */
+  .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .poster.placeholder{background:linear-gradient(160deg,#0c1813,#132a1f)}
+  .media video{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:contain;background:#000}
   .playbtn{position:absolute;z-index:2;width:72px;height:72px;border-radius:50%;
     background:rgba(255,255,255,.35);backdrop-filter:blur(6px);border:0;cursor:pointer;
     display:flex;align-items:center;justify-content:center}
   .playbtn::after{content:"";border-style:solid;border-width:14px 0 14px 22px;
     border-color:transparent transparent transparent #091914;margin-left:5px}
-  .card{flex:0 0 auto;padding:16px}
-  .row{display:flex;align-items:center;gap:12px}
-  .avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:0 0 48px}
-  .name{font-weight:700;font-size:18px;display:flex;align-items:center;gap:6px}
-  .check{width:16px;height:16px;fill:#2D9CDB;flex:0 0 16px}
-  .loc{color:var(--muted);font-size:13px}
-  .time{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
-  /* The wrap is a fixed-height, no-scroll box, so a long announcement is
-     clamped rather than allowed to push the buttons off screen. */
-  .text{margin:14px 2px 0;font-size:14px;line-height:1.5;
-    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .btns{flex:0 0 auto;display:flex;gap:10px;padding:16px}
-  .btns button,.btns a{flex:1;padding:13px 0;border-radius:12px;font-size:14px;font-weight:600;
-    cursor:pointer;font-family:inherit;text-align:center;text-decoration:none}
-  .store-row{padding-top:0}
+  .foot{flex:0 0 auto;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    border-radius:18px 18px 0 0;margin-top:-18px;background:#fff;
+    position:relative;z-index:2}
+  .srow{display:flex;align-items:center;gap:12px}
+  .savatar{width:44px;height:44px;border-radius:50%;object-fit:cover;
+    flex:0 0 44px;background:var(--bg)}
+  .smeta{min-width:0;flex:1}
+  .srole{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;
+    font-weight:600}
+  .sname{font-weight:700;font-size:15px;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stime{color:var(--muted);font-size:12px;white-space:nowrap;align-self:flex-start;
+    margin-top:2px}
+  .ctas{display:flex;gap:10px;margin-top:12px}
+  .ctas button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:13px 0;border-radius:12px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit}
   .primary{border:0;background:linear-gradient(#61D47D,#ADFF8D);color:#091914}
-  .ghost{border:1px solid var(--green);background:#fff;color:#0B7C43}
+  .ghost{border:1px solid #45D07C;background:#fff;color:#0B7C43}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
     background:#091914;color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;
-    opacity:0;transition:opacity .2s;pointer-events:none}
+    opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
   .toast.show{opacity:1}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar">
-    <div class="brand">
-      <img src="/share-static/logo.png" alt="Muslim 360">
-      <span><small>Powered by</small><strong>Muslim 360</strong></span>
-    </div>
-    <a class="close" href="{{ marketing_site_url }}" aria-label="Close">&times;</a>
-  </div>
-
-  {% if is_video or poster_url %}
-  <div class="media" id="media">
-    {% if is_video %}
-      <img class="poster" src="{{ poster_url or og_image_url }}" alt="">
-      <button class="playbtn" id="play" aria-label="Play"></button>
-      <video id="v" playsinline preload="none" poster="{{ poster_url or '' }}" hidden></video>
-    {% else %}
-      <img class="poster" src="{{ poster_url }}" alt="">
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <div class="card">
-    <div class="row">
-      <img class="avatar" src="{{ masjid_avatar_url }}" alt="">
-      <div>
-        <div class="name">{{ masjid_name }}
-          {% if masjid_verified %}
-          <svg class="check" viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.1-.5.9 3 2.9 1.3-1.3 2.9 1.3 2.9-2.9 1.3-.9 3-3.1-.5L12 22l-2.4-2.1-3.1.5-.9-3-2.9-1.3 1.3-2.9L1.7 8l2.9-1.3.9-3 3.1.5z"/><path d="M10.6 14.6l-2.2-2.2-1.4 1.4 3.6 3.6 6-6-1.4-1.4z" fill="#fff"/></svg>
-          {% endif %}
-        </div>
-        <div class="loc">{{ masjid_location }}</div>
+<div class="page">
+  <header class="mhead">
+    <img class="mavatar" src="{{ masjid_avatar_url }}" alt="">
+    <div class="mmeta">
+      <div class="mname">{{ masjid_name }}
+        {% if masjid_verified %}<svg class="vbadge" viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.1-.5.9 3 2.9 1.3-1.3 2.9 1.3 2.9-2.9 1.3-.9 3-3.1-.5L12 22l-2.4-2.1-3.1.5-.9-3-2.9-1.3 1.3-2.9L1.7 8l2.9-1.3.9-3 3.1.5z"/><path d="M10.6 14.6l-2.2-2.2-1.4 1.4 3.6 3.6 6-6-1.4-1.4z" fill="#fff"/></svg>{% endif %}
       </div>
-      <div class="time">{{ relative_time }}</div>
+      <div class="mloc">{{ masjid_location }}</div>
     </div>
-    {% if og_description %}<p class="text">{{ og_description }}</p>{% endif %}
-  </div>
+    <button class="wa" id="waBtn" aria-label="Share on WhatsApp">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M20.5 3.5A11.8 11.8 0 0 0 12 0C5.4 0 .1 5.3.1 11.9c0 2.1.6 4.2 1.6 6L0 24l6.3-1.6c1.7.9 3.7 1.4 5.7 1.4 6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.4-8.4zM12 21.4c-1.8 0-3.5-.5-5-1.4l-.4-.2-3.7.9.9-3.6-.2-.4a9.5 9.5 0 0 1-1.5-5.1c0-5.3 4.3-9.6 9.6-9.6 2.6 0 5 1 6.8 2.8a9.5 9.5 0 0 1 2.8 6.8c0 5.3-4.3 9.6-9.3 9.6zm5.3-7.2c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.7.9-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.4a8.3 8.3 0 0 1-1.5-1.9c-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.2-.3-.3-.6-.4z"/></svg>
+    </button>
+  </header>
 
-  <div class="btns">
-    <button class="primary" onclick="openApp()">Follow Masjid</button>
-    <button class="ghost" onclick="sharePage()">Share</button>
-  </div>
-  <div class="btns store-row" id="storeRow" hidden>
-    <a class="ghost" href="{{ app_store_url }}" rel="noopener" target="_blank">Get it on the App Store</a>
-  </div>
+  <main class="media" id="media">
+    {% if poster_url %}<img class="poster" src="{{ poster_url }}" alt="">{% else %}<div class="poster placeholder"></div>{% endif %}
+    {% if is_video %}
+      <button class="playbtn" id="play" aria-label="Play"></button>
+      <video id="v" playsinline preload="none" {% if poster_url %}poster="{{ poster_url }}"{% endif %} hidden></video>
+    {% endif %}
+  </main>
+
+  <footer class="foot">
+    <div class="srow">
+      <img class="savatar" src="{{ sender_avatar_url }}" alt="">
+      <div class="smeta">
+        <div class="srole">{{ sender_role }}
+          {% if masjid_verified %}<svg class="vbadge" viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.1-.5.9 3 2.9 1.3-1.3 2.9 1.3 2.9-2.9 1.3-.9 3-3.1-.5L12 22l-2.4-2.1-3.1.5-.9-3-2.9-1.3 1.3-2.9L1.7 8l2.9-1.3.9-3 3.1.5z"/><path d="M10.6 14.6l-2.2-2.2-1.4 1.4 3.6 3.6 6-6-1.4-1.4z" fill="#fff"/></svg>{% endif %}
+        </div>
+        <div class="sname">{{ sender_name }}</div>
+      </div>
+      <div class="stime">{{ relative_time }}</div>
+    </div>
+    <div class="ctas">
+      <button class="primary" id="followBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#091914" stroke-width="2"><path d="M15 19a6 6 0 0 0-12 0"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        Follow Masjid
+      </button>
+      <button class="ghost" id="shareBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#0B7C43" stroke-width="2"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/></svg>
+        Share
+      </button>
+    </div>
+  </footer>
 </div>
 <div class="toast" id="toast">Link copied</div>
 
@@ -141,16 +148,12 @@
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
+  var PAGE_URL = {{ canonical_url | tojson }};
+  var WA_TEXT = {{ (og_description ~ " " ~ canonical_url) | tojson }};
 
   var UA = navigator.userAgent || "";
   var IS_ANDROID = /android/i.test(UA);
-  var IS_IOS = /iphone|ipad|ipod/i.test(UA) ||
-    (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
-
-  if (IS_IOS) {
-    var storeRow = document.getElementById("storeRow");
-    if (storeRow) storeRow.hidden = false;
-  }
+  var IS_IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 
   function openApp() {
     if (IS_ANDROID) {
@@ -158,42 +161,39 @@
       setTimeout(function () {
         if (Date.now() - start < 2000 && !document.hidden) window.location = PLAY_URL;
       }, 1100);
-      window.location =
-        "intent://" + SHARE_HOST + DEEP_PATH +
+      window.location = "intent://" + SHARE_HOST + DEEP_PATH +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
         ";S.browser_fallback_url=" + encodeURIComponent(PLAY_URL) + ";end";
       return;
     }
-
     if (IS_IOS) {
-      var fallback = setTimeout(function () {
-        window.location = APPSTORE_URL;
-      }, 1200);
+      var fallback = setTimeout(function () { window.location = APPSTORE_URL; }, 1200);
       var cancel = function () { clearTimeout(fallback); };
       window.addEventListener("pagehide", cancel, { once: true });
-      document.addEventListener("visibilitychange", function () {
-        if (document.hidden) cancel();
-      });
+      document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
       window.location = "https://" + SHARE_HOST + DEEP_PATH;
       return;
     }
-
-    // Desktop / other: no app to open — go straight to the store.
     window.location = PLAY_URL;
   }
 
   function sharePage() {
-    var url = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: document.title, url: url }).catch(function () {});
+      navigator.share({ title: document.title, url: PAGE_URL }).catch(function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(function () {
+      navigator.clipboard.writeText(PAGE_URL).then(function () {
         var t = document.getElementById("toast");
         t.classList.add("show");
         setTimeout(function () { t.classList.remove("show"); }, 1600);
       });
     }
   }
+
+  document.getElementById("followBtn").addEventListener("click", openApp);
+  document.getElementById("shareBtn").addEventListener("click", sharePage);
+  document.getElementById("waBtn").addEventListener("click", function () {
+    window.open("https://wa.me/?text=" + encodeURIComponent(WA_TEXT), "_blank");
+  });
 
   // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"
   // but cannot actually play HLS, so it is useless as a support probe. Media
