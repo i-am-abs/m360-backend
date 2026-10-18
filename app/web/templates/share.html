@@ -61,6 +61,14 @@
      layout. Full-bleed cover fills the media box. */
   .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .poster.placeholder{background:linear-gradient(160deg,#0c1813,#132a1f)}
+  /* Text-only posts use the free space between header and footer rather than a
+     black media box. The text is clamped so long announcements cannot push the
+     CTAs off screen; the fixed-height page keeps the layout stable. */
+  .textwrap{flex:1;min-height:0;overflow:auto;background:#fff;
+    padding:18px 18px 30px}
+  .text{margin:0;font-size:14px;line-height:1.5;color:#091914;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden;word-break:break-word}
   .media video{position:absolute;inset:0;width:100%;height:100%;
     object-fit:contain;background:#000}
   .playbtn{position:absolute;z-index:2;width:72px;height:72px;border-radius:50%;
@@ -108,13 +116,21 @@
     </button>
   </header>
 
+  {% if is_video or poster_url %}
   <main class="media" id="media">
-    {% if poster_url %}<img class="poster" src="{{ poster_url }}" alt="">{% else %}<div class="poster placeholder"></div>{% endif %}
+    {% if poster_url or og_image_url %}<img class="poster" src="{{ poster_url or og_image_url }}" alt="">{% else %}<div class="poster placeholder"></div>{% endif %}
     {% if is_video %}
       <button class="playbtn" id="play" aria-label="Play"></button>
-      <video id="v" playsinline preload="none" {% if poster_url %}poster="{{ poster_url }}"{% endif %} hidden></video>
+      <video id="v" playsinline preload="none" {% if poster_url or og_image_url %}poster="{{ poster_url or og_image_url }}"{% endif %} hidden></video>
     {% endif %}
   </main>
+  {% endif %}
+
+  {% if not is_video %}
+  <div class="textwrap">
+    {% if og_description %}<p class="text">{{ og_description }}</p>{% endif %}
+  </div>
+  {% endif %}
 
   <footer class="foot">
     <div class="srow">
@@ -149,7 +165,7 @@
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ canonical_url | tojson }};
-  var WA_TEXT = {{ (og_description ~ " " ~ canonical_url) | tojson }};
+  var WA_TEXT = {{ ((og_description or "") ~ " " ~ canonical_url) | tojson }};
 
   var UA = navigator.userAgent || "";
   var IS_ANDROID = /android/i.test(UA);
@@ -185,14 +201,16 @@
         var t = document.getElementById("toast");
         t.classList.add("show");
         setTimeout(function () { t.classList.remove("show"); }, 1600);
-      });
+      }).catch(function () {});
+    } else {
+      window.prompt("Copy link:", PAGE_URL);
     }
   }
 
   document.getElementById("followBtn").addEventListener("click", openApp);
   document.getElementById("shareBtn").addEventListener("click", sharePage);
   document.getElementById("waBtn").addEventListener("click", function () {
-    window.open("https://wa.me/?text=" + encodeURIComponent(WA_TEXT), "_blank");
+    window.open("https://wa.me/?text=" + encodeURIComponent(WA_TEXT), "_blank", "noopener,noreferrer");
   });
 
   // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"

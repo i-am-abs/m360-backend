@@ -1,8 +1,8 @@
 from app.web.templating import env
 
 
-def _render():
-    return env.get_template("share.html").render(
+def _render(**overrides):
+    ctx = dict(
         message_id="m1",
         masjid_name="Masjid Al Noor",
         masjid_location="Thane, Maharashtra",
@@ -26,6 +26,8 @@ def _render():
         android_package="com.starkinnovations.m360",
         marketing_site_url="https://muslim360.app",
     )
+    ctx.update(overrides)
+    return env.get_template("share.html").render(**ctx)
 
 
 def test_share_template_renders_new_layout():
@@ -38,3 +40,22 @@ def test_share_template_renders_new_layout():
     assert 'id="followBtn"' in html
     assert "intent://" in html
     assert "wa.me" in html
+
+
+def test_text_only_post_shows_announcement_and_no_media():
+    html = _render(is_video=False, video_hls_url=None, poster_url=None)
+    assert '<p class="text">Salaam</p>' in html
+    assert '<main class="media"' not in html
+
+
+def test_none_description_does_not_leak_into_whatsapp_text():
+    html = _render(og_description=None)
+    wa_line = next(line for line in html.splitlines() if "var WA_TEXT" in line)
+    assert wa_line == '  var WA_TEXT = " https://m360.vyapari.link/s/m1";'
+    assert "None" not in wa_line
+
+
+def test_video_post_renders_media_and_play_control():
+    html = _render()
+    assert '<main class="media"' in html
+    assert 'id="play"' in html
