@@ -39,3 +39,24 @@ def test_sender_fallbacks_when_missing():
     assert ctx["sender_name"] == "Admin"
     assert ctx["sender_role"] == "Admin"
     assert ctx["sender_avatar_url"] == "https://img/masjid.jpg"
+
+
+def test_whitespace_sender_avatar_falls_back_to_masjid_photo():
+    msg = {
+        "id": "m3",
+        "text": "Salaam",
+        "created_at": "2026-10-13T10:00:00+00:00",
+        "sender": {"name": "Najim Ahmed", "avatar_url": "   "},
+    }
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["sender_avatar_url"] == "https://img/masjid.jpg"
+
+
+def test_masjid_without_photo_uses_default_masjid_image():
+    masjid = _masjid()
+    masjid.pop("photo_url")
+    msg = {"id": "m4", "text": "Salaam", "created_at": "2026-10-13T10:00:00+00:00"}
+    ctx = build_share_context(msg, masjid, _settings())
+    default = "https://m360.vyapari.link/share-static/masjid-default.png"
+    assert ctx["sender_avatar_url"] == default
+    assert ctx["masjid_avatar_url"] == default

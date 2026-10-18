@@ -59,3 +59,40 @@ def test_video_post_renders_media_and_play_control():
     html = _render()
     assert '<main class="media"' in html
     assert 'id="play"' in html
+
+
+def _media_block(html: str) -> str:
+    start = html.index('<main class="media"')
+    end = html.index("</main>", start) + len("</main>")
+    return html[start:end]
+
+
+def test_video_without_poster_uses_dark_placeholder_not_og_card():
+    html = _render(
+        poster_url=None,
+        og_image_url="https://m360.vyapari.link/share-static/og-default.png",
+    )
+    media = _media_block(html)
+    assert 'class="poster placeholder"' in media
+    assert "og-default.png" not in media
+    assert '<img class="poster"' not in media
+
+
+def test_non_video_with_poster_renders_image_and_caption_below():
+    html = _render(
+        is_video=False,
+        video_hls_url=None,
+        poster_url="https://img/p.jpg",
+    )
+    media = _media_block(html)
+    assert '<img class="poster" src="https://img/p.jpg"' in media
+    assert '<p class="text">Salaam</p>' in html
+    assert html.index('<main class="media"') < html.index('<div class="textwrap')
+    assert '<div class="textwrap">' in html
+    assert ".textwrap{flex:0 1 auto" in html
+    assert ".textwrap.full{flex:1" in html
+
+
+def test_text_only_post_text_fills_available_space():
+    html = _render(is_video=False, video_hls_url=None, poster_url=None)
+    assert '<div class="textwrap full">' in html

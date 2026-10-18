@@ -75,7 +75,7 @@ def build_share_context(
     sender = message.get("sender") or {}
     sender_name = (str(sender.get("name") or "").strip()) or "Admin"
     sender_role = (str(sender.get("role") or "").strip()) or "Admin"
-    sender_avatar = sender.get("avatar_url") or masjid.get("photo_url") or (
+    sender_avatar = (str(sender.get("avatar_url") or "").strip()) or masjid.get("photo_url") or (
         f"{settings.share_web_base_url}/share-static/masjid-default.png"
     )
 
