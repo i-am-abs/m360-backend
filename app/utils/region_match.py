@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import math
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+import math
 
 from app.utils.geo import haversine_meters
 

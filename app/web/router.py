@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import jwt
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.core.config import get_settings, Settings
@@ -16,8 +14,10 @@ from app.web.templating import env
 
 router = APIRouter(prefix="/admin")
 
+
 def _noop_flashed(with_categories=False):
     return []
+
 
 def _flash_from_query(request: Request):
     success = request.query_params.get("success")
@@ -28,6 +28,7 @@ def _flash_from_query(request: Request):
     if error:
         msgs.append(("error", error))
     return msgs
+
 
 templates = env
 templates.globals["get_flashed_messages"] = _noop_flashed
@@ -99,7 +100,7 @@ async def login_submit(response: Response, email: str = Form(...), password: str
         role="super_admin",
         login_at=datetime.now(tz=timezone.utc),
         expires_at=datetime.now(tz=timezone.utc)
-        + timedelta(seconds=_get_settings().admin_session_ttl_seconds),
+                   + timedelta(seconds=_get_settings().admin_session_ttl_seconds),
     )
 
     token = jwt.encode(
@@ -180,9 +181,9 @@ def dashboard(request: Request, session: AdminSession = Depends(admin_required))
 
 @router.get("/users", response_class=HTMLResponse)
 def users(
-    request: Request,
-    session: AdminSession = Depends(admin_required),
-    page: int = 1,
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        page: int = 1,
 ):
     per_page = 20
     user_store = getattr(request.app.state, "user_store", None)
@@ -208,10 +209,10 @@ def users(
 
 @router.get("/masjids", response_class=HTMLResponse)
 def masjids(
-    request: Request,
-    session: AdminSession = Depends(admin_required),
-    page: int = 1,
-    q: str = "",
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        page: int = 1,
+        q: str = "",
 ):
     svc = getattr(request.app.state, "masjid_entity_service", None)
     db = getattr(request.app.state, "mongo_client", None)
@@ -227,7 +228,8 @@ def masjids(
             docs = list(database["masjids"].find(
                 {"$or": [{"name": regex}, {"city": regex}, {"place_id": regex}]},
             ).skip((page - 1) * 20).limit(20).sort("meta.created_at", -1))
-            total = database["masjids"].count_documents({"$or": [{"name": regex}, {"city": regex}, {"place_id": regex}]})
+            total = database["masjids"].count_documents(
+                {"$or": [{"name": regex}, {"city": regex}, {"place_id": regex}]})
             masjids_list = []
             from app.repositories.mongo_masjid_repository import MongoMasjidRepository
             for d in docs:
@@ -258,15 +260,15 @@ def new_masjid_form(session: AdminSession = Depends(admin_required)):
 
 @router.post("/masjids/create")
 def create_masjid(
-    request: Request,
-    session: AdminSession = Depends(admin_required),
-    name: str = Form(...),
-    name_arabic: str = Form(""),
-    address: str = Form(""),
-    city: str = Form(""),
-    state: str = Form(""),
-    lat: str = Form(""),
-    lng: str = Form(""),
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        name: str = Form(...),
+        name_arabic: str = Form(""),
+        address: str = Form(""),
+        city: str = Form(""),
+        state: str = Form(""),
+        lat: str = Form(""),
+        lng: str = Form(""),
 ):
     db = getattr(request.app.state, "mongo_client", None)
     if not db:
@@ -311,11 +313,11 @@ def create_masjid(
 
 @router.get("/claims", response_class=HTMLResponse)
 def claims(
-    request: Request,
-    session: AdminSession = Depends(admin_required),
-    page: int = 1,
-    status: str = "all",
-    q: str = "",
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        page: int = 1,
+        status: str = "all",
+        q: str = "",
 ):
     svc = getattr(request.app.state, "claim_service", None)
     admin_store = getattr(request.app.state, "admin_store", None)
@@ -333,7 +335,8 @@ def claims(
                 ql = q.strip().lower()
                 filtered = []
                 for c in claims_data.get("claims", []):
-                    if ql in c.get("masjid_name", "").lower() or ql in c.get("user_id", "").lower() or ql in c.get("masjid_city", "").lower():
+                    if ql in c.get("masjid_name", "").lower() or ql in c.get("user_id", "").lower() or ql in c.get(
+                            "masjid_city", "").lower():
                         filtered.append(c)
                 claims_data["claims"] = filtered
             for claim in claims_data.get("claims", []):
@@ -395,9 +398,11 @@ def claims(
                 "created_at": adm.get("created_at"),
             }
             claims_data["claims"].append(claim_item)
+
         # Sort merged list by created_at desc (best effort)
         def _ts(item):
             return item.get("created_at") or ""
+
         claims_data["claims"].sort(key=_ts, reverse=True)
         claims_data["pagination"]["total"] = len(claims_data["claims"])
     flash = _flash_from_query(request)
@@ -412,9 +417,9 @@ def claims(
 
 @router.post("/claims/{claim_id}/approve")
 def approve_claim(
-    request: Request,
-    claim_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        claim_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "claim_service", None)
     admin_store = getattr(request.app.state, "admin_store", None)
@@ -444,9 +449,9 @@ def approve_claim(
 
 @router.get("/masjids/{masjid_id}", response_class=HTMLResponse)
 def masjid_detail(
-    request: Request,
-    masjid_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "masjid_entity_service", None)
     claim_svc = getattr(request.app.state, "claim_service", None)
@@ -499,19 +504,19 @@ def _admin_update_masjid(request: Request, masjid_id: str, updates: dict) -> boo
 
 @router.post("/masjids/{masjid_id}/update")
 def admin_update_masjid(
-    request: Request,
-    masjid_id: str,
-    session: AdminSession = Depends(admin_required),
-    name: str = Form(""),
-    name_arabic: str = Form(""),
-    address: str = Form(""),
-    city: str = Form(""),
-    state: str = Form(""),
-    lat: str = Form(""),
-    lng: str = Form(""),
-    phone: str = Form(""),
-    email: str = Form(""),
-    website: str = Form(""),
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        name: str = Form(""),
+        name_arabic: str = Form(""),
+        address: str = Form(""),
+        city: str = Form(""),
+        state: str = Form(""),
+        lat: str = Form(""),
+        lng: str = Form(""),
+        phone: str = Form(""),
+        email: str = Form(""),
+        website: str = Form(""),
 ):
     updates = {}
     if name:
@@ -545,23 +550,23 @@ def admin_update_masjid(
 
 @router.post("/masjids/{masjid_id}/update-facilities")
 def admin_update_facilities(
-    request: Request,
-    masjid_id: str,
-    session: AdminSession = Depends(admin_required),
-    car_parking: str = Form(""),
-    two_wheeler: str = Form(""),
-    iftar: str = Form(""),
-    wuzu: str = Form(""),
-    ac: str = Form(""),
-    air_cooler: str = Form(""),
-    male_washroom: str = Form(""),
-    drinking_water: str = Form(""),
-    wheelchair: str = Form(""),
-    mushaf: str = Form(""),
-    chairs: str = Form(""),
-    janazah: str = Form(""),
-    women_area: str = Form(""),
-    children_area: str = Form(""),
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        car_parking: str = Form(""),
+        two_wheeler: str = Form(""),
+        iftar: str = Form(""),
+        wuzu: str = Form(""),
+        ac: str = Form(""),
+        air_cooler: str = Form(""),
+        male_washroom: str = Form(""),
+        drinking_water: str = Form(""),
+        wheelchair: str = Form(""),
+        mushaf: str = Form(""),
+        chairs: str = Form(""),
+        janazah: str = Form(""),
+        women_area: str = Form(""),
+        children_area: str = Form(""),
 ):
     facilities = {}
     raw = {
@@ -585,14 +590,14 @@ def admin_update_facilities(
 
 @router.post("/masjids/{masjid_id}/update-timings")
 def admin_update_timings(
-    request: Request,
-    masjid_id: str,
-    session: AdminSession = Depends(admin_required),
-    fajr: str = Form(""),
-    dhuhr: str = Form(""),
-    asr: str = Form(""),
-    maghrib: str = Form(""),
-    isha: str = Form(""),
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        fajr: str = Form(""),
+        dhuhr: str = Form(""),
+        asr: str = Form(""),
+        maghrib: str = Form(""),
+        isha: str = Form(""),
 ):
     timings = {}
     for key, val in [("fajr", fajr), ("dhuhr", dhuhr), ("asr", asr), ("maghrib", maghrib), ("isha", isha)]:
@@ -605,12 +610,12 @@ def admin_update_timings(
 
 @router.post("/masjids/{masjid_id}/committee/add")
 def admin_add_committee(
-    request: Request,
-    masjid_id: str,
-    session: AdminSession = Depends(admin_required),
-    member_name: str = Form(...),
-    member_role: str = Form(...),
-    user_phone: str = Form(""),
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        member_name: str = Form(...),
+        member_role: str = Form(...),
+        user_phone: str = Form(""),
 ):
     db = getattr(request.app.state, "mongo_client", None)
     user_store = getattr(request.app.state, "user_store", None)
@@ -649,10 +654,10 @@ def admin_add_committee(
 
 @router.post("/masjids/{masjid_id}/committee/{user_id}/remove")
 def admin_remove_committee(
-    request: Request,
-    masjid_id: str,
-    user_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        masjid_id: str,
+        user_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     db = getattr(request.app.state, "mongo_client", None)
     if db:
@@ -676,9 +681,9 @@ def admin_remove_committee(
 
 @router.get("/claims/{claim_id}", response_class=HTMLResponse)
 def claim_detail(
-    request: Request,
-    claim_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        claim_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "claim_service", None)
     user_store = getattr(request.app.state, "user_store", None)
@@ -710,9 +715,9 @@ def claim_detail(
 
 @router.post("/claims/{claim_id}/reject")
 def reject_claim(
-    request: Request,
-    claim_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        claim_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     svc = getattr(request.app.state, "claim_service", None)
     admin_store = getattr(request.app.state, "admin_store", None)
@@ -747,9 +752,9 @@ def donations(request: Request, session: AdminSession = Depends(admin_required))
 
 @router.post("/users/{user_id}/block")
 def block_user(
-    request: Request,
-    user_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        user_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     if user_store:
@@ -762,9 +767,9 @@ def block_user(
 
 @router.post("/users/{user_id}/unblock")
 def unblock_user(
-    request: Request,
-    user_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        user_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     if user_store:
@@ -777,9 +782,9 @@ def unblock_user(
 
 @router.get("/users/search", response_class=HTMLResponse)
 def search_users(
-    request: Request,
-    q: str = "",
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        q: str = "",
+        session: AdminSession = Depends(admin_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     users_list = []
@@ -795,9 +800,9 @@ def search_users(
 
 @router.get("/users/{user_id}", response_class=HTMLResponse)
 def user_detail(
-    request: Request,
-    user_id: str,
-    session: AdminSession = Depends(admin_required),
+        request: Request,
+        user_id: str,
+        session: AdminSession = Depends(admin_required),
 ):
     user_store = getattr(request.app.state, "user_store", None)
     db = getattr(request.app.state, "mongo_client", None)

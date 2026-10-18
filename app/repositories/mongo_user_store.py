@@ -9,6 +9,7 @@ from pymongo import ASCENDING
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
+from app.core.logging import get_logger
 from app.interfaces.user_repository import UserRepository
 from app.repositories.user_store_helpers import (
     merge_favorite_place_ids,
@@ -17,7 +18,6 @@ from app.repositories.user_store_helpers import (
 )
 from app.utils.phone import phone_lookup_variants
 from app.utils.session_ttl import session_expires_in, session_never_expires
-from app.core.logging import get_logger
 
 _log = get_logger(__name__)
 _BACKGROUND = ThreadPoolExecutor(max_workers=2, thread_name_prefix="user-reconcile")

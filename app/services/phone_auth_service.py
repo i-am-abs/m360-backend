@@ -89,17 +89,29 @@ class PhoneAuthService:
             self._assert_verification_success(data)
             if cache is not None:
                 cache.mark_verified(formatted_phone, req_id, otp)
-        user = self._store.ensure_user(formatted_phone)
-        session = self._store.create_session(user["user_id"], self._session_ttl)
-        user["phone_number"] = formatted_phone
-        if self._admin_store is not None:
-            # Admin linking is re-run lazily by admin flows, so it need not block login.
-            _BACKGROUND.submit(self._link_admin_rows, str(user["user_id"]), formatted_phone)
-        log.info("OTP verified for %s | userId=%s", formatted_phone, user["user_id"])
+        result = self.login_verified_phone(formatted_phone)
+        log.info("OTP verified for %s | userId=%s", formatted_phone, result["user"]["user_id"])
+        return result
+
+    def login_verified_phone(self, formatted_phone: str) -> Dict[str, Any]:
+        """Sign up (if new) and open a session for a phone already proven to belong to the caller."""
+        user = self.provision_user(formatted_phone)
         return {
             "user": user,
-            "auth": self._auth_payload(session),
+            "auth": self.issue_session(str(user["user_id"]), formatted_phone),
         }
+
+    def provision_user(self, formatted_phone: str) -> Dict[str, Any]:
+        user = self._store.ensure_user(formatted_phone)
+        user["phone_number"] = formatted_phone
+        return user
+
+    def issue_session(self, user_id: str, formatted_phone: str) -> Dict[str, Any]:
+        session = self._store.create_session(user_id, self._session_ttl)
+        if self._admin_store is not None:
+            # Admin linking is re-run lazily by admin flows, so it need not block login.
+            _BACKGROUND.submit(self._link_admin_rows, user_id, formatted_phone)
+        return self._auth_payload(session)
 
     def _link_admin_rows(self, user_id: str, phone: str) -> None:
         try:

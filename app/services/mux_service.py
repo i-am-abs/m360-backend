@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import json
-import time
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
