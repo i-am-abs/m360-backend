@@ -72,6 +72,13 @@ def build_share_context(
     thumbnail_url = message.get("thumbnail_url") or None
     is_video = msg_type == "video" and bool(video_url)
 
+    sender = message.get("sender") or {}
+    sender_name = (str(sender.get("name") or "").strip()) or "Admin"
+    sender_role = (str(sender.get("role") or "").strip()) or "Admin"
+    sender_avatar = sender.get("avatar_url") or masjid.get("photo_url") or (
+        f"{settings.share_web_base_url}/share-static/masjid-default.png"
+    )
+
     return {
         "message_id": message_id,
         "masjid_name": name,
@@ -93,4 +100,7 @@ def build_share_context(
         "app_store_url": settings.app_store_url,
         "android_package": settings.android_package_name,
         "marketing_site_url": settings.marketing_site_url,
+        "sender_name": sender_name,
+        "sender_role": sender_role,
+        "sender_avatar_url": sender_avatar,
     }
