@@ -40,18 +40,19 @@
   .mhead{flex:0 0 auto;display:flex;align-items:center;gap:12px;
     padding:12px 16px;border-bottom:1px solid var(--line);background:#fff;
     position:relative;z-index:3}
-  .mavatar{width:44px;height:44px;border-radius:50%;object-fit:cover;
-    flex:0 0 44px;background:var(--bg)}
+  .mavatar{width:42px;height:42px;border-radius:50%;object-fit:cover;
+    flex:0 0 42px;background:#F8F9FA;
+    border:0.81px solid rgba(203,208,214,0.3)}
   .mmeta{min-width:0;flex:1}
-  .mname{display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px;
-    line-height:1.25;min-width:0;overflow:hidden}
-  .mloc{color:var(--muted);font-size:12px;margin-top:2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .vbadge{width:14px;height:14px;fill:#2D9CDB;flex:0 0 14px;
+  .mname{display:flex;align-items:center;gap:4px;font-weight:700;font-size:16px;
+    line-height:1.3;min-width:0;overflow:hidden;color:#091914}
+  .mloc{color:var(--muted);font-size:12px;font-weight:400;line-height:1.4;
+    margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vbadge{width:14px;height:14px;fill:#4D80C9;flex:0 0 14px;
     display:inline-block;vertical-align:middle}
-  .wa{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:0;
-    background:#25D366;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;padding:0}
+  .applogo{flex:0 0 42px;width:42px;height:42px;border-radius:8px;
+    object-fit:contain;border:1px solid rgba(203,208,214,0.3);
+    background:#fff;padding:2px}
   /* min-height:0 overrides the flex item's automatic content-based minimum,
      so the media box gives space back to the footer instead of forcing a scroll. */
   .media{flex:1;min-height:0;position:relative;background:#000;overflow:hidden;
@@ -72,30 +73,38 @@
     overflow:hidden;word-break:break-word}
   .media video{position:absolute;inset:0;width:100%;height:100%;
     object-fit:contain;background:#000}
-  .playbtn{position:absolute;z-index:2;width:72px;height:72px;border-radius:50%;
-    background:rgba(255,255,255,.35);backdrop-filter:blur(6px);border:0;cursor:pointer;
+  .media::after{content:"";position:absolute;left:0;right:0;bottom:0;height:133px;
+    background:linear-gradient(0deg,rgba(0,0,0,.74),rgba(0,0,0,0));
+    pointer-events:none;z-index:1}
+  .playbtn{position:absolute;z-index:2;width:62px;height:62px;border-radius:50%;
+    background:linear-gradient(180deg,rgba(248,249,250,.86),rgba(248,249,250,.35));
+    border:2.21px solid #E5F1E8;cursor:pointer;
     display:flex;align-items:center;justify-content:center}
-  .playbtn::after{content:"";border-style:solid;border-width:14px 0 14px 22px;
-    border-color:transparent transparent transparent #091914;margin-left:5px}
-  .foot{flex:0 0 auto;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  .playbtn::after{content:"";border-style:solid;border-width:11px 0 11px 18px;
+    border-color:transparent transparent transparent #091914;margin-left:4px}
+  .foot{flex:0 0 auto;padding:8px 16px calc(14px + env(safe-area-inset-bottom,0px));
     border-radius:18px 18px 0 0;margin-top:-18px;background:#fff;
-    position:relative;z-index:2}
-  .srow{display:flex;align-items:center;gap:12px}
-  .savatar{width:44px;height:44px;border-radius:50%;object-fit:cover;
-    flex:0 0 44px;background:var(--bg)}
+    position:relative;z-index:3;display:flex;flex-direction:column;gap:14px}
+  .srow{display:flex;align-items:center;gap:10px;padding-right:8px}
+  .savatar{width:49px;height:49px;border-radius:50%;object-fit:cover;
+    flex:0 0 49px;background:#F8F9FA;
+    border:0.94px solid rgba(203,208,214,0.3)}
   .smeta{min-width:0;flex:1}
-  .srole{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;
-    font-weight:600}
-  .sname{font-weight:700;font-size:15px;margin-top:2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .stime{color:var(--muted);font-size:12px;white-space:nowrap;align-self:flex-start;
-    margin-top:2px}
-  .ctas{display:flex;gap:10px;margin-top:12px}
-  .ctas button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
-    padding:13px 0;border-radius:12px;font-size:14px;font-weight:700;
-    cursor:pointer;font-family:inherit}
-  .primary{border:0;background:linear-gradient(#61D47D,#ADFF8D);color:#091914}
-  .ghost{border:1px solid #45D07C;background:#fff;color:#0B7C43}
+  .srole{display:flex;align-items:center;gap:4px;color:#091914;font-size:18px;
+    font-weight:700;line-height:1.3}
+  .sname{font-weight:400;font-size:14px;line-height:1.4;color:var(--muted);
+    margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stime{color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap;
+    align-self:flex-start;margin-top:2px}
+  .ctas{display:flex;gap:12px;margin-top:0}
+  .ctas button{display:flex;align-items:center;justify-content:center;gap:8px;
+    border-radius:10px;font-size:12px;font-weight:500;line-height:1.4;
+    cursor:pointer;font-family:inherit;height:40px}
+  .primary{flex:1.8;border:0;padding:11px 8px;
+    background:linear-gradient(180deg,#61D47D,#ADFF8D);color:#091914;
+    box-shadow:0 2px 8px rgba(0,0,0,.1), inset 0 4px 4px rgba(255,255,255,.25)}
+  .ghost{flex:1;border:0;padding:12px 33px;background:#E5F1E8;color:#091914;
+    box-shadow:0 2px 8px rgba(0,0,0,.1), inset 0 4px 4px rgba(255,255,255,.25)}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
     background:#091914;color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;
     opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
@@ -105,16 +114,16 @@
 <body>
 <div class="page">
   <header class="mhead">
-    <img class="mavatar" src="{{ masjid_avatar_url }}" alt="">
+    <img class="mavatar" src="{{ masjid_avatar_url }}" alt=""
+      decoding="async" width="42" height="42">
     <div class="mmeta">
       <div class="mname">{{ masjid_name }}
         {% if masjid_verified %}<svg class="vbadge" viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.1-.5.9 3 2.9 1.3-1.3 2.9 1.3 2.9-2.9 1.3-.9 3-3.1-.5L12 22l-2.4-2.1-3.1.5-.9-3-2.9-1.3 1.3-2.9L1.7 8l2.9-1.3.9-3 3.1.5z"/><path d="M10.6 14.6l-2.2-2.2-1.4 1.4 3.6 3.6 6-6-1.4-1.4z" fill="#fff"/></svg>{% endif %}
       </div>
       <div class="mloc">{{ masjid_location }}</div>
     </div>
-    <button class="wa" id="waBtn" aria-label="Share on WhatsApp">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M20.5 3.5A11.8 11.8 0 0 0 12 0C5.4 0 .1 5.3.1 11.9c0 2.1.6 4.2 1.6 6L0 24l6.3-1.6c1.7.9 3.7 1.4 5.7 1.4 6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.4-8.4zM12 21.4c-1.8 0-3.5-.5-5-1.4l-.4-.2-3.7.9.9-3.6-.2-.4a9.5 9.5 0 0 1-1.5-5.1c0-5.3 4.3-9.6 9.6-9.6 2.6 0 5 1 6.8 2.8a9.5 9.5 0 0 1 2.8 6.8c0 5.3-4.3 9.6-9.3 9.6zm5.3-7.2c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.7.9-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.4a8.3 8.3 0 0 1-1.5-1.9c-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.2-.3-.3-.6-.4z"/></svg>
-    </button>
+    <img class="applogo" src="/share-static/logo.png" alt="Muslim 360"
+      width="42" height="42">
   </header>
 
   {% if is_video or poster_url %}
@@ -135,7 +144,8 @@
 
   <footer class="foot">
     <div class="srow">
-      <img class="savatar" src="{{ sender_avatar_url }}" alt="">
+      <img class="savatar" src="{{ sender_avatar_url }}" alt=""
+        loading="lazy" decoding="async" width="49" height="49">
       <div class="smeta">
         <div class="srole">{{ sender_role }}
           {% if masjid_verified %}<svg class="vbadge" viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.1-.5.9 3 2.9 1.3-1.3 2.9 1.3 2.9-2.9 1.3-.9 3-3.1-.5L12 22l-2.4-2.1-3.1.5-.9-3-2.9-1.3 1.3-2.9L1.7 8l2.9-1.3.9-3 3.1.5z"/><path d="M10.6 14.6l-2.2-2.2-1.4 1.4 3.6 3.6 6-6-1.4-1.4z" fill="#fff"/></svg>{% endif %}
@@ -146,11 +156,11 @@
     </div>
     <div class="ctas">
       <button class="primary" id="followBtn">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#091914" stroke-width="2"><path d="M15 19a6 6 0 0 0-12 0"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.66797 7H9.33464" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/><path d="M7 9.33342V4.66675" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/><path d="M5.2513 12.8334H8.7513C11.668 12.8334 12.8346 11.6667 12.8346 8.75008V5.25008C12.8346 2.33341 11.668 1.16675 8.7513 1.16675H5.2513C2.33464 1.16675 1.16797 2.33341 1.16797 5.25008V8.75008C1.16797 11.6667 2.33464 12.8334 5.2513 12.8334Z" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/></svg>
         Follow Masjid
       </button>
       <button class="ghost" id="shareBtn">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#0B7C43" stroke-width="2"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/></svg>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.31844 3.68676L9.27094 2.03592C11.4934 1.29509 12.7009 2.50842 11.9659 4.73092L10.3151 9.68342C9.20677 13.0143 7.38677 13.0143 6.27844 9.68342L5.78844 8.21342L4.31844 7.72342C0.987604 6.61509 0.987604 4.80092 4.31844 3.68676Z" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/><path d="M5.89844 7.96257L7.98677 5.86841" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/></svg>
         Share
       </button>
     </div>
@@ -166,7 +176,6 @@
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ canonical_url | tojson }};
-  var WA_TEXT = {{ ((og_description or "") ~ " " ~ canonical_url) | tojson }};
 
   var UA = navigator.userAgent || "";
   var IS_ANDROID = /android/i.test(UA);
@@ -209,9 +218,6 @@
 
   document.getElementById("followBtn").addEventListener("click", openApp);
   document.getElementById("shareBtn").addEventListener("click", sharePage);
-  document.getElementById("waBtn").addEventListener("click", function () {
-    window.open("https://wa.me/?text=" + encodeURIComponent(WA_TEXT), "_blank", "noopener,noreferrer");
-  });
 
   // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"
   // but cannot actually play HLS, so it is useless as a support probe. Media

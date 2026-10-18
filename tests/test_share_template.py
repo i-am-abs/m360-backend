@@ -36,10 +36,11 @@ def test_share_template_renders_new_layout():
     assert "Najim Ahmed" in html
     assert "Imam" in html
     assert "Follow Masjid" in html
-    assert 'id="waBtn"' in html
+    assert 'class="applogo"' in html
+    assert "/share-static/logo.png" in html
     assert 'id="followBtn"' in html
+    assert 'id="shareBtn"' in html
     assert "intent://" in html
-    assert "wa.me" in html
 
 
 def test_text_only_post_shows_announcement_and_no_media():
@@ -48,11 +49,9 @@ def test_text_only_post_shows_announcement_and_no_media():
     assert '<main class="media"' not in html
 
 
-def test_none_description_does_not_leak_into_whatsapp_text():
+def test_none_description_does_not_leak_into_page():
     html = _render(og_description=None)
-    wa_line = next(line for line in html.splitlines() if "var WA_TEXT" in line)
-    assert wa_line == '  var WA_TEXT = " https://m360.vyapari.link/s/m1";'
-    assert "None" not in wa_line
+    assert "None" not in html
 
 
 def test_video_post_renders_media_and_play_control():
