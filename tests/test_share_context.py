@@ -4,7 +4,7 @@ from app.web.share_context import build_share_context
 
 def _settings() -> Settings:
     return Settings(
-        share_web_base_url="https://m360.vyapari.link",
+        share_web_base_url="https://muslim360.in",
         android_package_name="com.starkinnovations.m360",
     )
 
@@ -57,7 +57,7 @@ def test_masjid_without_photo_uses_default_masjid_image():
     masjid.pop("photo_url")
     msg = {"id": "m4", "text": "Salaam", "created_at": "2026-10-13T10:00:00+00:00"}
     ctx = build_share_context(msg, masjid, _settings())
-    default = "https://m360.vyapari.link/share-static/masjid-default.png"
+    default = "https://muslim360.in/share-static/masjid-default.png"
     assert ctx["sender_avatar_url"] == default
     assert ctx["masjid_avatar_url"] == default
 
@@ -119,4 +119,4 @@ def test_share_url_uses_share_cta_base_url():
         _masjid(), _settings(),
     )
     assert ctx["share_url"] == "https://muslim360.in/s/m9"
-    assert ctx["canonical_url"] == "https://m360.vyapari.link/s/m9"
+    assert ctx["canonical_url"] == "https://muslim360.in/s/m9"

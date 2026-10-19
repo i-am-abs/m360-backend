@@ -155,7 +155,7 @@ class Settings(BaseSettings):
     mux_env_key: str = "deb2jrkrr735ufr00gdtrf8j9"
 
     share_web_base_url: str = Field(
-        default="https://share.vyapari.link",
+        default="https://muslim360.in",
         validation_alias=AliasChoices("SHARE_WEB_BASE_URL", "share_web_base_url"),
     )
     # Base URL used by the Share CTA on the public share page.
