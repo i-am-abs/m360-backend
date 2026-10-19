@@ -120,3 +120,21 @@ def test_share_url_uses_share_cta_base_url():
     )
     assert ctx["share_url"] == "https://muslim360.in/s/m9"
     assert ctx["canonical_url"] == "https://muslim360.in/s/m9"
+
+
+def test_location_uses_area_and_city():
+    ctx = build_share_context(
+        {"id": "m10", "text": "S", "created_at": "2026-10-13T10:00:00+00:00"},
+        _masjid(), _settings(), area="Ghatkopar East", city="Mumbai",
+    )
+    assert ctx["masjid_location"] == "Ghatkopar East, Mumbai"
+
+
+def test_area_and_city_from_address_components():
+    from app.web.share import _area_and_city
+    place = {"addressComponents": [
+        {"longText": "Ghatkopar East",
+         "types": ["sublocality_level_1", "sublocality"]},
+        {"longText": "Mumbai", "types": ["locality"]},
+    ]}
+    assert _area_and_city(place) == ("Ghatkopar East", "Mumbai")
