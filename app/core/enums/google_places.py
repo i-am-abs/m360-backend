@@ -30,7 +30,7 @@ class GooglePlacesFieldMask(str, Enum):
         "places.accessibilityOptions"
     )
     PLACE_DETAILS = (
-        "id,displayName,formattedAddress,location,photos,name,"
+        "id,displayName,formattedAddress,addressComponents,location,photos,name,"
         "currentOpeningHours,regularOpeningHours,internationalPhoneNumber,"
         "websiteUri,businessStatus,accessibilityOptions,paymentOptions,"
         "restroom,parkingOptions"

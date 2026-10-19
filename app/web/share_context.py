@@ -66,17 +66,29 @@ def _sized_og_image(thumbnail_url: Optional[str], settings: Settings) -> str:
 
 
 def build_share_context(
-    message: dict,
-    masjid: dict,
-    settings: Settings,
-    sender_profile: Optional[dict] = None,
-    masjid_image_url: Optional[str] = None,
+        message: dict,
+        masjid: dict,
+        settings: Settings,
+        sender_profile: Optional[dict] = None,
+        masjid_image_url: Optional[str] = None,
+        area: Optional[str] = None,
+        city: Optional[str] = None,
 ) -> dict:
     message_id = str(message.get("id") or message.get("_id") or "")
     name = (masjid.get("name") or "").strip() or "This masjid"
-    location = ", ".join(
-        p for p in [masjid.get("city"), masjid.get("state")] if p and str(p).strip()
-    ) or (masjid.get("address") or "")
+    area = (area or "").strip()
+    city = (city or "").strip()
+    if area and city and area.lower() != city.lower():
+        location = f"{area}, {city}"
+    elif area:
+        location = area
+    elif city:
+        location = city
+    else:
+        location = ", ".join(
+            p for p in [masjid.get("city"), masjid.get("state")]
+            if p and str(p).strip()
+        ) or (masjid.get("address") or "")
     verified = bool((masjid.get("management") or {}).get("is_claimed"))
 
     default_masjid_image = (

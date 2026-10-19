@@ -20,6 +20,27 @@ from app.web.templating import env
 router = APIRouter(tags=["share"])
 
 
+def _area_and_city(place: dict) -> tuple:
+    """Pull the area (sublocality) and city (locality) from addressComponents."""
+    by_type = {}
+    for comp in place.get("addressComponents") or []:
+        if not isinstance(comp, dict):
+            continue
+        text = comp.get("longText") or comp.get("shortText") or ""
+        for t in comp.get("types") or []:
+            if t and t not in by_type and text:
+                by_type[t] = str(text).strip()
+    area = (
+        by_type.get("sublocality_level_1")
+        or by_type.get("sublocality")
+        or by_type.get("neighborhood")
+        or by_type.get("sublocality_level_2")
+        or ""
+    )
+    city = by_type.get("locality") or by_type.get("administrative_area_level_2") or ""
+    return area, city
+
+
 def _resolve_sender_profile(request: Request, message: dict, place_id: str) -> dict:
     """Resolve the announcer's name/designation/DP from the admin store."""
     store = getattr(request.app.state, "admin_store", None)
@@ -116,11 +137,14 @@ def share_page(
 
     place_id = message.get("masjid_id") or ""
     masjid_image_url = None
+    area = ""
+    city = ""
     try:
-        place = search_svc.get_place_by_id(place_id)
-        photos = (place or {}).get("photos") or []
+        place = search_svc.get_place_by_id(place_id) or {}
+        photos = place.get("photos") or []
         if photos and isinstance(photos[0], dict):
             masjid_image_url = photos[0].get("name") or None
+        area, city = _area_and_city(place)
     except Exception:
         masjid_image_url = None
 
@@ -144,6 +168,8 @@ def share_page(
         settings,
         sender_profile=sender_profile,
         masjid_image_url=masjid_image_url,
+        area=area,
+        city=city,
     )
     html = env.get_template("share.html").render(**ctx)
     resp = HTMLResponse(html)
