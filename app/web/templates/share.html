@@ -175,7 +175,7 @@
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
-  var PAGE_URL = {{ canonical_url | tojson }};
+  var PAGE_URL = {{ share_url | tojson }};
 
   var UA = navigator.userAgent || "";
   var IS_ANDROID = /android/i.test(UA);

@@ -18,9 +18,10 @@ def _render(**overrides):
         og_description="Salaam",
         page_title="Masjid Al Noor — announcement | Muslim 360",
         relative_time="2 hrs ago",
-        canonical_url="https://m360.vyapari.link/s/m1",
+        canonical_url="https://muslim360.in/s/m1",
+        share_url="https://muslim360.in/s/m1",
         deep_link_path="/s/m1",
-        share_host="m360.vyapari.link",
+        share_host="muslim360.in",
         play_store_url="https://play.google.com/x",
         app_store_url="https://apps.apple.com/x",
         android_package="com.starkinnovations.m360",
@@ -69,7 +70,7 @@ def _media_block(html: str) -> str:
 def test_video_without_poster_uses_dark_placeholder_not_og_card():
     html = _render(
         poster_url=None,
-        og_image_url="https://m360.vyapari.link/share-static/og-default.png",
+        og_image_url="https://muslim360.in/share-static/og-default.png",
     )
     media = _media_block(html)
     assert 'class="poster placeholder"' in media
@@ -95,3 +96,9 @@ def test_non_video_with_poster_renders_image_and_caption_below():
 def test_text_only_post_text_fills_available_space():
     html = _render(is_video=False, video_hls_url=None, poster_url=None)
     assert '<div class="textwrap full">' in html
+
+
+def test_share_cta_uses_muslim360_base_url():
+    html = _render()
+    line = next(l for l in html.splitlines() if "var PAGE_URL" in l)
+    assert "https://muslim360.in/s/m1" in line

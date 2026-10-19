@@ -149,6 +149,7 @@ def build_share_context(
         "page_title": f"{name} — announcement | Muslim 360",
         "relative_time": _relative_time(message.get("created_at")),
         "canonical_url": f"{settings.share_web_base_url}/s/{message_id}",
+        "share_url": f"{settings.share_cta_base_url.rstrip('/')}/s/{message_id}",
         "deep_link_path": f"/s/{message_id}",
         "share_host": settings.share_host,
         "play_store_url": settings.play_store_url,
