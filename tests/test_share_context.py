@@ -111,3 +111,12 @@ def test_places_photo_is_requested_at_avatar_size():
     )
     assert "maxHeightPx=96" in ctx["masjid_avatar_url"]
     assert "maxHeightPx=4096" not in ctx["masjid_avatar_url"]
+
+
+def test_share_url_uses_share_cta_base_url():
+    ctx = build_share_context(
+        {"id": "m9", "text": "S", "created_at": "2026-10-13T10:00:00+00:00"},
+        _masjid(), _settings(),
+    )
+    assert ctx["share_url"] == "https://muslim360.in/s/m9"
+    assert ctx["canonical_url"] == "https://m360.vyapari.link/s/m9"

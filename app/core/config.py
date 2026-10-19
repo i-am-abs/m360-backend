@@ -158,6 +158,11 @@ class Settings(BaseSettings):
         default="https://share.vyapari.link",
         validation_alias=AliasChoices("SHARE_WEB_BASE_URL", "share_web_base_url"),
     )
+    # Base URL used by the Share CTA on the public share page.
+    share_cta_base_url: str = Field(
+        default="https://muslim360.in",
+        validation_alias=AliasChoices("SHARE_CTA_BASE_URL", "share_cta_base_url"),
+    )
     android_package_name: str = "com.starkinnovations.m360"
     android_sha256_cert_fingerprints_raw: str = Field(
         default="",
