@@ -82,6 +82,14 @@ class MasjidEntityRepository(ABC):
     def search_by_city(self, city: str, limit: int, page: int) -> dict:
         pass
 
+    def search_local_by_text(self, query: str, limit: int) -> List[dict]:
+        pass
+
+    def search_local_nearby(
+            self, lat: float, lng: float, radius: int, limit: int,
+    ) -> List[dict]:
+        pass
+
     @abstractmethod
     def update_masjid(self, masjid_id: str, updates: dict) -> dict:
         pass

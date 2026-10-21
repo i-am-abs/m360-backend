@@ -67,6 +67,7 @@ from app.services.internal_timings_service import InternalTimingsService
 from app.services.masjid_amenities_service import MasjidAmenitiesService
 from app.services.masjid_announcements_service import MasjidAnnouncementsService
 from app.services.masjid_entity_service import MasjidEntityService
+from app.services.local_masjid_search_service import LocalMasjidSearchService
 from app.services.masjid_listing_service import MasjidListingService
 from app.services.masjid_search_service import GoogleMasjidSearchService
 from app.services.masjid_tab_service import MasjidTabService
@@ -458,6 +459,13 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     app.state.masjid_store = _create_masjid_store(
         settings, app.state.mongo_client
     )
+    masjid_repo = None
+    if app.state.mongo_client is not None:
+        masjid_repo = MongoMasjidRepository(
+            app.state.mongo_client.get_database(settings.mongodb_database),
+        )
+        masjid_search = LocalMasjidSearchService(masjid_search, masjid_repo)
+    app.state.masjid_entity_repo = masjid_repo
     masjid_search = AmenityMasjidSearchService(
         masjid_search,
         app.state.masjid_store,
@@ -555,7 +563,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
     mongo_client = getattr(app.state, "mongo_client", None)
     if mongo_client is not None:
         db = mongo_client.get_database(settings.mongodb_database)
-        masjid_repo = MongoMasjidRepository(db)
+        masjid_repo = getattr(app.state, "masjid_entity_repo", None) or MongoMasjidRepository(db)
         claim_repo = MongoClaimRepository(db)
         broadcast_feed_repo = MongoBroadcastFeedRepository(db)
         follower_repo = MongoFollowerRepository(db)

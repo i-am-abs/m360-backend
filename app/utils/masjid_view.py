@@ -95,6 +95,11 @@ def build_masjid_detail_view(
     view["committee"] = committee
     view["id"] = pid
     view["name"] = view.get("name") or pid
+    photos = place.get("photos") or []
+    first_photo = ""
+    if photos and isinstance(photos[0], dict):
+        first_photo = str(photos[0].get("name") or photos[0].get("url") or "")
+    view["photo_url"] = place.get("photo_url") or first_photo or ""
     view["adminStatus"] = resolve_admin_status_for_place(
         pid,
         admin_store=admin_store,

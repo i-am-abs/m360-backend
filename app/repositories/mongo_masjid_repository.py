@@ -225,6 +225,7 @@ class MongoMasjidRepository(MasjidEntityRepository):
         skip = (page - 1) * limit
         query = {
             "$or": [
+                {"name": {"$regex": city, "$options": "i"}},
                 {"city": {"$regex": city, "$options": "i"}},
                 {"address": {"$regex": city, "$options": "i"}},
             ],
@@ -241,6 +242,58 @@ class MongoMasjidRepository(MasjidEntityRepository):
                 "pages": max(1, ceil(total / limit)) if total else 1,
             },
         }
+
+    @staticmethod
+    def _local_source_query() -> Dict[str, Any]:
+        return {
+            "$or": [
+                {"place_id": {"$regex": "^local_"}},
+                {"meta.source": {"$in": ["manual", "admin"]}},
+            ]
+        }
+
+    def search_local_by_text(self, query: str, limit: int) -> List[dict]:
+        q = (query or "").strip()
+        if not q:
+            return []
+        text = {
+            "$or": [
+                {"name": {"$regex": q, "$options": "i"}},
+                {"city": {"$regex": q, "$options": "i"}},
+                {"address": {"$regex": q, "$options": "i"}},
+            ]
+        }
+        docs = list(
+            self._masjids.find({
+                "meta.status": "active",
+                "$and": [self._local_source_query(), text],
+            }).limit(max(1, limit))
+        )
+        return [self._as_dict(doc) for doc in docs]
+
+    def search_local_nearby(
+            self, lat: float, lng: float, radius: int, limit: int,
+    ) -> List[dict]:
+        pipeline: List[Dict[str, Any]] = [
+            {
+                "$geoNear": {
+                    "near": {"type": "Point", "coordinates": [lng, lat]},
+                    "distanceField": "distance_meters",
+                    "maxDistance": radius,
+                    "spherical": True,
+                    "query": {
+                        "meta.status": "active",
+                        **self._local_source_query(),
+                    },
+                }
+            },
+            {"$limit": max(1, limit)},
+        ]
+        try:
+            items = list(self._masjids.aggregate(pipeline))
+        except Exception:
+            return []
+        return [self._as_dict(item) for item in items]
 
     def update_masjid(self, masjid_id: str, updates: dict) -> dict:
         set_fields = {}

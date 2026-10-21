@@ -26,16 +26,18 @@ def _is_valid_object_id(value: str) -> bool:
 
 
 def _looks_like_place_id(value: str) -> bool:
-    return isinstance(value, str) and value.startswith("ChIJ")
+    return isinstance(value, str) and (
+        value.startswith("ChIJ") or value.startswith("local_")
+    )
 
 
 class MasjidEntityService:
     def __init__(
-        self,
-        masjid_repo: MasjidEntityRepository,
-        google_places: MasjidSearchService,
-        masjid_store: Optional[MasjidRepository] = None,
-        admin_store: Optional[AdminRepository] = None,
+            self,
+            masjid_repo: MasjidEntityRepository,
+            google_places: MasjidSearchService,
+            masjid_store: Optional[MasjidRepository] = None,
+            admin_store: Optional[AdminRepository] = None,
     ) -> None:
         self._repo = masjid_repo
         self._places = google_places
@@ -46,7 +48,7 @@ class MasjidEntityService:
         masjid = None
         if _is_valid_object_id(masjid_id):
             masjid = self._repo.get_by_id(masjid_id)
-        if masjid is None and _looks_like_place_id(masjid_id):
+        if masjid is None:
             masjid = self._repo.get_by_place_id(masjid_id)
         if masjid is None and _looks_like_place_id(masjid_id):
             masjid = self.sync_place_id(masjid_id)
@@ -64,7 +66,7 @@ class MasjidEntityService:
         return result
 
     def search_nearby(
-        self, lat: float, lng: float, radius: int, limit: int, page: int
+            self, lat: float, lng: float, radius: int, limit: int, page: int
     ) -> Dict[str, Any]:
         db_result = self._repo.search_nearby(lat, lng, radius, limit, page)
         masjids = db_result.get("masjids", db_result.get("items", []))
@@ -78,7 +80,7 @@ class MasjidEntityService:
                 for place in place_results:
                     place_id = place.get("id") or place.get("place_id")
                     if place_id and not any(
-                        m.get("place_id") == place_id or m.get("id") == place_id for m in masjids
+                            m.get("place_id") == place_id or m.get("id") == place_id for m in masjids
                     ):
                         synced = self._repo.upsert_from_google_places(place)
                         masjids.append(synced)
@@ -109,7 +111,7 @@ class MasjidEntityService:
                 for place in place_results:
                     place_id = place.get("id") or place.get("place_id")
                     if place_id and not any(
-                        m.get("place_id") == place_id or m.get("id") == place_id for m in masjids
+                            m.get("place_id") == place_id or m.get("id") == place_id for m in masjids
                     ):
                         synced = self._repo.upsert_from_google_places(place)
                         masjids.append(synced)
@@ -143,7 +145,7 @@ class MasjidEntityService:
         masjid = None
         if _is_valid_object_id(masjid_id):
             masjid = self._repo.get_by_id(masjid_id)
-        if masjid is None and _looks_like_place_id(masjid_id):
+        if masjid is None:
             masjid = self._repo.get_by_place_id(masjid_id)
         return masjid
 
@@ -195,7 +197,7 @@ class MasjidEntityService:
         return self._repo.remove_committee_member(masjid_id, user_id_to_remove)
 
     def get_masjid_list(
-        self, page: int, limit: int, city: Optional[str] = None, claimed_only: bool = False
+            self, page: int, limit: int, city: Optional[str] = None, claimed_only: bool = False
     ) -> Dict[str, Any]:
         if city:
             result = self._repo.search_by_city(city, limit, page)
