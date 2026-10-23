@@ -87,29 +87,15 @@ def create_app() -> FastAPI:
         )
         application.include_router(admin_router)
 
-        @application.get("/")
-        def admin_root_redirect(request: Request):
-            import jwt as _jwt
-            token = request.cookies.get("admin_token")
-            if token:
-                try:
-                    payload = _jwt.decode(
-                        token,
-                        settings.secret_key.get_secret_value(),
-                        algorithms=["HS256"],
-                    )
-                    expires_at = payload.get("expires_at")
-                    if expires_at:
-                        from datetime import datetime as _dt, timezone as _tz
-                        expires = _dt.fromisoformat(expires_at.replace("Z", "+00:00"))
-                        if expires.tzinfo is None:
-                            expires = expires.replace(tzinfo=_tz.utc)
-                        if expires > _dt.now(tz=_tz.utc):
-                            from fastapi.responses import RedirectResponse as _RR
-                            return _RR(url="/admin/dashboard", status_code=303)
-                except _jwt.PyJWTError:
-                    pass
-            from fastapi.responses import RedirectResponse as _RR
-            return _RR(url="/admin/login", status_code=303)
+    from fastapi.responses import HTMLResponse
+    from app.web.templating import env as web_env
+
+    @application.get("/", response_class=HTMLResponse)
+    def landing_page() -> HTMLResponse:
+        return HTMLResponse(web_env.get_template("landing.html").render(
+            play_store_url=settings.play_store_url,
+            app_store_url=settings.app_store_url,
+            marketing_site_url=settings.marketing_site_url,
+        ))
 
     return application
