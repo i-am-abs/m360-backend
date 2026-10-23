@@ -64,13 +64,8 @@
      layout. Full-bleed cover fills the media box. */
   .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .poster.placeholder{background:linear-gradient(160deg,#0c1813,#132a1f)}
-  /* Text-only posts use the free space between header and footer rather than a
-     black media box. The text is clamped so long announcements cannot push the
-     CTAs off screen; the fixed-height page keeps the layout stable. */
-  .textwrap{flex:0 1 auto;min-height:0;max-height:40%;overflow:auto;background:#fff;
-    padding:18px 18px 30px}
-  .textwrap.full{flex:1;max-height:none}
-  .text{margin:0;font-size:14px;line-height:1.5;color:#091914;
+  /* Announcement caption, shown below the sender row in the footer. */
+  .caption{margin:0;font-size:14px;line-height:1.45;color:#091914;
     display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
     overflow:hidden;word-break:break-word}
   .media video{position:absolute;inset:0;width:100%;height:100%;
@@ -138,12 +133,6 @@
   </main>
   {% endif %}
 
-  {% if not is_video and og_description %}
-  <div class="textwrap{% if not poster_url %} full{% endif %}">
-    <p class="text">{{ og_description or '' }}</p>
-  </div>
-  {% endif %}
-
   <footer class="foot">
     <div class="srow">
       <img class="savatar" src="{{ sender_avatar_url }}" alt=""
@@ -156,6 +145,9 @@
       </div>
       <div class="stime">{{ relative_time }}</div>
     </div>
+    {% if caption %}
+    <p class="caption">{{ caption }}</p>
+    {% endif %}
     <div class="ctas">
       <button class="primary" id="followBtn">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.66797 7H9.33464" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/><path d="M7 9.33342V4.66675" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/><path d="M5.2513 12.8334H8.7513C11.668 12.8334 12.8346 11.6667 12.8346 8.75008V5.25008C12.8346 2.33341 11.668 1.16675 8.7513 1.16675H5.2513C2.33464 1.16675 1.16797 2.33341 1.16797 5.25008V8.75008C1.16797 11.6667 2.33464 12.8334 5.2513 12.8334Z" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round" stroke="black"/></svg>
