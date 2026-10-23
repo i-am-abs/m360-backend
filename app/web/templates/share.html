@@ -175,6 +175,12 @@
   var DEEP_PATH = {{ deep_link_path | tojson }};
   var FOLLOW_PATH = {{ follow_path | tojson }};
   var PLAY_URL = {{ play_store_url | tojson }};
+  // Deferred deep link: the Play Store install referrer carries the follow
+  // target so the app can open the masjid PDP after a fresh install.
+  var FOLLOW_DEEPLINK = "https://" + SHARE_HOST + FOLLOW_PATH;
+  var STORE_REFERRER = "deeplink=" + encodeURIComponent(FOLLOW_DEEPLINK);
+  var STORE_URL = PLAY_URL + (PLAY_URL.indexOf("?") >= 0 ? "&" : "?") +
+    "referrer=" + encodeURIComponent(STORE_REFERRER);
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
@@ -210,11 +216,11 @@
   function openApp() {
     if (IS_ANDROID) {
       setTimeout(function () {
-        if (!document.hidden) window.location = PLAY_URL;
+        if (!document.hidden) window.location = STORE_URL;
       }, 1100);
       window.location = "intent://" + SHARE_HOST + FOLLOW_PATH +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
-        ";S.browser_fallback_url=" + encodeURIComponent(PLAY_URL) + ";end";
+        ";S.browser_fallback_url=" + encodeURIComponent(STORE_URL) + ";end";
       return;
     }
     if (IS_IOS) {
@@ -225,7 +231,7 @@
       window.location = "https://" + SHARE_HOST + FOLLOW_PATH;
       return;
     }
-    window.location = PLAY_URL;
+    window.location = STORE_URL;
   }
 
   function sharePage() {
