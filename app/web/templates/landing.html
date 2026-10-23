@@ -143,30 +143,38 @@
   .spot-list li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink)}
   .spot-list svg{flex:0 0 18px;color:var(--green-deep);margin-top:1px}
 
-  /* mock broadcast card */
-  .bcard{max-width:340px;margin:0 auto;background:#E5F1E8;border-radius:18px;overflow:hidden;
-    box-shadow:0 24px 50px rgba(9,25,20,.16)}
-  .bcard .bhead{display:flex;align-items:center;justify-content:space-between;
-    padding:12px 14px 0;color:var(--muted);font-size:11px;font-weight:500}
-  .bcard .bmedia{height:230px;margin:10px 12px 0;border-radius:12px;
-    background:linear-gradient(160deg,#0c1813,#223b2e);position:relative;overflow:hidden;
-    display:flex;align-items:center;justify-content:center}
-  .bcard .bmedia::after{content:"";width:46px;height:46px;border-radius:50%;
-    background:rgba(255,255,255,.22);backdrop-filter:blur(4px);
+  /* in-app announcement card mock */
+  .bstage{display:flex;flex-direction:column;align-items:center;gap:12px;
+    padding:26px 18px;border-radius:24px;background-color:#fff;
+    background-image:radial-gradient(circle at 1px 1px,rgba(69,208,124,.16) 1px,transparent 0);
+    background-size:18px 18px;border:1px solid var(--line)}
+  .bdate{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .bcard{position:relative;width:300px;max-width:100%;background:#E5F1E8;border-radius:16px;
+    box-shadow:0 18px 40px rgba(9,25,20,.12)}
+  .bavatar{position:absolute;top:-12px;right:14px;width:36px;height:36px;border-radius:50%;
+    background:#C0392B;color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;border:2px solid #E5F1E8;z-index:2}
+  .bhead{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px 6px;font-size:11px;font-weight:500;color:var(--muted)}
+  .bhead .you{color:var(--ink);font-weight:600}
+  .bvideo{position:relative;margin:0 12px;border-radius:12px;aspect-ratio:3/4;
+    background:linear-gradient(160deg,#1a2b22,#37503f);overflow:hidden}
+  .bvideo::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.35);
     border:2px solid rgba(229,241,232,.9)}
-  .bcard .bmedia::before{content:"";position:absolute;z-index:1;
-    border-style:solid;border-width:8px 0 8px 13px;margin-left:4px;
+  .bvideo::before{content:"";position:absolute;top:50%;left:50%;z-index:1;
+    transform:translate(-38%,-50%);border-style:solid;border-width:8px 0 8px 13px;
     border-color:transparent transparent transparent #fff}
-  .bcard .brow{display:flex;align-items:center;gap:10px;padding:12px 14px 0}
-  .bcard .brow .av{width:38px;height:38px;border-radius:50%;flex:0 0 38px;
-    background:linear-gradient(160deg,#61D47D,#0B7C43)}
-  .bcard .role{font-weight:700;font-size:15px}
-  .bcard .name{font-size:12px;color:var(--muted)}
-  .bcard .time{margin-left:auto;font-size:11px;color:var(--muted)}
-  .bcard .cap{margin:8px 14px 0;font-size:12px;line-height:1.45;color:#33433c}
-  .bcard .band{margin-top:10px;padding:9px 14px;background:#D9EEE1;
-    border-top:1px solid #C3DECF;display:flex;align-items:center;gap:6px;
+  .bmeta{display:flex;justify-content:space-between;padding:8px 14px 0;
     font-size:11px;color:var(--muted)}
+  .bexpiry{display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:8px 14px;
+    background:#D9EEE1;border-top:1px solid #C3DECF;border-radius:0 0 16px 16px;
+    font-size:11px;line-height:1.4;color:var(--muted)}
+  .bexpiry svg{flex:0 0 13px;margin-top:1px}
+  .breacts{display:flex;gap:8px}
+  .breacts span{background:#FFF6D6;border:1px solid #F2E6B8;border-radius:999px;
+    padding:4px 10px;font-size:12px;color:#5D4A00}
 
   /* faq */
   .faq{display:grid;gap:12px;max-width:820px}
@@ -340,22 +348,19 @@
           <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Optional auto-expiry and share controls</li>
         </ul>
       </div>
-      <div class="bcard">
-        <div class="bhead"><span>~Admin</span><span>You</span></div>
-        <div class="bmedia"></div>
-        <div class="brow">
-          <div class="av"></div>
-          <div>
-            <div class="role">Imam</div>
-            <div class="name">Masjid committee</div>
+      <div class="bstage">
+        <span class="bdate">YESTERDAY</span>
+        <div class="bcard">
+          <div class="bavatar">S</div>
+          <div class="bhead"><span>~Admin</span><span class="you">You</span></div>
+          <div class="bvideo"></div>
+          <div class="bmeta"><span>234 views</span><span>22:22</span></div>
+          <div class="bexpiry">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            The video will be automatically removed 30 days.
           </div>
-          <div class="time">2 hrs ago</div>
         </div>
-        <p class="cap">Join us for this week’s programme at the masjid.</p>
-        <div class="band">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          The video will be automatically removed in 30 days.
-        </div>
+        <div class="breacts"><span>👍 1</span><span>😂 1</span><span>🥲 1</span></div>
       </div>
     </div>
   </section>
