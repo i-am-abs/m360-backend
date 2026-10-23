@@ -23,6 +23,8 @@
 <meta name="twitter:description" content="{{ og_description or '' }}">
 <meta name="twitter:image" content="{{ og_image_url }}">
 
+<script src="https://src.litix.io/core/4/mux.js"></script>
+
 <style>
   :root{--green:#45D07C;--ink:#091914;--muted:#5D6C67;--line:#EDEFF1;--bg:#F2F3F5}
   *{box-sizing:border-box}
@@ -176,6 +178,29 @@
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ share_url | tojson }};
+  var MUX_ENV_KEY = {{ mux_env_key | tojson }};
+  var MUX_PLAYBACK_ID = {{ (mux_playback_id or "") | tojson }};
+  var ANALYTICS_TITLE = {{ analytics_title | tojson }};
+  var ANALYTICS_SUB_PROPERTY = {{ analytics_sub_property_id | tojson }};
+  var PLAYER_NAME = "m360-share-page";
+  var MUX_INIT_TIME = (typeof mux !== "undefined") ? mux.utils.now() : Date.now();
+
+  function startMux(videoEl, hlsInstance) {
+    if (typeof mux === "undefined") return;
+    var opts = {
+      data: {
+        env_key: MUX_ENV_KEY,
+        player_name: PLAYER_NAME,
+        player_init_time: MUX_INIT_TIME,
+        video_id: MUX_PLAYBACK_ID || undefined,
+        video_title: ANALYTICS_TITLE,
+        sub_property_id: ANALYTICS_SUB_PROPERTY,
+        video_stream_type: "on-demand",
+      },
+    };
+    if (hlsInstance) { opts.hlsjs = hlsInstance; opts.Hls = window.Hls; }
+    try { mux.monitor(videoEl, opts); } catch (e) {}
+  }
 
   var UA = navigator.userAgent || "";
   var IS_ANDROID = /android/i.test(UA);
@@ -259,7 +284,7 @@
         playBtn.hidden = false;
       }
 
-      function native() { v.addEventListener("error", fail, { once: true }); v.src = HLS_URL; go(); }
+      function native() { v.addEventListener("error", fail, { once: true }); v.src = HLS_URL; startMux(v); go(); }
 
       var canNative = !!v.canPlayType("application/vnd.apple.mpegurl");
       if (!hasMSE()) { native(); return; }
@@ -283,6 +308,7 @@
         hls.on(window.Hls.Events.MANIFEST_PARSED, go);
         hls.loadSource(HLS_URL);
         hls.attachMedia(v);
+        startMux(v, hls);
       };
       document.head.appendChild(s);
     });

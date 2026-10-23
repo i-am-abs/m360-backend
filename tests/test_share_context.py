@@ -130,6 +130,18 @@ def test_location_uses_area_and_city():
     assert ctx["masjid_location"] == "Ghatkopar East, Mumbai"
 
 
+def test_mux_analytics_fields():
+    msg = {
+        "id": "m1", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+        "mux_playback_id": "pb123", "masjid_id": "place1",
+    }
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["mux_playback_id"] == "pb123"
+    assert ctx["mux_env_key"] == _settings().mux_env_key
+    assert ctx["analytics_title"] == "Masjid Al Noor announcement"
+    assert ctx["analytics_sub_property_id"] == "place1"
+
+
 def test_area_and_city_from_address_components():
     from app.web.share import _area_and_city
     place = {"addressComponents": [

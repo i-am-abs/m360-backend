@@ -147,6 +147,10 @@ def build_share_context(
         or masjid_image
     )
 
+    mux_playback_id = message.get("mux_playback_id") or None
+    analytics_title = f"{name} announcement"
+    analytics_sub_property_id = str(message.get("masjid_id") or "")
+
     return {
         "message_id": message_id,
         "masjid_name": name,
@@ -171,4 +175,8 @@ def build_share_context(
         "sender_name": sender_name,
         "sender_role": sender_role,
         "sender_avatar_url": sender_avatar,
+        "mux_env_key": settings.mux_env_key,
+        "mux_playback_id": mux_playback_id,
+        "analytics_title": analytics_title,
+        "analytics_sub_property_id": analytics_sub_property_id,
     }

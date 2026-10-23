@@ -26,6 +26,10 @@ def _render(**overrides):
         app_store_url="https://apps.apple.com/x",
         android_package="com.starkinnovations.m360",
         marketing_site_url="https://muslim360.app",
+        mux_env_key="env-1",
+        mux_playback_id="pb1",
+        analytics_title="t",
+        analytics_sub_property_id="p",
     )
     ctx.update(overrides)
     return env.get_template("share.html").render(**ctx)
@@ -102,3 +106,10 @@ def test_share_cta_uses_muslim360_base_url():
     html = _render()
     line = next(l for l in html.splitlines() if "var PAGE_URL" in l)
     assert "https://muslim360.in/s/m1" in line
+
+
+def test_share_page_instruments_mux_data():
+    html = _render()
+    assert "src.litix.io/core/4/mux.js" in html
+    assert "mux.monitor" in html
+    assert '"env-1"' in html and '"pb1"' in html
