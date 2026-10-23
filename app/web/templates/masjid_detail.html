@@ -92,6 +92,15 @@
                                                                                                             value="{{ masjid.name }}"
                                                                                                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Place ID</label>
+                            <input name="place_id" value="{{ masjid.place_id or '' }}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary-500">
+                            <p class="mt-1 text-[11px] text-gray-400">
+                                Google Place ID (<code>ChIJ…</code>) or the 24-character masjid id.
+                                Changing it breaks existing links.
+                            </p>
+                        </div>
                         <div><label class="block text-xs font-medium text-gray-600 mb-1">Arabic Name</label><input
                                 name="name_arabic" value="{{ masjid.name_arabic or '' }}" dir="rtl"
                                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">

@@ -136,6 +136,7 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
 def embed_page(
     message_id: str,
     request: Request,
+    for_app: int = 0,
     settings: Settings = Depends(get_settings),
     feed_svc=Depends(get_broadcast_feed_service),
     masjid_svc=Depends(get_masjid_entity_service),
@@ -145,7 +146,9 @@ def embed_page(
         masjid = (masjid_svc.get_masjid(message["masjid_id"]) or {}).get("masjid", {})
     except Exception:
         return HTMLResponse("<html><body>Not found</body></html>", status_code=404)
-    if resolve_share_state(message) in {"unavailable", "expired"}:
+    # In-app playback must work for every announcement the feed shows, even
+    # when sharing is disabled; the share page itself stays gated.
+    if not for_app and resolve_share_state(message) in {"unavailable", "expired"}:
         return HTMLResponse(
             "<html><body>Not available</body></html>", status_code=404
         )

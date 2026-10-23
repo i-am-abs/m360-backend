@@ -283,3 +283,23 @@ def test_follow_button_hidden_without_place_id():
     assert "View Masjid" not in html
     assert 'id="followBtn"' not in html
     assert 'id="shareBtn"' in html
+
+
+def test_embed_route_allows_in_app_playback_when_sharing_disabled():
+    client = _embed_client(
+        message=_video_message(allow_sharing=False),
+        masjid={"name": "Masjid Al Noor"},
+    )
+    resp = client.get("/embed/m1?for_app=1")
+    assert resp.status_code == 200
+    assert "<video" in resp.text
+
+
+def test_embed_route_allows_in_app_playback_when_expired():
+    expired = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    client = _embed_client(
+        message=_video_message(expires_at=expired),
+        masjid={"name": "Masjid Al Noor"},
+    )
+    resp = client.get("/embed/m1?for_app=1")
+    assert resp.status_code == 200

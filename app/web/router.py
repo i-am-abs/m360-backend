@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote_plus
 from uuid import uuid4
 
 import jwt
@@ -28,6 +30,33 @@ def _flash_from_query(request: Request):
     if error:
         msgs.append(("error", error))
     return msgs
+
+# Public identifiers we accept for masjids: Google Place IDs (`ChIJ...`) and the
+# 24-char Mongo id used for manually created masjids. Both are URL-safe and the
+# masjid lookup resolves them, so /m/{id} deep links always work.
+_PLACE_ID_PATTERN = re.compile(r"^(?:ChIJ[A-Za-z0-9_-]{10,200}|[a-f0-9]{24})$")
+
+
+def _place_id_problem(database, place_id: str, exclude_id=None) -> str | None:
+    if not _PLACE_ID_PATTERN.match(place_id or ""):
+        return "Place ID must be a Google Place ID (ChIJ…) or a 24-character masjid id"
+    query = {"place_id": place_id}
+    if exclude_id is not None:
+        query["_id"] = {"$ne": exclude_id}
+    if database["masjids"].find_one(query, {"_id": 1}):
+        return "Place ID is already in use"
+    return None
+
+
+def _masjid_object_id(database, masjid_id: str):
+    from bson import ObjectId
+
+    if ObjectId.is_valid(masjid_id):
+        return ObjectId(masjid_id)
+    doc = database["masjids"].find_one(
+        {"$or": [{"place_id": masjid_id}, {"id": masjid_id}]}, {"_id": 1}
+    )
+    return doc["_id"] if doc else None
 
 
 templates = env
@@ -269,6 +298,7 @@ def create_masjid(
         state: str = Form(""),
         lat: str = Form(""),
         lng: str = Form(""),
+        place_id: str = Form(""),
 ):
     db = getattr(request.app.state, "mongo_client", None)
     if not db:
@@ -278,8 +308,18 @@ def create_masjid(
         settings = get_settings()
         database = db.get_database(settings.mongodb_database)
         from bson import ObjectId
+        oid = ObjectId()
+        requested_place_id = (place_id or "").strip()
+        if requested_place_id:
+            problem = _place_id_problem(database, requested_place_id)
+            if problem:
+                return RedirectResponse(
+                    url=f"/admin/masjids/new?error={quote_plus(problem)}",
+                    status_code=303,
+                )
         doc = {
-            "place_id": f"admin_{ObjectId()}",
+            "_id": oid,
+            "place_id": requested_place_id or str(oid),
             "name": name,
             "name_arabic": name_arabic,
             "address": address,
@@ -517,8 +557,23 @@ def admin_update_masjid(
         phone: str = Form(""),
         email: str = Form(""),
         website: str = Form(""),
+        place_id: str = Form(""),
 ):
     updates = {}
+    new_place_id = (place_id or "").strip()
+    if new_place_id:
+        db = getattr(request.app.state, "mongo_client", None)
+        if db:
+            database = db.get_database(get_settings().mongodb_database)
+            problem = _place_id_problem(
+                database, new_place_id, _masjid_object_id(database, masjid_id)
+            )
+            if problem:
+                return RedirectResponse(
+                    url=f"/admin/masjids/{masjid_id}?error={quote_plus(problem)}",
+                    status_code=303,
+                )
+            updates["place_id"] = new_place_id
     if name:
         updates["name"] = name
     if name_arabic:
