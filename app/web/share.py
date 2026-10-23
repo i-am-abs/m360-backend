@@ -159,7 +159,7 @@ def share_page(
         )
         return HTMLResponse(html, status_code=500)
 
-    place_id = message.get("masjid_id") or ""
+    place_id = str(masjid.get("place_id") or message.get("masjid_id") or "")
     masjid_image_url = None
     area = ""
     city = ""
