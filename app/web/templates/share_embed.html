@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ page_title }}</title>
+<script src="https://src.litix.io/core/4/mux.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#000}
+  video{width:100%;height:100%;object-fit:contain;background:#000}
+</style>
+</head><body>
+<video id="v" controls playsinline preload="metadata"
+  {% if poster_url %}poster="{{ poster_url }}"{% endif %}></video>
+{% set player_name = "m360-app" %}
+{% include "_share_player.html" %}
+</body></html>

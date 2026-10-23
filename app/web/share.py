@@ -110,6 +110,30 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
     return Response(content=json.dumps(payload), media_type="application/json")
 
 
+@router.get("/embed/{message_id}", response_class=HTMLResponse)
+def embed_page(
+    message_id: str,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    feed_svc=Depends(get_broadcast_feed_service),
+    masjid_svc=Depends(get_masjid_entity_service),
+) -> HTMLResponse:
+    try:
+        message = feed_svc.get_message_raw(message_id)
+        masjid = (masjid_svc.get_masjid(message["masjid_id"]) or {}).get("masjid", {})
+    except Exception:
+        return HTMLResponse("<html><body>Not found</body></html>", status_code=404)
+    if resolve_share_state(message) in {"unavailable", "expired"}:
+        return HTMLResponse(
+            "<html><body>Not available</body></html>", status_code=404
+        )
+    ctx = build_share_context(message, masjid, settings)
+    html = env.get_template("share_embed.html").render(**ctx)
+    resp = HTMLResponse(html)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @router.get("/s/{message_id}", response_class=HTMLResponse)
 def share_page(
     message_id: str,
