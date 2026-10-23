@@ -75,6 +75,10 @@ class MasjidEntityRepository(ABC):
         pass
 
     @abstractmethod
+    def get_by_name(self, name: str) -> Optional[dict]:
+        pass
+
+    @abstractmethod
     def search_nearby(self, lat: float, lng: float, radius: int, limit: int, page: int) -> dict:
         pass
 

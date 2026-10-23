@@ -276,3 +276,10 @@ def test_area_and_city_falls_back_to_city_only_when_area_generic():
         {"longText": "Aligarh", "types": ["locality", "political"]},
     ]}
     assert _area_and_city(place) == ("", "Aligarh")
+
+
+def test_follow_button_hidden_without_place_id():
+    html = _render(follow_path="")
+    assert "View Masjid" not in html
+    assert 'id="followBtn"' not in html
+    assert 'id="shareBtn"' in html
