@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -173,6 +174,16 @@ class MongoMasjidRepository(MasjidEntityRepository):
 
     def get_by_place_id(self, place_id: str) -> Optional[dict]:
         doc = self._masjids.find_one({"place_id": place_id})
+        return self._as_dict(doc) if doc else None
+
+    def get_by_name(self, name: str) -> Optional[dict]:
+        """Resolve legacy broadcast records that stored the masjid *name* as id."""
+        normalized = (name or "").strip()
+        if not normalized:
+            return None
+        doc = self._masjids.find_one(
+            {"name": {"$regex": f"^{re.escape(normalized)}$", "$options": "i"}}
+        )
         return self._as_dict(doc) if doc else None
 
     def find_by_committee_member(self, user_id: str) -> List[Dict[str, Any]]:

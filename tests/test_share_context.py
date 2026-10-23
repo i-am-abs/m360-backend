@@ -166,7 +166,22 @@ def test_og_image_uses_thumbnail_without_cropping():
 def test_follow_path_points_to_masjid():
     msg = {"id": "m12", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
            "masjid_id": "placeX"}
-    ctx = build_share_context(msg, _masjid(), _settings())
+    ctx = build_share_context(msg, {**_masjid(), "place_id": "placeX"}, _settings())
     assert ctx["follow_path"] == "/m/placeX"
     assert ctx["masjid_place_id"] == "placeX"
     assert ctx["deep_link_path"] == "/s/m12"
+
+
+def test_follow_path_empty_when_masjid_unresolved():
+    msg = {"id": "m13", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+           "masjid_id": "Madarsa Islamia Arabia Rahimia"}
+    ctx = build_share_context(msg, {}, _settings())
+    assert ctx["follow_path"] == ""
+    assert ctx["masjid_place_id"] == ""
+
+
+def test_follow_path_falls_back_to_masjid_id_without_place_id():
+    msg = {"id": "m14", "text": "S", "created_at": "2026-10-13T10:00:00+00:00"}
+    ctx = build_share_context(msg, {**_masjid(), "id": "66f1a2b3c4d5e6f7a8b9c0d1"}, _settings())
+    assert ctx["follow_path"] == "/m/66f1a2b3c4d5e6f7a8b9c0d1"
+    assert ctx["masjid_place_id"] == ""
