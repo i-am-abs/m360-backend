@@ -7,6 +7,7 @@ from typing import Any, Optional
 from app.core.config import Settings
 
 _OG_DESC_MAX = 200
+_URL_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{6,128}$")
 
 
 def _parse_dt(value: Any) -> Optional[datetime]:
@@ -148,6 +149,14 @@ def build_share_context(
         or masjid_image
     )
 
+    # Deep links must be URL-safe: some legacy masjids stored their name in
+    # `place_id`, which the app rejects and which breaks /m/ links. Fall back to
+    # the stable document id in that case.
+    raw_place_id = str(masjid.get("place_id") or "").strip()
+    _follow_id = raw_place_id if _URL_SAFE_ID.match(raw_place_id) else ""
+    if not _follow_id:
+        _follow_id = str(masjid.get("id") or "").strip()
+
     mux_playback_id = message.get("mux_playback_id") or None
     analytics_title = f"{name} announcement"
     analytics_sub_property_id = str(message.get("masjid_id") or "")
@@ -170,11 +179,7 @@ def build_share_context(
         "share_url": f"{settings.share_cta_base_url.rstrip('/')}/s/{message_id}",
         "deep_link_path": f"/s/{message_id}",
         "masjid_place_id": str(masjid.get("place_id") or ""),
-        "follow_path": (
-            f"/m/{masjid.get('place_id') or masjid['id']}"
-            if (masjid.get("place_id") or masjid.get("id"))
-            else ""
-        ),
+        "follow_path": f"/m/{_follow_id}" if _follow_id else "",
         "share_host": settings.share_host,
         "play_store_url": settings.play_store_url,
         "app_store_url": settings.app_store_url,

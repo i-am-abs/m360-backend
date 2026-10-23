@@ -51,6 +51,9 @@ class MasjidEntityService:
         if masjid is None and _looks_like_place_id(masjid_id):
             masjid = self.sync_place_id(masjid_id)
         if masjid is None and not _looks_like_place_id(masjid_id):
+            # Legacy ids (`admin_...`) and plain place_id/id values.
+            masjid = self._repo.get_by_id(masjid_id)
+        if masjid is None and not _looks_like_place_id(masjid_id):
             # Legacy shares stored the masjid name in `masjid_id`.
             masjid = self._repo.get_by_name(masjid_id)
         if masjid is None:
