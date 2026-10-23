@@ -18,3 +18,5 @@ def test_landing_template_renders_core_sections():
     assert 'id="screenshots"' in html
     assert 'id="faq"' in html
     assert "/share-static/logo.png" in html
+    assert "/share-static/landing/screen-1.webp" in html
+    assert "/share-static/landing/screen-2.webp" in html
