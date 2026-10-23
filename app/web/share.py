@@ -20,8 +20,26 @@ from app.web.templating import env
 router = APIRouter(tags=["share"])
 
 
+_GENERIC_AREA_TOKENS = {
+    "city", "town", "district", "tehsil", "taluka", "municipality",
+    "urban", "rural", "area", "locality", "village", "mandal", "division",
+}
+
+
+def _is_generic_area(value: str) -> bool:
+    return value.strip().lower() in _GENERIC_AREA_TOKENS
+
+
+def _first_specific(by_type: dict, keys: tuple) -> str:
+    for key in keys:
+        value = (by_type.get(key) or "").strip()
+        if value and not _is_generic_area(value):
+            return value
+    return ""
+
+
 def _area_and_city(place: dict) -> tuple:
-    """Pull the area (sublocality) and city (locality) from addressComponents."""
+    """Pull a meaningful area (sublocality) and city (locality) from addressComponents."""
     by_type = {}
     for comp in place.get("addressComponents") or []:
         if not isinstance(comp, dict):
@@ -30,14 +48,18 @@ def _area_and_city(place: dict) -> tuple:
         for t in comp.get("types") or []:
             if t and t not in by_type and text:
                 by_type[t] = str(text).strip()
-    area = (
-        by_type.get("sublocality_level_1")
-        or by_type.get("sublocality")
-        or by_type.get("neighborhood")
-        or by_type.get("sublocality_level_2")
-        or ""
-    )
-    city = by_type.get("locality") or by_type.get("administrative_area_level_2") or ""
+    area = _first_specific(by_type, (
+        "sublocality_level_1",
+        "sublocality",
+        "neighborhood",
+        "sublocality_level_2",
+        "sublocality_level_3",
+    ))
+    city = _first_specific(by_type, (
+        "locality",
+        "postal_town",
+        "administrative_area_level_2",
+    ))
     return area, city
 
 
