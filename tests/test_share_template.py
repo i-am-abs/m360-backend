@@ -257,3 +257,22 @@ def test_follow_cta_uses_masjid_deep_link():
     assert '"/m/place1"' in line
     intent = next(l for l in html.splitlines() if "intent://" in l)
     assert "FOLLOW_PATH" in intent
+
+
+def test_area_and_city_skips_generic_sublocality():
+    from app.web.share import _area_and_city
+    place = {"addressComponents": [
+        {"longText": "City", "types": ["sublocality_level_1", "sublocality"]},
+        {"longText": "Civil Lines", "types": ["sublocality_level_2", "sublocality"]},
+        {"longText": "Aligarh", "types": ["locality", "political"]},
+    ]}
+    assert _area_and_city(place) == ("Civil Lines", "Aligarh")
+
+
+def test_area_and_city_falls_back_to_city_only_when_area_generic():
+    from app.web.share import _area_and_city
+    place = {"addressComponents": [
+        {"longText": "City", "types": ["sublocality_level_1", "sublocality"]},
+        {"longText": "Aligarh", "types": ["locality", "political"]},
+    ]}
+    assert _area_and_city(place) == ("", "Aligarh")
