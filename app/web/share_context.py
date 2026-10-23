@@ -112,6 +112,7 @@ def build_share_context(
     )
 
     text = (message.get("text") or "").strip()
+    caption = text
     og_description = (
         (text[: _OG_DESC_MAX - 1] + "…") if len(text) > _OG_DESC_MAX else text
     ) or f"New announcement from {name}"
@@ -162,6 +163,7 @@ def build_share_context(
         "poster_url": thumbnail_url,
         "og_image_url": _sized_og_image(thumbnail_url, settings),
         "og_description": og_description,
+        "caption": caption,
         "page_title": f"{name} — announcement | Muslim 360",
         "relative_time": _relative_time(message.get("created_at")),
         "canonical_url": f"{settings.share_web_base_url}/s/{message_id}",

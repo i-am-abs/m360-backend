@@ -27,6 +27,7 @@ def _render(**overrides):
         poster_url="https://img/p.jpg",
         og_image_url="https://img/og.jpg",
         og_description="Salaam",
+        caption="Salaam",
         page_title="Masjid Al Noor — announcement | Muslim 360",
         relative_time="2 hrs ago",
         canonical_url="https://muslim360.in/s/m1",
@@ -62,7 +63,7 @@ def test_share_template_renders_new_layout():
 
 def test_text_only_post_shows_announcement_and_no_media():
     html = _render(is_video=False, video_hls_url=None, poster_url=None)
-    assert '<p class="text">Salaam</p>' in html
+    assert '<p class="caption">Salaam</p>' in html
     assert '<main class="media"' not in html
 
 
@@ -94,7 +95,7 @@ def test_video_without_poster_uses_dark_placeholder_not_og_card():
     assert '<img class="poster"' not in media
 
 
-def test_non_video_with_poster_renders_image_and_caption_below():
+def test_non_video_with_poster_renders_image_and_footer_caption():
     html = _render(
         is_video=False,
         video_hls_url=None,
@@ -102,16 +103,15 @@ def test_non_video_with_poster_renders_image_and_caption_below():
     )
     media = _media_block(html)
     assert '<img class="poster" src="https://img/p.jpg"' in media
-    assert '<p class="text">Salaam</p>' in html
-    assert html.index('<main class="media"') < html.index('<div class="textwrap')
-    assert '<div class="textwrap">' in html
-    assert ".textwrap{flex:0 1 auto" in html
-    assert ".textwrap.full{flex:1" in html
+    assert '<p class="caption">Salaam</p>' in html
+    assert ".caption{" in html
 
 
-def test_text_only_post_text_fills_available_space():
-    html = _render(is_video=False, video_hls_url=None, poster_url=None)
-    assert '<div class="textwrap full">' in html
+def test_caption_renders_below_sender_row_above_ctas():
+    html = _render()
+    assert '<p class="caption">Salaam</p>' in html
+    assert html.index('class="srow"') < html.index('class="caption"')
+    assert html.index('class="caption"') < html.index('class="ctas"')
 
 
 def test_share_cta_uses_muslim360_base_url():
