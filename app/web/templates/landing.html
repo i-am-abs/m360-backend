@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="js">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<noscript><style>html.js .reveal{opacity:1!important;transform:none!important}</style></noscript>
 <style>
   :root{--green:#45D07C;--green-deep:#0B7C43;--g1:#61D47D;--g2:#ADFF8D;
     --ink:#091914;--muted:#5D6C67;--line:#E6EAE8;--surface:#F7F9F8;--card:#FFFFFF}
@@ -108,6 +109,9 @@
   .section-head{max-width:640px;margin-bottom:32px}
   h2{margin:0 0 8px;font-size:30px;font-weight:800;letter-spacing:-.015em}
   .section-head p{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+  .kicker{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--green-deep);margin-bottom:8px}
+  .section-tint{background:linear-gradient(180deg,#F7F9F8,#EDF6F1)}
 
   /* screenshots */
   .shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;
@@ -136,8 +140,14 @@
   .feature p{margin:0;font-size:13px;line-height:1.55;color:var(--muted)}
 
   /* how it works */
-  .steps{display:grid;grid-template-columns:1fr;gap:16px;counter-reset:step}
-  @media(min-width:760px){.steps{grid-template-columns:repeat(3,1fr)}}
+  .steps{display:grid;grid-template-columns:1fr;gap:16px;position:relative}
+  @media(min-width:760px){
+    .steps{grid-template-columns:repeat(3,1fr)}
+    .steps::before{content:"";position:absolute;top:41px;left:16%;right:16%;
+      border-top:2px dashed #CFE5D6;z-index:0}
+    .step{z-index:1}
+  }
+  .steps-cta{text-align:center;margin-top:26px}
   .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;
     position:relative}
   .step .num{width:34px;height:34px;border-radius:10px;background:var(--ink);color:#fff;
@@ -215,6 +225,14 @@
   .foot-links a{text-decoration:none;color:var(--muted);transition:color .2s ease}
   .foot-links a:hover{color:var(--ink)}
   .foot-copy{width:100%;border-top:1px solid var(--line);padding-top:16px;font-size:12px}
+
+  /* scroll reveal */
+  html.js .reveal{opacity:0;transform:translateY(14px);
+    transition:opacity .5s ease,transform .5s ease}
+  html.js .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    html.js .reveal{opacity:1;transform:none}
+  }
 </style>
 </head>
 <body>
@@ -279,8 +297,9 @@
   {% endif %}
 
   <section id="screenshots" class="block">
-    <div class="wrap">
+    <div class="wrap reveal">
       <div class="section-head">
+        <span class="kicker">Screenshots</span>
         <h2>A quick look</h2>
         <p>Clean, focused screens designed to keep you connected without distractions.</p>
       </div>
@@ -292,8 +311,9 @@
   </section>
 
   <section id="features" class="block">
-    <div class="wrap">
+    <div class="wrap reveal">
       <div class="section-head">
+        <span class="kicker">Features</span>
         <h2>Built for everyday practice</h2>
         <p>Everything you need to stay connected to your deen and your community.</p>
       </div>
@@ -322,11 +342,12 @@
     </div>
   </section>
 
-  <section id="how" class="block">
-    <div class="wrap">
+  <section id="how" class="block section-tint">
+    <div class="wrap reveal">
       <div class="section-head">
-        <h2>How it works</h2>
-        <p>Get started in three simple steps.</p>
+        <span class="kicker">How it works</span>
+        <h2>Get started in three simple steps</h2>
+        <p>From download to staying connected with your masjid.</p>
       </div>
       <div class="steps">
         <div class="step">
@@ -345,12 +366,14 @@
           <p>Tap follow to get announcements and updates from the committee.</p>
         </div>
       </div>
+      <p class="steps-cta"><a class="btn btn-primary" href="{{ play_store_url }}">Get the app</a></p>
     </div>
   </section>
 
   <section class="block">
-    <div class="wrap spot">
+    <div class="wrap spot reveal">
       <div class="spot-copy">
+        <span class="kicker">Announcements</span>
         <h2>Stay close to your masjid</h2>
         <p>Committee members share announcements that reach followers instantly —
           and every post has a link you can send to family and friends.</p>
@@ -377,8 +400,11 @@
   </section>
 
   <section id="faq" class="block">
-    <div class="wrap">
-      <div class="section-head"><h2>Frequently asked questions</h2></div>
+    <div class="wrap reveal">
+      <div class="section-head">
+        <span class="kicker">FAQ</span>
+        <h2>Frequently asked questions</h2>
+      </div>
       <div class="faq">
         <details>
           <summary>Is Muslim 360 free?</summary>
@@ -402,7 +428,7 @@
 
   <section class="cta-band">
     <div class="wrap">
-      <div class="cta-card">
+      <div class="cta-card reveal">
         <div>
           <h2>Ready to get started?</h2>
           <p>Download Muslim 360 and bring prayer times, the Quran, and your masjid together.</p>
@@ -440,4 +466,22 @@
 </footer>
 
 </body>
+<script>
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
 </html>
