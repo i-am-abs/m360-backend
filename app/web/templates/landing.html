@@ -76,12 +76,22 @@
   .trust span{display:inline-flex;align-items:center;gap:6px}
   .trust svg{flex:0 0 14px;color:var(--green-deep)}
 
-  .phone{position:relative;width:100%;max-width:320px;border-radius:36px;padding:10px;
+  .hero-visual{position:relative;display:flex;justify-content:center;
+    animation:rise .6s ease both}
+  .glow{position:absolute;inset:5% 3%;border-radius:50%;z-index:0;
+    background:radial-gradient(circle,rgba(69,208,124,.38),transparent 68%);
+    filter:blur(34px);animation:pulse 5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:.95;transform:scale(1.06)}}
+  .phone{position:relative;z-index:1;width:100%;max-width:320px;border-radius:36px;padding:10px;
     background:#0b1410;box-shadow:0 30px 70px rgba(9,25,20,.28);margin:0 auto;
     animation:float 6s ease-in-out infinite;will-change:transform}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-  .phone .screen{border-radius:28px;min-height:540px;overflow:hidden;position:relative;
+  .phone .screen{position:relative;border-radius:28px;min-height:540px;overflow:hidden;
     background:linear-gradient(160deg,#0c1813,#132a1f)}
+  .phone .screen::after{content:"";position:absolute;inset:-60% -20%;pointer-events:none;z-index:1;
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.16) 50%,transparent 58%);
+    transform:translateX(-120%);animation:sheen 5.5s ease-in-out infinite}
+  @keyframes sheen{0%,62%{transform:translateX(-120%)}82%,100%{transform:translateX(120%)}}
   .phone .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);
     width:96px;height:22px;border-radius:12px;background:#0b1410;z-index:2}
   .phone .screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
@@ -246,10 +256,13 @@
           <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Privacy-friendly</span>
         </div>
       </div>
-      <div class="phone">
-        <div class="screen">
-          <div class="notch"></div>
-          <img src="/share-static/landing/screen-2.webp" alt="Muslim 360 app home screen">
+      <div class="hero-visual">
+        <div class="glow"></div>
+        <div class="phone">
+          <div class="screen">
+            <div class="notch"></div>
+            <img src="/share-static/landing/screen-2.webp" alt="Muslim 360 app home screen">
+          </div>
         </div>
       </div>
     </div>
