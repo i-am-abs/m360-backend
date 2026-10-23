@@ -130,6 +130,18 @@ def test_location_uses_area_and_city():
     assert ctx["masjid_location"] == "Ghatkopar East, Mumbai"
 
 
+def test_mux_analytics_fields():
+    msg = {
+        "id": "m1", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+        "mux_playback_id": "pb123", "masjid_id": "place1",
+    }
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["mux_playback_id"] == "pb123"
+    assert ctx["mux_env_key"] == _settings().mux_env_key
+    assert ctx["analytics_title"] == "Masjid Al Noor announcement"
+    assert ctx["analytics_sub_property_id"] == "place1"
+
+
 def test_area_and_city_from_address_components():
     from app.web.share import _area_and_city
     place = {"addressComponents": [
@@ -138,3 +150,23 @@ def test_area_and_city_from_address_components():
         {"longText": "Mumbai", "types": ["locality"]},
     ]}
     assert _area_and_city(place) == ("Ghatkopar East", "Mumbai")
+
+
+def test_og_image_uses_thumbnail_without_cropping():
+    msg = {
+        "id": "m11", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+        "thumbnail_url": "https://image.mux.com/pb/thumbnail.jpg",
+    }
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["og_image_url"] == "https://image.mux.com/pb/thumbnail.jpg"
+    assert "smartcrop" not in ctx["og_image_url"]
+    assert "fit_mode" not in ctx["og_image_url"]
+
+
+def test_follow_path_points_to_masjid():
+    msg = {"id": "m12", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+           "masjid_id": "placeX"}
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["follow_path"] == "/m/placeX"
+    assert ctx["masjid_place_id"] == "placeX"
+    assert ctx["deep_link_path"] == "/s/m12"

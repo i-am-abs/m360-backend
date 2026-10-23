@@ -1,0 +1,147 @@
+{%- set _hls_url = HLS_URL if HLS_URL is defined else (video_hls_url or "") -%}
+{%- set _mux_env_key = MUX_ENV_KEY if MUX_ENV_KEY is defined else (mux_env_key or "") -%}
+{%- set _mux_playback_id = MUX_PLAYBACK_ID if MUX_PLAYBACK_ID is defined else (mux_playback_id or "") -%}
+{%- set _analytics_title = ANALYTICS_TITLE if ANALYTICS_TITLE is defined else (analytics_title or "") -%}
+{%- set _analytics_sub_property = ANALYTICS_SUB_PROPERTY if ANALYTICS_SUB_PROPERTY is defined else (analytics_sub_property_id or "") -%}
+{%- set _player_name = player_name if player_name is defined else "m360-share-page" -%}
+<script>
+(function () {
+  var HLS_URL = {{ _hls_url | tojson }};
+  var MUX_ENV_KEY = {{ _mux_env_key | tojson }};
+  var MUX_PLAYBACK_ID = {{ _mux_playback_id | tojson }};
+  var ANALYTICS_TITLE = {{ _analytics_title | tojson }};
+  var ANALYTICS_SUB_PROPERTY = {{ _analytics_sub_property | tojson }};
+  var PLAYER_NAME = {{ _player_name | tojson }};
+  var MUX_INIT_TIME =
+    (typeof mux !== "undefined" && mux.utils && typeof mux.utils.now === "function")
+      ? mux.utils.now()
+      : Date.now();
+
+  function startMux(videoEl, hlsInstance) {
+    if (typeof mux === "undefined" || !MUX_ENV_KEY) return;
+    var opts = {
+      data: {
+        env_key: MUX_ENV_KEY,
+        player_name: PLAYER_NAME,
+        player_init_time: MUX_INIT_TIME,
+        video_id: MUX_PLAYBACK_ID || undefined,
+        video_title: ANALYTICS_TITLE,
+        sub_property_id: ANALYTICS_SUB_PROPERTY,
+        video_stream_type: "on-demand",
+      },
+    };
+    if (hlsInstance) { opts.hlsjs = hlsInstance; opts.Hls = window.Hls; }
+    try { mux.monitor(videoEl, opts); } catch (e) {}
+  }
+
+  // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"
+  // but cannot actually play HLS, so Media Source Extensions is the real probe.
+  function hasMSE() {
+    try {
+      return !!(window.MediaSource &&
+        typeof window.MediaSource.isTypeSupported === "function" &&
+        window.MediaSource.isTypeSupported('video/mp4;codecs="avc1.42E01E,mp4a.40.2"'));
+    } catch (e) { return false; }
+  }
+
+  function loadHls(cb) {
+    if (window.Hls) {
+      cb(typeof window.Hls.isSupported === "function" && window.Hls.isSupported());
+      return;
+    }
+    var existing = document.querySelector('script[data-m360-hls]');
+    if (existing) {
+      if (existing.getAttribute("data-m360-hls-state") === "loaded") {
+        cb(!!window.Hls);
+      } else if (existing.getAttribute("data-m360-hls-state") === "error") {
+        cb(false);
+      } else {
+        existing.addEventListener("load", function () { cb(true); });
+        existing.addEventListener("error", function () { cb(false); });
+      }
+      return;
+    }
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+    s.integrity = "sha384-w6Gb3fXHb5e1LUYa/hYA5Q41bEDglN5ZPCG7Jvnoo8/X90oGnlPqBlBJCe38mEMm";
+    s.crossOrigin = "anonymous";
+    s.setAttribute("data-m360-hls", "1");
+    s.onload = function () {
+      s.setAttribute("data-m360-hls-state", "loaded");
+      cb(true);
+    };
+    s.onerror = function () {
+      s.setAttribute("data-m360-hls-state", "error");
+      cb(false);
+    };
+    document.head.appendChild(s);
+  }
+
+  function attachPlayer(v, onFail) {
+    if (!HLS_URL) { if (onFail) onFail(); return; }
+    var canNative = !!v.canPlayType("application/vnd.apple.mpegurl");
+
+    function native() {
+      v.addEventListener("error", onFail || function () {}, { once: true });
+      v.src = HLS_URL;
+      startMux(v);
+    }
+
+    if (!hasMSE()) { native(); return; }
+
+    loadHls(function (ok) {
+      if (!ok || !(window.Hls && window.Hls.isSupported())) {
+        if (canNative) { native(); } else if (onFail) { onFail(); }
+        return;
+      }
+      var hls = new window.Hls();
+      hls.on(window.Hls.Events.ERROR, function (_e, data) {
+        if (!data || !data.fatal) return;
+        hls.destroy();
+        if (canNative) { native(); } else if (onFail) { onFail(); }
+      });
+      hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+        v.play().catch(function () {});
+      });
+      hls.loadSource(HLS_URL);
+      hls.attachMedia(v);
+      startMux(v, hls);
+    });
+  }
+
+  var v = document.getElementById("v");
+  if (!v) return;
+
+  var playBtn = document.getElementById("play");
+  if (!playBtn) {
+    // Embed page: the native controls are the only play affordance.
+    attachPlayer(v, null);
+    return;
+  }
+
+  var started = false;
+  playBtn.addEventListener("click", function () {
+    if (started) return;   // a second tap must not attach a second player
+    started = true;
+
+    var poster = document.querySelector(".media .poster");
+    playBtn.hidden = true;
+    if (poster) poster.hidden = true;
+    v.hidden = false;
+    v.controls = true;
+
+    // Put the poster and play button back so a failure is retryable
+    // instead of leaving a black rectangle.
+    function fail() {
+      if (!started) return;
+      started = false;
+      v.hidden = true;
+      v.controls = false;
+      if (poster) poster.hidden = false;
+      playBtn.hidden = false;
+    }
+
+    attachPlayer(v, fail);
+  });
+})();
+</script>

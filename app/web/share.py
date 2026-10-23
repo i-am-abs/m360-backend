@@ -102,12 +102,36 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
     # which breaks Apple's Universal Links validation. Emit an empty details list
     # until APPLE_TEAM_ID is configured.
     details = (
-        [{"appID": settings.apple_app_id, "paths": ["/s/*"]}]
+        [{"appID": settings.apple_app_id, "paths": ["/s/*", "/m/*"]}]
         if settings.apple_app_id
         else []
     )
     payload = {"applinks": {"apps": [], "details": details}}
     return Response(content=json.dumps(payload), media_type="application/json")
+
+
+@router.get("/embed/{message_id}", response_class=HTMLResponse)
+def embed_page(
+    message_id: str,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    feed_svc=Depends(get_broadcast_feed_service),
+    masjid_svc=Depends(get_masjid_entity_service),
+) -> HTMLResponse:
+    try:
+        message = feed_svc.get_message_raw(message_id)
+        masjid = (masjid_svc.get_masjid(message["masjid_id"]) or {}).get("masjid", {})
+    except Exception:
+        return HTMLResponse("<html><body>Not found</body></html>", status_code=404)
+    if resolve_share_state(message) in {"unavailable", "expired"}:
+        return HTMLResponse(
+            "<html><body>Not available</body></html>", status_code=404
+        )
+    ctx = build_share_context(message, masjid, settings)
+    html = env.get_template("share_embed.html").render(**ctx)
+    resp = HTMLResponse(html)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @router.get("/s/{message_id}", response_class=HTMLResponse)
@@ -135,7 +159,7 @@ def share_page(
         )
         return HTMLResponse(html, status_code=500)
 
-    place_id = message.get("masjid_id") or ""
+    place_id = str(masjid.get("place_id") or message.get("masjid_id") or "")
     masjid_image_url = None
     area = ""
     city = ""

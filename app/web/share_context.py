@@ -57,9 +57,9 @@ def _minify_places_photo(url: Optional[str], px: int = 96) -> Optional[str]:
 
 
 def _sized_og_image(thumbnail_url: Optional[str], settings: Settings) -> str:
-    if thumbnail_url and "image.mux.com" in thumbnail_url:
-        sep = "&" if "?" in thumbnail_url else "?"
-        return f"{thumbnail_url}{sep}width=1200&height=630&fit_mode=smartcrop"
+    # Use the thumbnail exactly as-is so the shared preview keeps the real
+    # image (no smartcrop / forced 1200x630 crop). Mux/WhatsApp may still
+    # letterbox, but we no longer crop server-side.
     if thumbnail_url:
         return thumbnail_url
     return f"{settings.share_web_base_url}/share-static/og-default.png"
@@ -147,6 +147,10 @@ def build_share_context(
         or masjid_image
     )
 
+    mux_playback_id = message.get("mux_playback_id") or None
+    analytics_title = f"{name} announcement"
+    analytics_sub_property_id = str(message.get("masjid_id") or "")
+
     return {
         "message_id": message_id,
         "masjid_name": name,
@@ -163,6 +167,8 @@ def build_share_context(
         "canonical_url": f"{settings.share_web_base_url}/s/{message_id}",
         "share_url": f"{settings.share_cta_base_url.rstrip('/')}/s/{message_id}",
         "deep_link_path": f"/s/{message_id}",
+        "masjid_place_id": str(masjid.get("place_id") or message.get("masjid_id") or ""),
+        "follow_path": f"/m/{str(masjid.get('place_id') or message.get('masjid_id') or '')}",
         "share_host": settings.share_host,
         "play_store_url": settings.play_store_url,
         "app_store_url": settings.app_store_url,
@@ -171,4 +177,8 @@ def build_share_context(
         "sender_name": sender_name,
         "sender_role": sender_role,
         "sender_avatar_url": sender_avatar,
+        "mux_env_key": settings.mux_env_key,
+        "mux_playback_id": mux_playback_id,
+        "analytics_title": analytics_title,
+        "analytics_sub_property_id": analytics_sub_property_id,
     }
