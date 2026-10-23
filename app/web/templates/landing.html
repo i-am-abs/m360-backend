@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en" class="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muslim 360 — Prayer times, Quran & your masjid</title>
+<meta name="description" content="Prayer times and azaan reminders, the Quran, masjid discovery, and announcements from your masjid — all in one app.">
+<meta property="og:title" content="Muslim 360">
+<meta property="og:description" content="Prayer times and azaan reminders, the Quran, masjid discovery, and announcements from your masjid — all in one app.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<noscript><style>html.js .reveal{opacity:1!important;transform:none!important}</style></noscript>
+<style>
+  :root{--green:#45D07C;--green-deep:#0B7C43;--g1:#61D47D;--g2:#ADFF8D;
+    --ink:#091914;--muted:#5D6C67;--line:#E6EAE8;--surface:#F7F9F8;--card:#FFFFFF}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{margin:0;background:var(--surface);color:var(--ink);
+    font-family:"Plus Jakarta Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:inherit}
+  a,button{cursor:pointer}
+  :focus-visible{outline:2px solid var(--green-deep);outline-offset:2px;border-radius:8px}
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;
+    text-decoration:none;transition:transform .2s ease,box-shadow .2s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:linear-gradient(180deg,var(--g1),var(--g2));color:var(--ink);
+    box-shadow:0 4px 14px rgba(69,208,124,.28)}
+  .store{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:#fff;
+    text-decoration:none;border-radius:12px;padding:10px 16px;min-width:162px;
+    transition:transform .2s ease,box-shadow .2s ease}
+  .store:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(9,25,20,.24)}
+  .store small{display:block;font-size:10px;opacity:.7;line-height:1.1}
+  .store strong{display:block;font-size:14px;font-weight:700;line-height:1.2}
+  .store svg{flex:0 0 22px}
+
+  /* nav */
+  header.nav{position:sticky;top:0;z-index:30;background:rgba(247,249,248,.86);
+    backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav-inner{display:flex;align-items:center;gap:16px;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;
+    text-decoration:none}
+  .brand img{width:34px;height:34px;border-radius:9px}
+  .nav-links{margin-left:auto;display:none;gap:24px;font-size:14px;font-weight:500;color:var(--muted)}
+  .nav-links a{text-decoration:none;transition:color .2s ease}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{display:flex;gap:8px}
+  @media(min-width:900px){.nav-links{display:flex}}
+
+  /* hero */
+  .hero{padding:64px 0 48px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(620px 340px at 88% 6%,rgba(69,208,124,.18),transparent 70%),
+      radial-gradient(520px 280px at 4% 96%,rgba(69,208,124,.10),transparent 70%)}
+  .hero>.wrap{position:relative}
+  .hero-grid{display:grid;grid-template-columns:1fr;gap:40px;align-items:center}
+  @media(min-width:900px){.hero-grid{grid-template-columns:1.05fr .95fr}}
+  .hero-copy{animation:rise .5s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--green-deep);
+    background:#E8F5E9;border-radius:999px;padding:6px 12px}
+  h1{margin:16px 0 14px;font-size:40px;line-height:1.06;font-weight:800;letter-spacing:-.025em}
+  @media(min-width:900px){h1{font-size:56px}}
+  .lede{margin:0 0 26px;font-size:17px;line-height:1.6;color:var(--muted);max-width:540px}
+  .hero-ctas{display:flex;flex-wrap:wrap;gap:10px}
+  .trust{display:flex;flex-wrap:wrap;gap:16px;margin-top:22px;color:var(--muted);font-size:13px}
+  .trust span{display:inline-flex;align-items:center;gap:6px}
+  .trust svg{flex:0 0 14px;color:var(--green-deep)}
+
+  .hero-visual{position:relative;display:flex;justify-content:center;
+    animation:rise .6s ease both}
+  .glow{position:absolute;inset:5% 3%;border-radius:50%;z-index:0;
+    background:radial-gradient(circle,rgba(69,208,124,.38),transparent 68%);
+    filter:blur(34px);animation:pulse 5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:.95;transform:scale(1.06)}}
+  .phone{position:relative;z-index:1;width:100%;max-width:320px;border-radius:36px;padding:10px;
+    background:#0b1410;box-shadow:0 30px 70px rgba(9,25,20,.28);margin:0 auto;
+    animation:float 6s ease-in-out infinite;will-change:transform}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .phone .screen{position:relative;border-radius:28px;min-height:540px;overflow:hidden;
+    background:linear-gradient(160deg,#0c1813,#132a1f)}
+  .phone .screen::after{content:"";position:absolute;inset:-60% -20%;pointer-events:none;z-index:1;
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.16) 50%,transparent 58%);
+    transform:translateX(-120%);animation:sheen 5.5s ease-in-out infinite}
+  @keyframes sheen{0%,62%{transform:translateX(-120%)}82%,100%{transform:translateX(120%)}}
+  .phone .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    width:96px;height:22px;border-radius:12px;background:#0b1410;z-index:2}
+  .phone .screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+  /* stats */
+  .stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff}
+  .stats-inner{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:28px 0;text-align:center}
+  .stat b{display:block;font-size:28px;font-weight:800;letter-spacing:-.02em}
+  .stat span{font-size:12px;color:var(--muted);font-weight:500}
+  @media(max-width:560px){.stat b{font-size:22px}}
+
+  /* sections */
+  section.block{padding:64px 0}
+  .section-head{max-width:640px;margin-bottom:32px}
+  h2{margin:0 0 8px;font-size:30px;font-weight:800;letter-spacing:-.015em}
+  .section-head p{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+  .kicker{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--green-deep);margin-bottom:8px}
+  .section-tint{background:linear-gradient(180deg,#F7F9F8,#EDF6F1)}
+
+  /* screenshots */
+  .shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;
+    max-width:680px;margin:0 auto;align-items:start}
+  .shot{background:#0b1410;border-radius:28px;padding:8px;
+    box-shadow:0 24px 50px rgba(9,25,20,.18);border:1px solid rgba(9,25,20,.08);
+    transition:transform .2s ease,box-shadow .2s ease}
+  .shot:hover{transform:translateY(-3px)}
+  .shot img{width:100%;height:auto;display:block;border-radius:22px}
+  @media(max-width:560px){
+    .shots{gap:12px;max-width:100%}
+    .shot{border-radius:20px;padding:5px}
+    .shot img{border-radius:16px}
+  }
+
+  /* features */
+  .features{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:700px){.features{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1000px){.features{grid-template-columns:repeat(4,1fr)}}
+  .feature{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;
+    box-shadow:0 1px 2px rgba(9,25,20,.04);transition:transform .2s ease,box-shadow .2s ease}
+  .feature:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(9,25,20,.09)}
+  .feature .ico{width:42px;height:42px;border-radius:12px;background:#E8F5E9;
+    display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  .feature h3{margin:0 0 6px;font-size:15px;font-weight:700}
+  .feature p{margin:0;font-size:13px;line-height:1.55;color:var(--muted)}
+
+  /* how it works */
+  .steps{display:grid;grid-template-columns:1fr;gap:16px;position:relative}
+  @media(min-width:760px){
+    .steps{grid-template-columns:repeat(3,1fr)}
+    .steps::before{content:"";position:absolute;top:41px;left:16%;right:16%;
+      border-top:2px dashed #CFE5D6;z-index:0}
+    .step{z-index:1}
+  }
+  .steps-cta{text-align:center;margin-top:26px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;
+    position:relative}
+  .step .num{width:34px;height:34px;border-radius:10px;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;
+    margin-bottom:14px}
+  .step h3{margin:0 0 6px;font-size:15px;font-weight:700}
+  .step p{margin:0;font-size:13px;line-height:1.55;color:var(--muted)}
+
+  /* spotlight */
+  .spot{display:grid;grid-template-columns:1fr;gap:32px;align-items:center}
+  @media(min-width:900px){.spot{grid-template-columns:1fr 1fr}}
+  .spot-copy h2{margin-bottom:10px}
+  .spot-copy p{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.65}
+  .spot-list{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+  .spot-list li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink)}
+  .spot-list svg{flex:0 0 18px;color:var(--green-deep);margin-top:1px}
+
+  /* in-app announcement card mock */
+  .bstage{display:flex;flex-direction:column;align-items:center;gap:12px;
+    padding:26px 18px;border-radius:24px;background-color:#fff;
+    background-image:radial-gradient(circle at 1px 1px,rgba(69,208,124,.16) 1px,transparent 0);
+    background-size:18px 18px;border:1px solid var(--line)}
+  .bdate{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .bcard{position:relative;width:300px;max-width:100%;background:#E5F1E8;border-radius:16px;
+    box-shadow:0 18px 40px rgba(9,25,20,.12)}
+  .bhead{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px 6px;font-size:11px;font-weight:500;color:var(--muted)}
+  .bhead .you{color:var(--ink);font-weight:600}
+  .bvideo{position:relative;margin:0 12px;border-radius:12px;aspect-ratio:3/4;
+    background:linear-gradient(160deg,#1a2b22,#37503f);overflow:hidden}
+  .bvideo::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.35);
+    border:2px solid rgba(229,241,232,.9)}
+  .bvideo::before{content:"";position:absolute;top:50%;left:50%;z-index:1;
+    transform:translate(-38%,-50%);border-style:solid;border-width:8px 0 8px 13px;
+    border-color:transparent transparent transparent #fff}
+  .bmeta{display:flex;justify-content:space-between;padding:8px 14px 0;
+    font-size:11px;color:var(--muted)}
+  .bexpiry{display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:8px 14px;
+    background:#D9EEE1;border-top:1px solid #C3DECF;border-radius:0 0 16px 16px;
+    font-size:11px;line-height:1.4;color:var(--muted)}
+  .bexpiry svg{flex:0 0 13px;margin-top:1px}
+  .breacts{display:flex;gap:8px}
+  .breacts span{background:#FFF6D6;border:1px solid #F2E6B8;border-radius:999px;
+    padding:4px 10px;font-size:12px;color:#5D4A00}
+
+  /* faq */
+  .faq{display:grid;gap:12px;max-width:820px}
+  details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+    transition:box-shadow .2s ease}
+  details[open]{box-shadow:0 10px 26px rgba(9,25,20,.06)}
+  summary{cursor:pointer;font-weight:600;font-size:15px;list-style:none;
+    display:flex;align-items:center;justify-content:space-between;gap:12px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font-size:18px;color:var(--muted);line-height:1}
+  details[open] summary::after{content:"–"}
+  details p{margin:10px 0 0;font-size:14px;line-height:1.6;color:var(--muted)}
+
+  /* final CTA */
+  .cta-band{padding:8px 0 72px}
+  .cta-card{background:linear-gradient(135deg,#0d2019,#16382a);color:#fff;border-radius:24px;
+    padding:38px;display:flex;flex-wrap:wrap;gap:22px;align-items:center;
+    justify-content:space-between;box-shadow:0 24px 50px rgba(9,25,20,.18)}
+  .cta-card h2{color:#fff;margin:0 0 6px;font-size:28px}
+  .cta-card p{margin:0;color:rgba(255,255,255,.72);font-size:15px;max-width:520px}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:36px 0;color:var(--muted);font-size:13px;background:#fff}
+  .foot-inner{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;justify-content:space-between}
+  .foot-brand{max-width:320px}
+  .foot-brand .brand{font-size:16px;margin-bottom:8px}
+  .foot-brand p{margin:0;line-height:1.6}
+  .foot-links{display:flex;flex-wrap:wrap;gap:18px;font-weight:500}
+  .foot-links a{text-decoration:none;color:var(--muted);transition:color .2s ease}
+  .foot-links a:hover{color:var(--ink)}
+  .foot-copy{width:100%;border-top:1px solid var(--line);padding-top:16px;font-size:12px}
+
+  /* scroll reveal */
+  html.js .reveal{opacity:0;transform:translateY(14px);
+    transition:opacity .5s ease,transform .5s ease}
+  html.js .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    html.js .reveal{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><img src="/share-static/logo.png" alt="Muslim 360 logo">Muslim 360</a>
+    <nav class="nav-links">
+      <a href="#screenshots">Screenshots</a>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta"><a class="btn btn-primary" href="{{ play_store_url }}">Get the app</a></div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Muslim 360</span>
+        <h1>Everything your masjid, in one app.</h1>
+        <p class="lede">Prayer times and azaan reminders, the Quran, masjid discovery,
+          and announcements from your masjid — all in one place.</p>
+        <div class="hero-ctas">
+          <a class="store" href="{{ play_store_url }}" rel="noopener">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M3.6 1.8c-.3.3-.5.8-.5 1.4v17.6c0 .6.2 1.1.5 1.4l.1.1 9.9-9.9v-.3L3.7 1.7l-.1.1z"/><path d="M17 12.8l-3.3-3.3v-.3L17 5.9l.1.1 4 2.3c1.1.6 1.1 1.7 0 2.3l-4 2.3-.1-.1z" opacity=".85"/><path d="M17.1 12.7L13.7 9.4 3.6 22.2c.4.4 1 .4 1.7.1l11.8-6.8" opacity=".7"/><path d="M17.1 12.7l-11.8-6.8c-.7-.4-1.3-.3-1.7.1l10.1 10.1 3.4-3.4z" opacity=".6"/></svg>
+            <span><small>Get it on</small><strong>Google Play</strong></span>
+          </a>
+          <a class="store" href="{{ app_store_url }}" rel="noopener">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M16.4 12.8c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.9-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6-.1 0-2.2-.9-2.2-3.2zM14.2 5.9c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+            <span><small>Download on the</small><strong>App Store</strong></span>
+          </a>
+        </div>
+        <div class="trust">
+          <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Free to download</span>
+          <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Built for masjids</span>
+          <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Privacy-friendly</span>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="glow"></div>
+        <div class="phone">
+          <div class="screen">
+            <div class="notch"></div>
+            <img src="/share-static/landing/screen-2.webp" alt="Muslim 360 app home screen">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if stats %}
+  <div class="stats">
+    <div class="wrap stats-inner">
+      <div class="stat"><b>{{ stats.masjids }}</b><span>Masjids</span></div>
+      <div class="stat"><b>{{ stats.cities }}</b><span>Cities</span></div>
+      <div class="stat"><b>{{ stats.announcements }}</b><span>Announcements shared</span></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <section id="screenshots" class="block">
+    <div class="wrap reveal">
+      <div class="section-head">
+        <span class="kicker">Screenshots</span>
+        <h2>A quick look</h2>
+        <p>Clean, focused screens designed to keep you connected without distractions.</p>
+      </div>
+      <div class="shots">
+        <div class="shot"><img src="/share-static/landing/screen-1.webp" alt="Muslim 360 app screen"></div>
+        <div class="shot"><img src="/share-static/landing/screen-2.webp" alt="Muslim 360 app screen"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="block">
+    <div class="wrap reveal">
+      <div class="section-head">
+        <span class="kicker">Features</span>
+        <h2>Built for everyday practice</h2>
+        <p>Everything you need to stay connected to your deen and your community.</p>
+      </div>
+      <div class="features">
+        <div class="feature">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B7C43" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Prayer times &amp; azaan</h3>
+          <p>Accurate timings for your location, with reminders so you never miss a prayer.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B7C43" stroke-width="2" stroke-linecap="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15"/></svg></div>
+          <h3>Quran</h3>
+          <p>Read and listen to the Quran with clear translations and audio recitation.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B7C43" stroke-width="2" stroke-linecap="round"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+          <h3>Masjid finder</h3>
+          <p>Discover masjids near you and follow the ones you attend.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B7C43" stroke-width="2" stroke-linecap="round"><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></div>
+          <h3>Masjid announcements</h3>
+          <p>Get official updates from your masjid committee, right in your feed.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="block section-tint">
+    <div class="wrap reveal">
+      <div class="section-head">
+        <span class="kicker">How it works</span>
+        <h2>Get started in three simple steps</h2>
+        <p>From download to staying connected with your masjid.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="num">1</div>
+          <h3>Download the app</h3>
+          <p>Install Muslim 360 from Google Play or the App Store.</p>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <h3>Find your masjid</h3>
+          <p>Search nearby or by name, and open your masjid’s profile.</p>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <h3>Follow &amp; stay updated</h3>
+          <p>Tap follow to get announcements and updates from the committee.</p>
+        </div>
+      </div>
+      <p class="steps-cta"><a class="btn btn-primary" href="{{ play_store_url }}">Get the app</a></p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap spot reveal">
+      <div class="spot-copy">
+        <span class="kicker">Announcements</span>
+        <h2>Stay close to your masjid</h2>
+        <p>Committee members share announcements that reach followers instantly —
+          and every post has a link you can send to family and friends.</p>
+        <ul class="spot-list">
+          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Official updates from the masjid committee</li>
+          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Shareable announcement links</li>
+          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Optional auto-expiry and share controls</li>
+        </ul>
+      </div>
+      <div class="bstage">
+        <span class="bdate">YESTERDAY</span>
+        <div class="bcard">
+          <div class="bhead"><span>~Admin</span><span class="you">You</span></div>
+          <div class="bvideo"></div>
+          <div class="bmeta"><span>234 views</span><span>22:22</span></div>
+          <div class="bexpiry">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            The video will be automatically removed 30 days.
+          </div>
+        </div>
+        <div class="breacts"><span>👍 1</span><span>😂 1</span><span>🥲 1</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="block">
+    <div class="wrap reveal">
+      <div class="section-head">
+        <span class="kicker">FAQ</span>
+        <h2>Frequently asked questions</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>Is Muslim 360 free?</summary>
+          <p>Yes — prayer times, the Quran, and masjid discovery are free to use.</p>
+        </details>
+        <details>
+          <summary>Does it work outside India?</summary>
+          <p>Prayer times and the Quran work anywhere. Masjid discovery and announcements depend on coverage in your area.</p>
+        </details>
+        <details>
+          <summary>How do I follow my masjid?</summary>
+          <p>Search for your masjid in the app or open a share link from your masjid, then tap “Follow”.</p>
+        </details>
+        <details>
+          <summary>How do masjid committees post announcements?</summary>
+          <p>Committee members register in the app and, once approved, can post announcements and updates.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="wrap">
+      <div class="cta-card reveal">
+        <div>
+          <h2>Ready to get started?</h2>
+          <p>Download Muslim 360 and bring prayer times, the Quran, and your masjid together.</p>
+        </div>
+        <div class="hero-ctas">
+          <a class="store" href="{{ play_store_url }}" rel="noopener">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M3.6 1.8c-.3.3-.5.8-.5 1.4v17.6c0 .6.2 1.1.5 1.4l.1.1 9.9-9.9v-.3L3.7 1.7l-.1.1z"/><path d="M17 12.8l-3.3-3.3v-.3L17 5.9l.1.1 4 2.3c1.1.6 1.1 1.7 0 2.3l-4 2.3-.1-.1z" opacity=".85"/><path d="M17.1 12.7L13.7 9.4 3.6 22.2c.4.4 1 .4 1.7.1l11.8-6.8" opacity=".7"/><path d="M17.1 12.7l-11.8-6.8c-.7-.4-1.3-.3-1.7.1l10.1 10.1 3.4-3.4z" opacity=".6"/></svg>
+            <span><small>Get it on</small><strong>Google Play</strong></span>
+          </a>
+          <a class="store" href="{{ app_store_url }}" rel="noopener">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M16.4 12.8c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.9-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7s1.8.7 3 .7c1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6-.1 0-2.2-.9-2.2-3.2zM14.2 5.9c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+            <span><small>Download on the</small><strong>App Store</strong></span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-brand">
+      <a class="brand" href="/"><img src="/share-static/logo.png" alt="Muslim 360 logo">Muslim 360</a>
+      <p>Prayer times, the Quran, and your masjid — together in one app.</p>
+    </div>
+    <nav class="foot-links">
+      <a href="#screenshots">Screenshots</a>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="{{ play_store_url }}">Download</a>
+    </nav>
+    <span class="foot-copy">© 2026 Muslim 360. All rights reserved.</span>
+  </div>
+</footer>
+
+</body>
+<script>
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+</html>
