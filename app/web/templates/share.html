@@ -209,9 +209,22 @@
 
   function openApp() {
     if (IS_ANDROID) {
-      setTimeout(function () {
+      // If the app actually opened, the page is hidden — cancel the store
+      // fallback so the browser doesn't navigate to the Play Store in the
+      // background (users saw the store page when returning to the tab).
+      var fallback = setTimeout(function () {
         if (!document.hidden) window.location = STORE_URL;
-      }, 1100);
+      }, 1400);
+      var cancel = function () { clearTimeout(fallback); };
+      var onVisibility = function () {
+        if (document.hidden) {
+          cancel();
+          document.removeEventListener("visibilitychange", onVisibility);
+        }
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("pagehide", cancel, { once: true });
+      window.addEventListener("blur", cancel, { once: true });
       window.location = "intent://" + SHARE_HOST + FOLLOW_PATH +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
         ";S.browser_fallback_url=" + encodeURIComponent(STORE_URL) + ";end";
