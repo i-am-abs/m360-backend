@@ -173,6 +173,7 @@
 <script>
   var SHARE_HOST = {{ share_host | tojson }};
   var DEEP_PATH = {{ deep_link_path | tojson }};
+  var FOLLOW_PATH = {{ follow_path | tojson }};
   var PLAY_URL = {{ play_store_url | tojson }};
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
@@ -211,7 +212,7 @@
       setTimeout(function () {
         if (!document.hidden) window.location = PLAY_URL;
       }, 1100);
-      window.location = "intent://" + SHARE_HOST + DEEP_PATH +
+      window.location = "intent://" + SHARE_HOST + FOLLOW_PATH +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
         ";S.browser_fallback_url=" + encodeURIComponent(PLAY_URL) + ";end";
       return;
@@ -221,7 +222,7 @@
       var cancel = function () { clearTimeout(fallback); };
       window.addEventListener("pagehide", cancel, { once: true });
       document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
-      window.location = "https://" + SHARE_HOST + DEEP_PATH;
+      window.location = "https://" + SHARE_HOST + FOLLOW_PATH;
       return;
     }
     window.location = PLAY_URL;

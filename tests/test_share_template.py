@@ -31,6 +31,7 @@ def _render(**overrides):
         relative_time="2 hrs ago",
         canonical_url="https://muslim360.in/s/m1",
         share_url="https://muslim360.in/s/m1",
+        follow_path="/m/place1",
         deep_link_path="/s/m1",
         share_host="muslim360.in",
         play_store_url="https://play.google.com/x",
@@ -248,3 +249,11 @@ def test_embed_route_404s_on_fetch_error():
     resp = client.get("/embed/m1")
     assert resp.status_code == 404
     assert "Not found" in resp.text
+
+
+def test_follow_cta_uses_masjid_deep_link():
+    html = _render()
+    line = next(l for l in html.splitlines() if "var FOLLOW_PATH" in l)
+    assert '"/m/place1"' in line
+    intent = next(l for l in html.splitlines() if "intent://" in l)
+    assert "FOLLOW_PATH" in intent

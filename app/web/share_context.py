@@ -167,6 +167,8 @@ def build_share_context(
         "canonical_url": f"{settings.share_web_base_url}/s/{message_id}",
         "share_url": f"{settings.share_cta_base_url.rstrip('/')}/s/{message_id}",
         "deep_link_path": f"/s/{message_id}",
+        "masjid_place_id": str(message.get("masjid_id") or masjid.get("place_id") or ""),
+        "follow_path": f"/m/{str(message.get('masjid_id') or masjid.get('place_id') or '')}",
         "share_host": settings.share_host,
         "play_store_url": settings.play_store_url,
         "app_store_url": settings.app_store_url,

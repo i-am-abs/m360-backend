@@ -161,3 +161,12 @@ def test_og_image_uses_thumbnail_without_cropping():
     assert ctx["og_image_url"] == "https://image.mux.com/pb/thumbnail.jpg"
     assert "smartcrop" not in ctx["og_image_url"]
     assert "fit_mode" not in ctx["og_image_url"]
+
+
+def test_follow_path_points_to_masjid():
+    msg = {"id": "m12", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+           "masjid_id": "placeX"}
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["follow_path"] == "/m/placeX"
+    assert ctx["masjid_place_id"] == "placeX"
+    assert ctx["deep_link_path"] == "/s/m12"
