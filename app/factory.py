@@ -92,10 +92,23 @@ def create_app() -> FastAPI:
 
     @application.get("/", response_class=HTMLResponse)
     def landing_page() -> HTMLResponse:
+        stats = None
+        mongo_client = getattr(application.state, "mongo_client", None)
+        if mongo_client is not None:
+            try:
+                db = mongo_client.get_database(settings.mongodb_database)
+                stats = {
+                    "masjids": db.masjids.count_documents({"meta.status": "active"}),
+                    "cities": len([c for c in db.masjids.distinct("city") if c]),
+                    "announcements": db.broadcast_messages.count_documents({}),
+                }
+            except Exception:
+                stats = None
         return HTMLResponse(web_env.get_template("landing.html").render(
             play_store_url=settings.play_store_url,
             app_store_url=settings.app_store_url,
             marketing_site_url=settings.marketing_site_url,
+            stats=stats,
         ))
 
     return application
