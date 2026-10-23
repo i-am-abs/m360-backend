@@ -52,7 +52,7 @@ def test_share_template_renders_new_layout():
     assert "Masjid Al Noor" in html
     assert "Najim Ahmed" in html
     assert "Imam" in html
-    assert "Follow Masjid" in html
+    assert "View Masjid" in html
     assert 'class="applogo"' in html
     assert "/share-static/logo.png" in html
     assert 'id="followBtn"' in html
