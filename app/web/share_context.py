@@ -57,9 +57,9 @@ def _minify_places_photo(url: Optional[str], px: int = 96) -> Optional[str]:
 
 
 def _sized_og_image(thumbnail_url: Optional[str], settings: Settings) -> str:
-    if thumbnail_url and "image.mux.com" in thumbnail_url:
-        sep = "&" if "?" in thumbnail_url else "?"
-        return f"{thumbnail_url}{sep}width=1200&height=630&fit_mode=smartcrop"
+    # Use the thumbnail exactly as-is so the shared preview keeps the real
+    # image (no smartcrop / forced 1200x630 crop). Mux/WhatsApp may still
+    # letterbox, but we no longer crop server-side.
     if thumbnail_url:
         return thumbnail_url
     return f"{settings.share_web_base_url}/share-static/og-default.png"

@@ -150,3 +150,14 @@ def test_area_and_city_from_address_components():
         {"longText": "Mumbai", "types": ["locality"]},
     ]}
     assert _area_and_city(place) == ("Ghatkopar East", "Mumbai")
+
+
+def test_og_image_uses_thumbnail_without_cropping():
+    msg = {
+        "id": "m11", "text": "S", "created_at": "2026-10-13T10:00:00+00:00",
+        "thumbnail_url": "https://image.mux.com/pb/thumbnail.jpg",
+    }
+    ctx = build_share_context(msg, _masjid(), _settings())
+    assert ctx["og_image_url"] == "https://image.mux.com/pb/thumbnail.jpg"
+    assert "smartcrop" not in ctx["og_image_url"]
+    assert "fit_mode" not in ctx["og_image_url"]
