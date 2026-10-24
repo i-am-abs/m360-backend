@@ -15,4 +15,4 @@ def test_landing_footer_links_privacy():
         marketing_site_url="https://muslim360.in",
         stats=None,
     )
-    assert 'href="/privacy"' in html
+    assert 'href="/privacy-policy"' in html
