@@ -111,8 +111,14 @@ def create_app() -> FastAPI:
             stats=stats,
         ))
 
-    @application.get("/privacy", response_class=HTMLResponse)
+    @application.get("/privacy-policy", response_class=HTMLResponse)
     def privacy_page() -> HTMLResponse:
         return HTMLResponse(web_env.get_template("privacy.html").render())
+
+    @application.get("/privacy")
+    def privacy_redirect():
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse(url="/privacy-policy", status_code=301)
 
     return application
