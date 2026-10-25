@@ -4,8 +4,11 @@ venv/
 .idea/
 .vscode/
 .cursor/
+.github/
 .docker/
 logs/
+firebase/
+tests/
 .dockerignore
 .DS_Store
 .env
