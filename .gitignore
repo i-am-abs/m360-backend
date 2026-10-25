@@ -9,6 +9,8 @@ venv/
 logs/
 firebase/
 tests/
+docs/
+data/
 .dockerignore
 .DS_Store
 .env
