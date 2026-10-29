@@ -17,3 +17,29 @@ test('returns null below the next mark', () => {
 test('returns null when duration is unknown', () => {
   assert.equal(nextMilestone(0, 10, 0), null);
 });
+
+test('init does not throw when mixpanel setup fails and leaves tracking disabled', () => {
+  const modulePath = require.resolve('../../app/web/static/m360-analytics.js');
+  delete require.cache[modulePath];
+
+  let tracked = 0;
+  global.mixpanel = {
+    init() {
+      throw new Error('mixpanel unavailable');
+    },
+    register() {},
+    track() {
+      tracked++;
+    },
+  };
+
+  const analytics = require(modulePath);
+  try {
+    assert.doesNotThrow(() => analytics.init({ token: 'tok' }));
+    analytics.track('video_playback_started');
+    assert.equal(tracked, 0);
+  } finally {
+    delete global.mixpanel;
+    delete require.cache[modulePath];
+  }
+});

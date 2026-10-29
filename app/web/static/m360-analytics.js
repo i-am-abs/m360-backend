@@ -39,16 +39,20 @@
 
   function init(config) {
     if (!config || !config.token || typeof global.mixpanel === 'undefined') return;
-    global.mixpanel.init(config.token, {
-      api_host: config.apiHost || 'https://api.mixpanel.com',
-      persistence: 'localStorage',
-      track_pageview: false,
-      autotrack: false,
-    });
-    client = global.mixpanel;
-    base = config.base || {};
-    base.anonymous_visitor_id = visitorId();
-    client.register(base);
+    try {
+      global.mixpanel.init(config.token, {
+        api_host: config.apiHost || 'https://api.mixpanel.com',
+        persistence: 'localStorage',
+        track_pageview: false,
+        autotrack: false,
+      });
+      client = global.mixpanel;
+      base = config.base || {};
+      base.anonymous_visitor_id = visitorId();
+      client.register(base);
+    } catch (e) {
+      client = null;
+    }
   }
 
   function track(event, props) {
