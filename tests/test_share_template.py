@@ -173,6 +173,15 @@ def test_share_template_creates_child_share_and_tracks_redirect():
     assert "/api/v1/shares" in html
 
 
+def test_ios_share_stays_inside_user_gesture():
+    html = _render()
+    share_page = _script_function(html, "sharePage")
+    assert "IS_IOS && navigator.share" in share_page
+    assert share_page.index("navigator.share") < share_page.index(
+        "await createChildShare"
+    )
+
+
 def test_share_template_includes_analytics_bootstrap():
     html = _render(mixpanel_token="mp-token")
     assert "M360_ANALYTICS_BASE" in html

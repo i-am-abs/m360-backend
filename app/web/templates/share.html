@@ -329,6 +329,19 @@
   }
 
   async function sharePage() {
+    // iOS only grants transient user activation for navigator.share, so this
+    // path must stay synchronous: any await here loses the click gesture and
+    // the share sheet silently fails.
+    if (IS_IOS && navigator.share) {
+      trackEvent("click_on_share_announcement", {
+        share_id: typeof SHARE_ID === "string" ? SHARE_ID : "",
+        root_share_id: "",
+        parent_share_id: typeof SHARE_ID === "string" ? SHARE_ID : "",
+        share_channel: "web_native_share_sheet"
+      });
+      navigator.share({ title: document.title, url: PAGE_URL }).catch(function () {});
+      return;
+    }
     var child = await createChildShare();
     var url = (child && child.url) ? child.url : PAGE_URL;
     trackEvent("click_on_share_announcement", {
