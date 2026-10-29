@@ -1854,6 +1854,8 @@ git commit -m "feat(app): pass analytics context to the embed player"
 - [ ] App: `flutter test` → all pass
 - [ ] Manual: create a share from web → open on device → confirm `video_landing_page_viewed`, `video_playback_started`, `click_on_view_masjid_cta`, `masjid_deep_link_opened` in Mixpanel Live View with the same `share_id`/`journey_id`.
 
-## Open dependency
+## Configuration
 
-`MIXPANEL_TOKEN` (and EU/US `MIXPANEL_API_HOST`) must be supplied. Everything is inert until then, so the code can ship before the token exists.
+`MIXPANEL_TOKEN` is set in `m360-backend/.env`, `m360-flutter-app/.env.dev` and
+`.env.prod`. `MIXPANEL_API_HOST` defaults to `https://api.mixpanel.com` (US);
+switch it to `https://api-eu.mixpanel.com` if the project is in the EU region.

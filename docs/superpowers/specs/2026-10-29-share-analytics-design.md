@@ -241,7 +241,14 @@ The policy currently names Firebase only. Update:
 2. Web: landing + embed analytics → same deploy.
 3. App: Mixpanel, share CTA, deep-link event → next app release.
 
-## 12. Risks
+## 12. Next phase (not in this plan)
+
+Once this funnel is live, the remaining Firebase Analytics events will be mirrored
+through Mixpanel, using the same identity model (`anonymous_visitor_id` as
+`distinct_id`, `user_id` as a property). This phase does not change or remove the
+existing Firebase instrumentation; it adds a parallel Mixpanel pipeline.
+
+## 13. Risks
 
 - Mixpanel token/region must be supplied; until then the integration is inert.
 - Share records grow unbounded; add a TTL or archival job only if volume
