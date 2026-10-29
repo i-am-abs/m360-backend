@@ -137,6 +137,9 @@ def test_share_template_includes_analytics_bootstrap():
     assert "M360_ANALYTICS_BASE" in html
     assert "m360-analytics.js" in html
     assert "video_landing_page_viewed" in html
+    assert html.index("M360_ANALYTICS_BASE") > html.index("var IS_ANDROID")
+    assert "M360Analytics.setupPlayer" in html
+    assert 'IS_ANDROID ? "mobile_web"' in html
 
 
 def test_share_page_instruments_mux_data():
