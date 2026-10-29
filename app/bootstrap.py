@@ -597,6 +597,15 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             donation_repo=donation_repo,
             broadcast_service=app.state.broadcast_feed_service,
         )
+
+        from app.repositories.mongo_share_repository import MongoShareRepository
+        from app.services.share_service import ShareService
+
+        app.state.share_service = ShareService(
+            share_repo=MongoShareRepository(db),
+            feed_service=app.state.broadcast_feed_service,
+            settings=settings,
+        )
     else:
         _log.warning("MongoDB not available — masjid entity, claims, broadcast feed, and donation features disabled.")
         app.state.fcm_service = None
@@ -605,6 +614,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         app.state.broadcast_feed_service = None
         app.state.follower_service = None
         app.state.donation_service = None
+        app.state.share_service = None
 
     mode = app.state.user_store_backend
     _log.info(
