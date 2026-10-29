@@ -48,3 +48,16 @@ def test_create_share_returns_tracked_url():
 def test_create_share_validates_payload():
     resp = _client(_Svc()).post("/shares", json={"message_id": "m1"})
     assert resp.status_code == 422
+
+
+def test_create_share_returns_503_when_service_unavailable():
+    resp = _client(None).post(
+        "/shares",
+        json={
+            "message_id": "m1",
+            "channel": "web_native_share_sheet",
+            "platform": "mobile_web",
+        },
+    )
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "Share service not available"
