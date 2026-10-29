@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from app.api.deps import (
@@ -336,5 +336,139 @@ def test_share_page_tolerates_unknown_share_id():
         message=_video_message(), masjid={"name": "Masjid Al Noor"}, share_svc=None
     )
     resp = client.get("/s/m1?share=does-not-exist")
+    assert resp.status_code == 200
+    assert "Masjid Al Noor" in resp.text
+
+
+def _request(query: str = ""):
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/s/m1",
+            "query_string": query.encode(),
+            "headers": [],
+        }
+    )
+
+
+class _ShareServiceStub:
+    def __init__(self, record=None, error=None):
+        self._record = record
+        self._error = error
+
+    def get_share(self, share_id):
+        if self._error is not None:
+            raise self._error
+        return self._record
+
+
+_EMPTY_ATTRIBUTION = {
+    "share_id": "",
+    "root_share_id": "",
+    "parent_share_id": "",
+    "utm_source": "",
+    "utm_medium": "",
+    "utm_campaign": "",
+}
+
+
+def test_share_attribution_reads_record_and_stored_utms():
+    from app.web.share import _share_attribution
+
+    svc = _ShareServiceStub(
+        {
+            "share_id": "s1",
+            "root_share_id": "s0",
+            "parent_share_id": "p0",
+            "message_id": "m1",
+            "utm_source": "whatsapp",
+            "utm_medium": "social",
+            "utm_campaign": "eid",
+        }
+    )
+    attr = _share_attribution(_request("share=s1"), svc, "m1")
+    assert attr == {
+        "share_id": "s1",
+        "root_share_id": "s0",
+        "parent_share_id": "p0",
+        "utm_source": "whatsapp",
+        "utm_medium": "social",
+        "utm_campaign": "eid",
+    }
+
+
+def test_share_attribution_empty_for_unknown_share_id():
+    from app.web.share import _share_attribution
+
+    attr = _share_attribution(
+        _request("share=does-not-exist"), _ShareServiceStub(None), "m1"
+    )
+    assert attr == _EMPTY_ATTRIBUTION
+
+
+def test_share_attribution_swallows_lookup_errors():
+    from app.web.share import _share_attribution
+
+    attr = _share_attribution(
+        _request("share=s1"), _ShareServiceStub(error=RuntimeError("boom")), "m1"
+    )
+    assert attr == _EMPTY_ATTRIBUTION
+
+
+def test_share_attribution_url_utms_win_over_record():
+    from app.web.share import _share_attribution
+
+    svc = _ShareServiceStub(
+        {
+            "share_id": "s1",
+            "root_share_id": "s0",
+            "parent_share_id": "p0",
+            "message_id": "m1",
+            "utm_source": "whatsapp",
+            "utm_medium": "social",
+            "utm_campaign": "eid",
+        }
+    )
+    attr = _share_attribution(
+        _request("share=s1&utm_source=telegram&utm_campaign=url-campaign"), svc, "m1"
+    )
+    assert attr == {
+        "share_id": "s1",
+        "root_share_id": "s0",
+        "parent_share_id": "p0",
+        "utm_source": "telegram",
+        "utm_medium": "social",
+        "utm_campaign": "url-campaign",
+    }
+
+
+def test_share_attribution_ignores_record_for_other_message():
+    from app.web.share import _share_attribution
+
+    svc = _ShareServiceStub(
+        {
+            "share_id": "s1",
+            "root_share_id": "s0",
+            "parent_share_id": "p0",
+            "message_id": "message-A",
+            "utm_source": "whatsapp",
+            "utm_medium": "social",
+            "utm_campaign": "eid",
+        }
+    )
+    attr = _share_attribution(_request("share=s1"), svc, "message-B")
+    assert attr == _EMPTY_ATTRIBUTION
+
+
+def test_share_page_ignores_attribution_from_another_message():
+    client = _share_client(
+        message=_video_message(),
+        masjid={"name": "Masjid Al Noor"},
+        share_svc=_ShareServiceStub(
+            {"share_id": "s1", "message_id": "message-A"}
+        ),
+    )
+    resp = client.get("/s/m1?share=s1")
     assert resp.status_code == 200
     assert "Masjid Al Noor" in resp.text

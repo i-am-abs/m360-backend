@@ -103,7 +103,17 @@ def _resolve_sender_profile(request: Request, message: dict, place_id: str) -> d
     }
 
 
-def _share_attribution(request: Request, share_svc) -> dict:
+_ATTRIBUTION_KEYS = (
+    "share_id",
+    "root_share_id",
+    "parent_share_id",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+)
+
+
+def _share_attribution(request: Request, share_svc, message_id: str) -> dict:
     sid = (request.query_params.get("share") or "").strip()
     record = None
     if sid and share_svc is not None:
@@ -111,7 +121,10 @@ def _share_attribution(request: Request, share_svc) -> dict:
             record = share_svc.get_share(sid)
         except Exception:
             record = None
-    record = record or {}
+    record = record if isinstance(record, dict) else {}
+    if record and str(record.get("message_id") or "") != str(message_id or ""):
+        # Never attribute a share link to a different announcement.
+        return {key: "" for key in _ATTRIBUTION_KEYS}
     return {
         "share_id": str(record.get("share_id") or ""),
         "root_share_id": str(record.get("root_share_id") or ""),
@@ -232,7 +245,7 @@ def share_page(
         resp.headers["Cache-Control"] = "no-store"
         return resp
     sender_profile = _resolve_sender_profile(request, message, place_id)
-    attribution = _share_attribution(request, share_svc)
+    attribution = _share_attribution(request, share_svc, message_id)
     ctx = build_share_context(
         message,
         masjid,
