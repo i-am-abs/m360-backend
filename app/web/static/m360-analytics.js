@@ -38,7 +38,10 @@
   }
 
   function init(config) {
-    if (!config || !config.token || typeof global.mixpanel === 'undefined') return;
+    if (!config || !config.token || typeof global.mixpanel === 'undefined') {
+      client = null;
+      return;
+    }
     try {
       global.mixpanel.init(config.token, {
         api_host: config.apiHost || 'https://api.mixpanel.com',
