@@ -844,7 +844,7 @@ test('returns null when duration is unknown', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `node --test tests/js`
+Run: `node --test "tests/js/**/*.test.js"`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Implement the module**
@@ -972,7 +972,7 @@ Expected: FAIL — module not found
 
 - [ ] **Step 4: Run tests**
 
-Run: `node --test tests/js`
+Run: `node --test "tests/js/**/*.test.js"`
 Expected: PASS (4 tests)
 
 - [ ] **Step 5: Commit**
@@ -1855,7 +1855,7 @@ git commit -m "feat(app): pass analytics context to the embed player"
 ## Final verification
 
 - [ ] Backend: `.venv/bin/python3 -m pytest tests -q` → all pass
-- [ ] Backend: `node --test tests/js` → all pass
+- [ ] Backend: `node --test "tests/js/**/*.test.js"` → all pass
 - [ ] App: `flutter analyze` → no errors
 - [ ] App: `flutter test` → all pass
 - [ ] Manual: create a share from web → open on device → confirm `video_landing_page_viewed`, `video_playback_started`, `click_on_view_masjid_cta`, `masjid_deep_link_opened` in Mixpanel Live View with the same `share_id`/`journey_id`.
