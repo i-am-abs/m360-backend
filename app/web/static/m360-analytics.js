@@ -51,7 +51,7 @@
       });
       client = global.mixpanel;
       base = config.base || {};
-      base.anonymous_visitor_id = visitorId();
+      if (!base.anonymous_visitor_id) base.anonymous_visitor_id = visitorId();
       client.register(base);
     } catch (e) {
       client = null;

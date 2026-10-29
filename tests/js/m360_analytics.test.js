@@ -123,6 +123,25 @@ test('init with empty or missing token resets client so tracking is a no-op', (t
   });
 });
 
+test('init keeps a provided anonymous visitor id', (t) => {
+  t.after(resetGlobals);
+  const analytics = loadFresh();
+  const calls = stubMixpanel();
+  global.localStorage = makeStorage({ m360_visitor_id: 'stored-id' });
+  analytics.init({
+    token: 'tok',
+    base: { anonymous_visitor_id: 'dev-1', platform: 'android_app' },
+  });
+  assert.equal(calls.register.length, 1);
+  assert.equal(calls.register[0].anonymous_visitor_id, 'dev-1');
+  const video = makeVideo(100);
+  analytics.setupPlayer(video, {});
+  video.emit('playing');
+  const started = events(calls, 'video_playback_started');
+  assert.equal(started.length, 1);
+  assert.equal(started[0].props.anonymous_visitor_id, 'dev-1');
+});
+
 test('setupPlayer fires video_playback_started once with duration', (t) => {
   t.after(resetGlobals);
   const analytics = loadFresh();
