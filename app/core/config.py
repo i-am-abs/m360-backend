@@ -154,6 +154,15 @@ class Settings(BaseSettings):
     mux_webhook_secret: str = ""
     mux_env_key: str = "deb2jrkrr735ufr00gdtrf8j9"
 
+    mixpanel_token: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("MIXPANEL_TOKEN", "mixpanel_token"),
+    )
+    mixpanel_api_host: str = Field(
+        default="https://api.mixpanel.com",
+        validation_alias=AliasChoices("MIXPANEL_API_HOST", "mixpanel_api_host"),
+    )
+
     share_web_base_url: str = Field(
         default="https://muslim360.in",
         validation_alias=AliasChoices("SHARE_WEB_BASE_URL", "share_web_base_url"),
