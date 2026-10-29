@@ -42,6 +42,16 @@ def _render(**overrides):
         android_package="com.starkinnovations.m360",
         marketing_site_url="https://muslim360.app",
         mux_env_key="env-1",
+        video_id="m1",
+        share_id="",
+        root_share_id="",
+        parent_share_id="",
+        utm_source="",
+        utm_medium="",
+        utm_campaign="",
+        mixpanel_token="mp-token",
+        mixpanel_api_host="https://api.mixpanel.com",
+        masjid_place_id="place1",
         mux_playback_id="pb1",
         analytics_title="t",
         analytics_sub_property_id="p",
@@ -120,6 +130,13 @@ def test_share_cta_uses_muslim360_base_url():
     html = _render()
     line = next(l for l in html.splitlines() if "var PAGE_URL" in l)
     assert "https://muslim360.in/s/m1" in line
+
+
+def test_share_template_includes_analytics_bootstrap():
+    html = _render(mixpanel_token="mp-token")
+    assert "M360_ANALYTICS_BASE" in html
+    assert "m360-analytics.js" in html
+    assert "video_landing_page_viewed" in html
 
 
 def test_share_page_instruments_mux_data():

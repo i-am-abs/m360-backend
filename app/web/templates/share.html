@@ -285,6 +285,7 @@
       if (poster) poster.hidden = true;
       v.hidden = false;
       v.controls = true;
+      if (window.M360Analytics) M360Analytics.setupPlayer(v, {});
 
       function go() { v.play().catch(function () {}); }
 
@@ -330,4 +331,28 @@
   }
 </script>
 </body>
+<script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+<script src="/share-static/m360-analytics.js"></script>
+<script>
+  var M360_ANALYTICS_BASE = {
+    video_id: {{ video_id | tojson }},
+    video_title: {{ analytics_title | tojson }},
+    masjid_id: {{ masjid_place_id | tojson }},
+    masjid_name: {{ masjid_name | tojson }},
+    mux_playback_id: {{ (mux_playback_id or "") | tojson }},
+    share_id: {{ share_id | tojson }},
+    root_share_id: {{ root_share_id | tojson }},
+    parent_share_id: {{ parent_share_id | tojson }},
+    utm_source: {{ utm_source | tojson }},
+    utm_medium: {{ utm_medium | tojson }},
+    utm_campaign: {{ utm_campaign | tojson }},
+    platform: IS_ANDROID ? "mobile_web" : (IS_IOS ? "mobile_web" : "desktop_web")
+  };
+  M360Analytics.init({
+    token: {{ mixpanel_token | tojson }},
+    apiHost: {{ mixpanel_api_host | tojson }},
+    base: M360_ANALYTICS_BASE
+  });
+  M360Analytics.track("video_landing_page_viewed", {});
+</script>
 </html>
