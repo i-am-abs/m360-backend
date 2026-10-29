@@ -46,13 +46,16 @@ function makeStorage(initial) {
 }
 
 function stubMixpanel() {
-  const calls = { init: [], register: [], track: [] };
+  const calls = { init: [], register: [], identify: [], track: [] };
   global.mixpanel = {
     init(token, options) {
       calls.init.push({ token: token, options: options });
     },
     register(props) {
       calls.register.push(props);
+    },
+    identify(id) {
+      calls.identify.push(id);
     },
     track(event, props) {
       calls.track.push({ event: event, props: props });
@@ -141,6 +144,18 @@ test('init keeps a provided anonymous visitor id', (t) => {
   const started = events(calls, 'video_playback_started');
   assert.equal(started.length, 1);
   assert.equal(started[0].props.anonymous_visitor_id, 'dev-1');
+});
+
+test('init identifies with the provided anonymous visitor id', (t) => {
+  t.after(resetGlobals);
+  const analytics = loadFresh();
+  const calls = stubMixpanel();
+  global.localStorage = makeStorage({ m360_visitor_id: 'stored-id' });
+  analytics.init({
+    token: 'tok',
+    base: { anonymous_visitor_id: 'visitor-from-fragment' },
+  });
+  assert.deepEqual(calls.identify, ['visitor-from-fragment']);
 });
 
 test('init without a provided anonymous visitor id registers the generated one', (t) => {

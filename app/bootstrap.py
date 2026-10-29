@@ -605,6 +605,7 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
             share_repo=MongoShareRepository(db),
             feed_service=app.state.broadcast_feed_service,
             settings=settings,
+            masjid_repo=app.state.masjid_entity_repo or MongoMasjidRepository(db),
         )
     else:
         _log.warning("MongoDB not available — masjid entity, claims, broadcast feed, and donation features disabled.")

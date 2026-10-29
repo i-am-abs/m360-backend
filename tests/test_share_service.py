@@ -137,3 +137,34 @@ def test_utm_params_are_appended_to_the_url():
     )
     assert "utm_source=whatsapp" in out["url"]
     assert "utm_medium=social" in out["url"]
+
+
+class _MasjidRepo:
+    def __init__(self, masjid=None):
+        self._masjid = masjid
+
+    def get_by_id(self, masjid_id):
+        return self._masjid
+
+
+def _service_with_masjid(message, masjid):
+    return ShareService(
+        share_repo=_Repo(),
+        feed_service=_Feed(message),
+        settings=Settings(share_web_base_url="https://muslim360.in"),
+        masjid_repo=_MasjidRepo(masjid),
+    )
+
+
+def test_masjid_name_is_resolved_from_the_masjid_repository():
+    message = {
+        "id": "m1",
+        "masjid_id": "place1",
+        "mux_playback_id": "pb1",
+        "allow_sharing": True,
+    }
+    svc = _service_with_masjid(message, {"name": "Masjid Al Noor"})
+    out = svc.create_share(
+        message_id="m1", channel="web_native_share_sheet", platform="mobile_web"
+    )
+    assert out["masjid_name"] == "Masjid Al Noor"

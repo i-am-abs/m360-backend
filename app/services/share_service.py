@@ -18,10 +18,17 @@ def _now_iso() -> str:
 
 
 class ShareService:
-    def __init__(self, share_repo: ShareRepository, feed_service, settings: Settings) -> None:
+    def __init__(
+        self,
+        share_repo: ShareRepository,
+        feed_service,
+        settings: Settings,
+        masjid_repo=None,
+    ) -> None:
         self._repo = share_repo
         self._feed = feed_service
         self._settings = settings
+        self._masjid_repo = masjid_repo
 
     def get_share(self, share_id: str) -> Optional[Dict[str, Any]]:
         if not share_id:
@@ -47,6 +54,7 @@ class ShareService:
                 status_code=HTTPStatus.CONFLICT,
             )
 
+        parent_share_id = parent_share_id or None
         parent = None
         if parent_share_id:
             parent = self._repo.get_by_share_id(parent_share_id)
@@ -60,11 +68,19 @@ class ShareService:
 
         share_id = str(uuid.uuid4())
         root_share_id = (parent or {}).get("root_share_id") or share_id
+
+        masjid_id = str(message.get("masjid_id") or "")
+        masjid_name = str(message.get("masjid_name") or "")
+        if masjid_id and self._masjid_repo is not None:
+            masjid = self._masjid_repo.get_by_id(masjid_id)
+            if masjid and masjid.get("name"):
+                masjid_name = str(masjid["name"])
+
         record = {
             "share_id": share_id,
             "message_id": str(message_id),
-            "masjid_id": str(message.get("masjid_id") or ""),
-            "masjid_name": str(message.get("masjid_name") or ""),
+            "masjid_id": masjid_id,
+            "masjid_name": masjid_name,
             "video_id": str(message_id),
             "mux_playback_id": message.get("mux_playback_id"),
             "root_share_id": root_share_id,

@@ -154,6 +154,13 @@ def test_follow_url_carries_journey_and_share_id():
     assert '"?" + params.join("&")' in follow
 
 
+def test_follow_url_carries_message_id():
+    html = _render()
+    assert "var MESSAGE_ID = " in html
+    follow = _script_function(html, "followUrl")
+    assert 'params.push("m=" + encodeURIComponent(MESSAGE_ID))' in follow
+
+
 def test_open_app_store_fallback_uses_per_click_url():
     html = _render()
     open_app = _script_function(html, "openApp")

@@ -159,7 +159,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MIXPANEL_TOKEN", "mixpanel_token"),
     )
     mixpanel_api_host: str = Field(
-        default="https://api.mixpanel.com",
+        default="https://api-eu.mixpanel.com",
         validation_alias=AliasChoices("MIXPANEL_API_HOST", "mixpanel_api_host"),
     )
 

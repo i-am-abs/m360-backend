@@ -11,7 +11,7 @@ from app.utils.response import success_response
 router = APIRouter(tags=["Shares"])
 
 
-@router.post("/shares", summary="Create a tracked share link")
+@router.post("/shares", summary="Create a tracked share link", status_code=201)
 def create_share(
     payload: ShareCreateRequest,
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user),

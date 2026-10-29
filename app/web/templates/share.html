@@ -174,6 +174,7 @@
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ share_url | tojson }};
   var SHARE_ID = {{ share_id | tojson }};
+  var MESSAGE_ID = {{ message_id | tojson }};
   var ROOT_SHARE_ID = {{ root_share_id | tojson }};
   var MUX_ENV_KEY = {{ mux_env_key | tojson }};
   var MUX_PLAYBACK_ID = {{ (mux_playback_id or "") | tojson }};
@@ -274,28 +275,54 @@
     if (SHARE_ID) {
       params.push("s=" + encodeURIComponent(SHARE_ID));
     }
+    params.push("m=" + encodeURIComponent(MESSAGE_ID));
     return "https://" + SHARE_HOST + FOLLOW_PATH + "?" + params.join("&");
   }
 
-  function openApp(targetUrl) {
+  var appOpened = false;
+  var storeNavigationPending = false;
+
+  function trackStoreRedirect(props) {
+    try {
+      if (window.M360Analytics &&
+          typeof window.M360Analytics.beaconTrack === "function" &&
+          window.M360Analytics.beaconTrack("redirect_to_play_store", props)) {
+        return;
+      }
+    } catch (e) {}
+    trackEvent("redirect_to_play_store", props);
+  }
+
+  function goToStore(storeUrl, props) {
+    // This navigation is reported here, so the pagehide hook must not count it
+    // again as an unobserved browser_fallback_url landing.
+    storeNavigationPending = false;
+    trackStoreRedirect(props);
+    window.location = storeUrl;
+  }
+
+  function openApp(targetUrl, journey) {
     targetUrl = targetUrl || ("https://" + SHARE_HOST + FOLLOW_PATH);
     var storeUrl = storeUrlFor(targetUrl);
     if (IS_ANDROID) {
       // If the app actually opened, the page is hidden — cancel the store
       // fallback so the browser doesn't navigate to the Play Store in the
       // background (users saw the store page when returning to the tab).
+      storeNavigationPending = true;
       var fallback = setTimeout(function () {
-        if (!document.hidden) {
-          trackEvent("redirect_to_play_store", {
+        if (!document.hidden && !appOpened) {
+          goToStore(storeUrl, {
+            journey_id: journey || "",
+            platform: "mobile_web",
             redirect_destination: "google_play_store",
             redirect_reason: "app_not_opened"
           });
-          window.location = storeUrl;
         }
       }, 1400);
       var cancel = function () { clearTimeout(fallback); };
       var onVisibility = function () {
         if (document.hidden) {
+          appOpened = true;
           cancel();
           document.removeEventListener("visibilitychange", onVisibility);
         }
@@ -303,6 +330,18 @@
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("pagehide", cancel, { once: true });
       window.addEventListener("blur", cancel, { once: true });
+      // Chrome may follow browser_fallback_url without letting the page observe
+      // the failed intent, so report the store landing from the unload hook.
+      window.addEventListener("pagehide", function () {
+        if (storeNavigationPending && !appOpened) {
+          trackStoreRedirect({
+            journey_id: journey || "",
+            platform: "mobile_web",
+            redirect_destination: "google_play_store",
+            redirect_reason: "app_not_installed"
+          });
+        }
+      }, { once: true });
       var query = targetUrl.indexOf("?") >= 0 ? targetUrl.slice(targetUrl.indexOf("?")) : "";
       window.location = "intent://" + SHARE_HOST + FOLLOW_PATH + query +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
@@ -317,11 +356,12 @@
       window.location = targetUrl;
       return;
     }
-    trackEvent("redirect_to_play_store", {
+    goToStore(storeUrl, {
+      journey_id: journey || "",
+      platform: "mobile_web",
       redirect_destination: "google_play_store",
       redirect_reason: "app_not_installed"
     });
-    window.location = storeUrl;
   }
 
   function onFollowClick() {
@@ -334,7 +374,7 @@
         });
       }
     } catch (e) {}
-    openApp(followUrl(journey));
+    openApp(followUrl(journey), journey);
   }
 
   async function sharePage() {

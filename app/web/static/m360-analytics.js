@@ -5,6 +5,8 @@
   var client = null;
   var base = {};
   var visitor = null;
+  var token = null;
+  var apiHost = null;
 
   function nextMilestone(prevMark, position, duration) {
     if (!duration || duration <= 0) return null;
@@ -38,13 +40,15 @@
   }
 
   function init(config) {
-    if (!config || !config.token || typeof global.mixpanel === 'undefined') {
+    token = (config && config.token) || null;
+    apiHost = (config && config.apiHost) || 'https://api.mixpanel.com';
+    if (!token || typeof global.mixpanel === 'undefined') {
       client = null;
       return;
     }
     try {
-      global.mixpanel.init(config.token, {
-        api_host: config.apiHost || 'https://api.mixpanel.com',
+      global.mixpanel.init(token, {
+        api_host: apiHost,
         persistence: 'localStorage',
         track_pageview: false,
         autotrack: false,
@@ -53,6 +57,9 @@
       base = config.base || {};
       if (!base.anonymous_visitor_id) base.anonymous_visitor_id = visitorId();
       client.register(base);
+      if (typeof client.identify === 'function') {
+        client.identify(base.anonymous_visitor_id);
+      }
     } catch (e) {
       client = null;
     }
@@ -63,6 +70,39 @@
     try {
       client.track(event, props || {});
     } catch (e) {}
+  }
+
+  function base64(value) {
+    try {
+      if (typeof global.btoa === 'function') {
+        return global.btoa(unescape(encodeURIComponent(value)));
+      }
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(value, 'utf8').toString('base64');
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Unload-safe delivery: sendBeacon survives the navigation Chrome performs
+  // when it follows browser_fallback_url, where a normal XHR would be dropped.
+  function beaconTrack(event, props) {
+    try {
+      if (!token) return false;
+      var nav = global.navigator;
+      if (!nav || typeof nav.sendBeacon !== 'function') return false;
+      var properties = Object.assign({}, base, props || {}, {
+        token: token,
+        time: Math.floor(Date.now() / 1000),
+        distinct_id: base.anonymous_visitor_id || visitorId(),
+      });
+      var encoded = base64(JSON.stringify({ event: event, properties: properties }));
+      if (!encoded) return false;
+      var host = (apiHost || 'https://api.mixpanel.com').replace(/\/+$/, '');
+      return nav.sendBeacon(host + '/track', 'data=' + encodeURIComponent(encoded)) === true;
+    } catch (e) {
+      return false;
+    }
   }
 
   function setupPlayer(video, extra) {
@@ -123,6 +163,7 @@
     visitorId: visitorId,
     init: init,
     track: track,
+    beaconTrack: beaconTrack,
     setupPlayer: setupPlayer,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
