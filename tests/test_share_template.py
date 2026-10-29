@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request
@@ -132,11 +133,31 @@ def test_share_template_builds_journey_link():
     assert "click_on_view_masjid_cta" in html
 
 
-def test_share_template_exposes_analytics_base_for_follow_link():
+def _script_function(html: str, name: str) -> str:
+    match = re.search(
+        r"function %s\([^)]*\) \{.*?\n  \}" % re.escape(name), html, re.S
+    )
+    assert match, f"function {name} not found"
+    return match.group(0)
+
+
+def test_share_template_renders_share_id_for_cta():
+    html = _render(share_id="s1")
+    assert 'var SHARE_ID = "s1"' in html
+
+
+def test_follow_url_carries_journey_and_share_id():
+    html = _render(share_id="s1")
+    follow = _script_function(html, "followUrl")
+    assert '"j=" + encodeURIComponent(journey)' in follow
+    assert 'params.push("s=" + encodeURIComponent(SHARE_ID))' in follow
+    assert '"?" + params.join("&")' in follow
+
+
+def test_open_app_store_fallback_uses_per_click_url():
     html = _render()
-    assert "window.M360_ANALYTICS_BASE" in html
-    assert "storeUrlFor" in html
-    assert "onFollowClick" in html
+    open_app = _script_function(html, "openApp")
+    assert "storeUrlFor(targetUrl)" in open_app
 
 
 def test_share_cta_uses_muslim360_base_url():

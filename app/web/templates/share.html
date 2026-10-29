@@ -173,6 +173,7 @@
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ share_url | tojson }};
+  var SHARE_ID = {{ share_id | tojson }};
   var MUX_ENV_KEY = {{ mux_env_key | tojson }};
   var MUX_PLAYBACK_ID = {{ (mux_playback_id or "") | tojson }};
   var ANALYTICS_TITLE = {{ analytics_title | tojson }};
@@ -214,16 +215,10 @@
     return "j-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
 
-  function analyticsBase() {
-    if (typeof M360_ANALYTICS_BASE === "undefined" || !M360_ANALYTICS_BASE) return null;
-    return M360_ANALYTICS_BASE;
-  }
-
   function followUrl(journey) {
     var params = ["j=" + encodeURIComponent(journey)];
-    var base = analyticsBase();
-    if (base && base.share_id) {
-      params.push("s=" + encodeURIComponent(base.share_id));
+    if (SHARE_ID) {
+      params.push("s=" + encodeURIComponent(SHARE_ID));
     }
     return "https://" + SHARE_HOST + FOLLOW_PATH + "?" + params.join("&");
   }
@@ -372,9 +367,7 @@
 <script>
   (function () {
     if (!window.M360Analytics) return;
-    // Exposed on window so the follow CTA can attach the share id to the
-    // per-click journey link (the listener runs after this bootstrap).
-    window.M360_ANALYTICS_BASE = {
+    var M360_ANALYTICS_BASE = {
       video_id: {{ video_id | tojson }},
       video_title: {{ analytics_title | tojson }},
       masjid_id: {{ masjid_place_id | tojson }},
