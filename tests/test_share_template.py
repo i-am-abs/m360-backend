@@ -238,6 +238,11 @@ def _embed_context(**overrides):
         mux_playback_id="pb1",
         analytics_title="Masjid Al Noor announcement",
         analytics_sub_property_id="place1",
+        video_id="m1",
+        mixpanel_token="mp-token",
+        mixpanel_api_host="https://api.mixpanel.com",
+        masjid_place_id="place1",
+        masjid_name="Masjid Al Noor",
     )
     ctx.update(overrides)
     return ctx
@@ -259,6 +264,13 @@ def test_embed_template_guards_missing_mux_sdk():
     html = env.get_template("share_embed.html").render(**_embed_context())
     assert 'typeof mux === "undefined"' in html
     assert "try { mux.monitor" in html
+
+
+def test_embed_template_includes_analytics_and_fragment_context():
+    html = env.get_template("share_embed.html").render(**_embed_context())
+    assert "m360-analytics.js" in html
+    assert "M360_ANALYTICS_BASE" in html
+    assert "location.hash" in html
 
 
 class _FeedService:
