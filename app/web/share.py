@@ -9,6 +9,7 @@ from app.api.deps import (
     get_broadcast_feed_service,
     get_masjid_entity_service,
     get_masjid_search_service,
+    get_share_service,
 )
 from app.core.config import Settings, get_settings
 from app.core.enums.committee_designation import CommitteeDesignation
@@ -102,6 +103,38 @@ def _resolve_sender_profile(request: Request, message: dict, place_id: str) -> d
     }
 
 
+_ATTRIBUTION_KEYS = (
+    "share_id",
+    "root_share_id",
+    "parent_share_id",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+)
+
+
+def _share_attribution(request: Request, share_svc, message_id: str) -> dict:
+    sid = (request.query_params.get("share") or "").strip()
+    record = None
+    if sid and share_svc is not None:
+        try:
+            record = share_svc.get_share(sid)
+        except Exception:
+            record = None
+    record = record if isinstance(record, dict) else {}
+    if record and str(record.get("message_id") or "") != str(message_id or ""):
+        # Never attribute a share link to a different announcement.
+        return {key: "" for key in _ATTRIBUTION_KEYS}
+    return {
+        "share_id": str(record.get("share_id") or ""),
+        "root_share_id": str(record.get("root_share_id") or ""),
+        "parent_share_id": str(record.get("parent_share_id") or ""),
+        "utm_source": request.query_params.get("utm_source") or str(record.get("utm_source") or ""),
+        "utm_medium": request.query_params.get("utm_medium") or str(record.get("utm_medium") or ""),
+        "utm_campaign": request.query_params.get("utm_campaign") or str(record.get("utm_campaign") or ""),
+    }
+
+
 @router.get("/.well-known/assetlinks.json")
 def assetlinks(settings: Settings = Depends(get_settings)) -> JSONResponse:
     return JSONResponse(
@@ -167,6 +200,7 @@ def share_page(
     feed_svc=Depends(get_broadcast_feed_service),
     masjid_svc=Depends(get_masjid_entity_service),
     search_svc=Depends(get_masjid_search_service),
+    share_svc=Depends(get_share_service),
 ) -> HTMLResponse:
     try:
         message = feed_svc.get_message_raw(message_id)
@@ -211,6 +245,7 @@ def share_page(
         resp.headers["Cache-Control"] = "no-store"
         return resp
     sender_profile = _resolve_sender_profile(request, message, place_id)
+    attribution = _share_attribution(request, share_svc, message_id)
     ctx = build_share_context(
         message,
         masjid,
@@ -219,7 +254,9 @@ def share_page(
         masjid_image_url=masjid_image_url,
         area=area,
         city=city,
+        share_attribution=attribution,
     )
+    ctx.update(attribution)
     html = env.get_template("share.html").render(**ctx)
     resp = HTMLResponse(html)
     resp.headers["Cache-Control"] = "public, max-age=300"

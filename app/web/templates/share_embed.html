@@ -14,4 +14,34 @@
   {% if poster_url %}poster="{{ poster_url }}"{% endif %}></video>
 {% set player_name = "m360-app" %}
 {% include "_share_player.html" %}
+<script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+<script src="/share-static/m360-analytics.js"></script>
+<script>
+  (function () {
+    if (!window.M360Analytics) return;
+    var M360_ANALYTICS_BASE = {
+      video_id: {{ video_id | tojson }},
+      video_title: {{ analytics_title | tojson }},
+      masjid_id: {{ masjid_place_id | tojson }},
+      masjid_name: {{ masjid_name | tojson }},
+      mux_playback_id: {{ (mux_playback_id or "") | tojson }},
+      share_id: "",
+      root_share_id: "",
+      parent_share_id: "",
+      platform: "android_app"
+    };
+    var frag = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+    if (frag.get("s")) M360_ANALYTICS_BASE.share_id = frag.get("s");
+    if (frag.get("j")) M360_ANALYTICS_BASE.journey_id = frag.get("j");
+    if (frag.get("u")) M360_ANALYTICS_BASE.user_id = frag.get("u");
+    if (frag.get("v")) M360_ANALYTICS_BASE.anonymous_visitor_id = frag.get("v");
+    M360Analytics.init({
+      token: {{ mixpanel_token | tojson }},
+      apiHost: {{ mixpanel_api_host | tojson }},
+      base: M360_ANALYTICS_BASE
+    });
+    var v = document.getElementById("v");
+    if (v) M360Analytics.setupPlayer(v, {});
+  })();
+</script>
 </body></html>

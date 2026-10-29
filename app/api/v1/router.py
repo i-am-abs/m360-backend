@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     msg91_webhook,
     mux_webhook,
     quran,
+    shares,
     upload,
     uploads,
     verification_requests,
@@ -38,6 +39,7 @@ api_v1_router.include_router(uploads.router)
 api_v1_router.include_router(internal.router)
 api_v1_router.include_router(fcm.router)
 api_v1_router.include_router(broadcasts.router)
+api_v1_router.include_router(shares.router)
 api_v1_router.include_router(claims.router)
 api_v1_router.include_router(broadcast.router)
 api_v1_router.include_router(donations.router)

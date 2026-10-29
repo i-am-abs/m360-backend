@@ -189,6 +189,10 @@ def get_masjid_entity_service(request: Request) -> MasjidEntityService:
     return request.app.state.masjid_entity_service
 
 
+def get_share_service(request: Request):
+    return getattr(request.app.state, "share_service", None)
+
+
 def get_claim_service(request: Request) -> ClaimService:
     return request.app.state.claim_service
 

@@ -169,16 +169,13 @@
   var DEEP_PATH = {{ deep_link_path | tojson }};
   var FOLLOW_PATH = {{ follow_path | tojson }};
   var PLAY_URL = {{ play_store_url | tojson }};
-  // Deferred deep link: the Play Store install referrer carries the follow
-  // target so the app can open the masjid PDP after a fresh install.
-  var FOLLOW_DEEPLINK = "https://" + SHARE_HOST + FOLLOW_PATH;
-  var STORE_REFERRER = "deeplink=" + encodeURIComponent(FOLLOW_DEEPLINK);
-  var STORE_URL = PLAY_URL + (PLAY_URL.indexOf("?") >= 0 ? "&" : "?") +
-    "referrer=" + encodeURIComponent(STORE_REFERRER);
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
   var PAGE_URL = {{ share_url | tojson }};
+  var SHARE_ID = {{ share_id | tojson }};
+  var MESSAGE_ID = {{ message_id | tojson }};
+  var ROOT_SHARE_ID = {{ root_share_id | tojson }};
   var MUX_ENV_KEY = {{ mux_env_key | tojson }};
   var MUX_PLAYBACK_ID = {{ (mux_playback_id or "") | tojson }};
   var ANALYTICS_TITLE = {{ analytics_title | tojson }};
@@ -207,17 +204,121 @@
   var IS_ANDROID = /android/i.test(UA);
   var IS_IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 
-  function openApp() {
+  // Deferred deep link: the Play Store install referrer carries the exact
+  // per-click follow target so the journey survives a fresh install.
+  function storeUrlFor(targetUrl) {
+    var referrer = "deeplink=" + encodeURIComponent(targetUrl);
+    return PLAY_URL + (PLAY_URL.indexOf("?") >= 0 ? "&" : "?") +
+      "referrer=" + encodeURIComponent(referrer);
+  }
+
+  function newJourneyId() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return "j-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+
+  function trackEvent(event, props) {
+    try {
+      if (window.M360Analytics && typeof window.M360Analytics.track === "function") {
+        window.M360Analytics.track(event, props || {});
+      }
+    } catch (e) {}
+  }
+
+  function analyticsPlatform() {
+    return (IS_ANDROID || IS_IOS) ? "mobile_web" : "desktop_web";
+  }
+
+  // Mint a tracked child share so the link the user receives keeps the
+  // attribution chain. Failure or slowness must never stop the share, so it
+  // is bounded by a short timeout and always resolves.
+  async function createChildShare() {
+    var controller = null;
+    var timer = null;
+    try {
+      controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      if (controller) {
+        timer = setTimeout(function () { controller.abort(); }, 2000);
+      }
+      var res = await fetch("/api/v1/shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: {{ message_id | tojson }},
+          parent_share_id: SHARE_ID || null,
+          channel: "web_native_share_sheet",
+          platform: analyticsPlatform()
+        }),
+        signal: controller ? controller.signal : undefined
+      });
+      if (!res.ok) return null;
+      var body = await res.json();
+      return (body && body.data) ? body.data : null;
+    } catch (e) {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  // iOS only grants transient user activation for navigator.share, so the
+  // share sheet cannot wait for a network round-trip. Pre-mint the child share
+  // once at page load and the tap handler can share the tracked URL
+  // synchronously. Other platforms mint on demand.
+  var IOS_SHARE = null;
+  if (IS_IOS) {
+    createChildShare().then(function (data) { if (data) IOS_SHARE = data; });
+  }
+
+  function followUrl(journey) {
+    var params = ["j=" + encodeURIComponent(journey)];
+    if (SHARE_ID) {
+      params.push("s=" + encodeURIComponent(SHARE_ID));
+    }
+    params.push("m=" + encodeURIComponent(MESSAGE_ID));
+    return "https://" + SHARE_HOST + FOLLOW_PATH + "?" + params.join("&");
+  }
+
+  var appOpened = false;
+
+  function trackStoreRedirect(props) {
+    try {
+      if (window.M360Analytics &&
+          typeof window.M360Analytics.beaconTrack === "function" &&
+          window.M360Analytics.beaconTrack("redirect_to_play_store", props)) {
+        return;
+      }
+    } catch (e) {}
+    trackEvent("redirect_to_play_store", props);
+  }
+
+  function goToStore(storeUrl, props) {
+    trackStoreRedirect(props);
+    window.location = storeUrl;
+  }
+
+  function openApp(targetUrl, journey) {
+    appOpened = false;
+    targetUrl = targetUrl || ("https://" + SHARE_HOST + FOLLOW_PATH);
+    var storeUrl = storeUrlFor(targetUrl);
     if (IS_ANDROID) {
       // If the app actually opened, the page is hidden — cancel the store
       // fallback so the browser doesn't navigate to the Play Store in the
       // background (users saw the store page when returning to the tab).
       var fallback = setTimeout(function () {
-        if (!document.hidden) window.location = STORE_URL;
+        if (!document.hidden && !appOpened) {
+          goToStore(storeUrl, {
+            journey_id: journey || "",
+            platform: "mobile_web",
+            redirect_destination: "google_play_store",
+            redirect_reason: "app_not_opened"
+          });
+        }
       }, 1400);
       var cancel = function () { clearTimeout(fallback); };
       var onVisibility = function () {
         if (document.hidden) {
+          appOpened = true;
           cancel();
           document.removeEventListener("visibilitychange", onVisibility);
         }
@@ -225,9 +326,13 @@
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("pagehide", cancel, { once: true });
       window.addEventListener("blur", cancel, { once: true });
-      window.location = "intent://" + SHARE_HOST + FOLLOW_PATH +
+      // Chrome follows browser_fallback_url on its own when the intent fails;
+      // that navigation is not observable from page JS, so only the timer above
+      // can report the store fallback.
+      var query = targetUrl.indexOf("?") >= 0 ? targetUrl.slice(targetUrl.indexOf("?")) : "";
+      window.location = "intent://" + SHARE_HOST + FOLLOW_PATH + query +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
-        ";S.browser_fallback_url=" + encodeURIComponent(STORE_URL) + ";end";
+        ";S.browser_fallback_url=" + encodeURIComponent(storeUrl) + ";end";
       return;
     }
     if (IS_IOS) {
@@ -235,28 +340,73 @@
       var cancel = function () { clearTimeout(fallback); };
       window.addEventListener("pagehide", cancel, { once: true });
       document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
-      window.location = "https://" + SHARE_HOST + FOLLOW_PATH;
+      window.location = targetUrl;
       return;
     }
-    window.location = STORE_URL;
+    goToStore(storeUrl, {
+      journey_id: journey || "",
+      platform: "mobile_web",
+      redirect_destination: "google_play_store",
+      redirect_reason: "app_not_installed"
+    });
   }
 
-  function sharePage() {
+  function onFollowClick() {
+    appOpened = false;
+    var journey = newJourneyId();
+    try {
+      if (window.M360Analytics && typeof window.M360Analytics.track === "function") {
+        window.M360Analytics.track("click_on_view_masjid_cta", {
+          journey_id: journey,
+          cta_destination: "masjid_detail"
+        });
+      }
+    } catch (e) {}
+    openApp(followUrl(journey), journey);
+  }
+
+  async function sharePage() {
+    // iOS only grants transient user activation for navigator.share, so this
+    // path must stay synchronous: any await here loses the click gesture and
+    // the share sheet silently fails.
+    if (IS_IOS && navigator.share) {
+      trackEvent("click_on_share_announcement", {
+        share_id: IOS_SHARE ? IOS_SHARE.share_id : "",
+        root_share_id: IOS_SHARE
+          ? (IOS_SHARE.root_share_id || ROOT_SHARE_ID)
+          : ROOT_SHARE_ID,
+        parent_share_id: IOS_SHARE ? (IOS_SHARE.parent_share_id || "") : SHARE_ID,
+        share_channel: "web_native_share_sheet"
+      });
+      var iosUrl = (IOS_SHARE && IOS_SHARE.url) ? IOS_SHARE.url : PAGE_URL;
+      navigator.share({ title: document.title, url: iosUrl }).catch(function () {});
+      return;
+    }
+    var child = await createChildShare();
+    var url = (child && child.url) ? child.url : PAGE_URL;
+    trackEvent("click_on_share_announcement", {
+      share_id: (child && child.share_id) || "",
+      root_share_id: (child && child.root_share_id) || ROOT_SHARE_ID,
+      parent_share_id: (child && child.parent_share_id) || "",
+      share_channel: "web_native_share_sheet"
+    });
     if (navigator.share) {
-      navigator.share({ title: document.title, url: PAGE_URL }).catch(function () {});
+      navigator.share({ title: document.title, url: url }).catch(function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(PAGE_URL).then(function () {
+      navigator.clipboard.writeText(url).then(function () {
         var t = document.getElementById("toast");
         t.classList.add("show");
         setTimeout(function () { t.classList.remove("show"); }, 1600);
-      }).catch(function () {});
+      }).catch(function () {
+        window.prompt("Copy link:", url);
+      });
     } else {
-      window.prompt("Copy link:", PAGE_URL);
+      window.prompt("Copy link:", url);
     }
   }
 
   var followBtn = document.getElementById("followBtn");
-  if (followBtn) followBtn.addEventListener("click", openApp);
+  if (followBtn) followBtn.addEventListener("click", onFollowClick);
   document.getElementById("shareBtn").addEventListener("click", sharePage);
 
   // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"
@@ -330,4 +480,32 @@
   }
 </script>
 </body>
+<script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+<script src="/share-static/m360-analytics.js"></script>
+<script>
+  (function () {
+    if (!window.M360Analytics) return;
+    var M360_ANALYTICS_BASE = {
+      video_id: {{ video_id | tojson }},
+      video_title: {{ analytics_title | tojson }},
+      masjid_id: {{ masjid_place_id | tojson }},
+      masjid_name: {{ masjid_name | tojson }},
+      mux_playback_id: {{ (mux_playback_id or "") | tojson }},
+      share_id: {{ share_id | tojson }},
+      root_share_id: {{ root_share_id | tojson }},
+      parent_share_id: {{ parent_share_id | tojson }},
+      utm_source: {{ utm_source | tojson }},
+      utm_medium: {{ utm_medium | tojson }},
+      utm_campaign: {{ utm_campaign | tojson }},
+      platform: IS_ANDROID ? "mobile_web" : (IS_IOS ? "mobile_web" : "desktop_web")
+    };
+    M360Analytics.init({
+      token: {{ mixpanel_token | tojson }},
+      apiHost: {{ mixpanel_api_host | tojson }},
+      base: M360_ANALYTICS_BASE
+    });
+    M360Analytics.track("video_landing_page_viewed", {});
+    M360Analytics.setupPlayer(document.getElementById("v"), {});
+  })();
+</script>
 </html>
