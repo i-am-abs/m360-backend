@@ -166,6 +166,13 @@ def test_share_cta_uses_muslim360_base_url():
     assert "https://muslim360.in/s/m1" in line
 
 
+def test_share_template_creates_child_share_and_tracks_redirect():
+    html = _render()
+    assert "click_on_share_announcement" in html
+    assert "redirect_to_play_store" in html
+    assert "/api/v1/shares" in html
+
+
 def test_share_template_includes_analytics_bootstrap():
     html = _render(mixpanel_token="mp-token")
     assert "M360_ANALYTICS_BASE" in html

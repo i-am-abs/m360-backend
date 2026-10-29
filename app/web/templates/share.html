@@ -215,6 +215,57 @@
     return "j-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
 
+  function trackEvent(event, props) {
+    try {
+      if (window.M360Analytics && typeof window.M360Analytics.track === "function") {
+        window.M360Analytics.track(event, props || {});
+      }
+    } catch (e) {}
+  }
+
+  function analyticsPlatform() {
+    return (IS_ANDROID || IS_IOS) ? "mobile_web" : "desktop_web";
+  }
+
+  function trackStoreRedirect(reason) {
+    trackEvent("redirect_to_play_store", {
+      redirect_destination: "google_play_store",
+      redirect_reason: reason
+    });
+  }
+
+  // Mint a tracked child share so the link the user receives keeps the
+  // attribution chain. Failure or slowness must never stop the share, so it
+  // is bounded by a short timeout and always resolves.
+  async function createChildShare() {
+    var controller = null;
+    var timer = null;
+    try {
+      controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      if (controller) {
+        timer = setTimeout(function () { controller.abort(); }, 2000);
+      }
+      var res = await fetch("/api/v1/shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: {{ message_id | tojson }},
+          parent_share_id: SHARE_ID || null,
+          channel: "web_native_share_sheet",
+          platform: analyticsPlatform()
+        }),
+        signal: controller ? controller.signal : undefined
+      });
+      if (!res.ok) return null;
+      var body = await res.json();
+      return (body && body.data) ? body.data : null;
+    } catch (e) {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   function followUrl(journey) {
     var params = ["j=" + encodeURIComponent(journey)];
     if (SHARE_ID) {
@@ -231,7 +282,10 @@
       // fallback so the browser doesn't navigate to the Play Store in the
       // background (users saw the store page when returning to the tab).
       var fallback = setTimeout(function () {
-        if (!document.hidden) window.location = storeUrl;
+        if (!document.hidden) {
+          trackStoreRedirect("app_not_opened");
+          window.location = storeUrl;
+        }
       }, 1400);
       var cancel = function () { clearTimeout(fallback); };
       var onVisibility = function () {
@@ -257,6 +311,7 @@
       window.location = targetUrl;
       return;
     }
+    trackStoreRedirect("app_not_installed");
     window.location = storeUrl;
   }
 
@@ -273,17 +328,25 @@
     openApp(followUrl(journey));
   }
 
-  function sharePage() {
+  async function sharePage() {
+    var child = await createChildShare();
+    var url = (child && child.url) ? child.url : PAGE_URL;
+    trackEvent("click_on_share_announcement", {
+      share_id: (child && child.share_id) || "",
+      root_share_id: (child && child.root_share_id) || "",
+      parent_share_id: (child && child.parent_share_id) || "",
+      share_channel: "web_native_share_sheet"
+    });
     if (navigator.share) {
-      navigator.share({ title: document.title, url: PAGE_URL }).catch(function () {});
+      navigator.share({ title: document.title, url: url }).catch(function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(PAGE_URL).then(function () {
+      navigator.clipboard.writeText(url).then(function () {
         var t = document.getElementById("toast");
         t.classList.add("show");
         setTimeout(function () { t.classList.remove("show"); }, 1600);
       }).catch(function () {});
     } else {
-      window.prompt("Copy link:", PAGE_URL);
+      window.prompt("Copy link:", url);
     }
   }
 
