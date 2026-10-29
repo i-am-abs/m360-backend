@@ -1399,7 +1399,13 @@ class MixpanelService {
     final token = (dotenv.env['MIXPANEL_TOKEN'] ?? '').trim();
     if (token.isEmpty) return;
     try {
-      await Mixpanel.init(token, trackAutomaticEvents: false);
+      await Mixpanel.init(
+        token,
+        trackAutomaticEvents: false,
+        mixpanelServerUrl: (dotenv.env['MIXPANEL_API_HOST'] ?? '').trim().isNotEmpty
+            ? dotenv.env['MIXPANEL_API_HOST']!.trim()
+            : null,
+      );
       final deviceId = await AnalyticsBaseParams.instance.init();
       final client = Mixpanel.getInstance();
       await client.identify(deviceId);
@@ -1856,6 +1862,5 @@ git commit -m "feat(app): pass analytics context to the embed player"
 
 ## Configuration
 
-`MIXPANEL_TOKEN` is set in `m360-backend/.env`, `m360-flutter-app/.env.dev` and
-`.env.prod`. `MIXPANEL_API_HOST` defaults to `https://api.mixpanel.com` (US);
-switch it to `https://api-eu.mixpanel.com` if the project is in the EU region.
+`MIXPANEL_TOKEN` and `MIXPANEL_API_HOST=https://api-eu.mixpanel.com` (EU project)
+are set in `m360-backend/.env`, `m360-flutter-app/.env.dev` and `.env.prod`.
