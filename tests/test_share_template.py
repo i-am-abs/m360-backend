@@ -173,13 +173,43 @@ def test_share_template_creates_child_share_and_tracks_redirect():
     assert "/api/v1/shares" in html
 
 
-def test_ios_share_stays_inside_user_gesture():
+def test_ios_share_pre_mints_and_stays_inside_user_gesture():
+    html = _render(share_id="s1", root_share_id="r1")
+    assert "var IOS_SHARE = null" in html
+    assert re.search(
+        r"if \(IS_IOS\) \{\s*\n\s*createChildShare\(\)\.then", html
+    ), "iOS must pre-mint the child share at page load"
+    share_page = _script_function(html, "sharePage")
+    ios_branch = share_page[
+        share_page.index("if (IS_IOS") : share_page.index("await createChildShare")
+    ]
+    assert "IOS_SHARE" in ios_branch
+    assert "navigator.share({" in ios_branch
+    assert "await" not in ios_branch
+
+
+def test_share_template_renders_root_share_id():
+    html = _render(root_share_id="r1")
+    assert 'var ROOT_SHARE_ID = "r1"' in html
+
+
+def test_play_store_redirects_are_tracked_per_branch():
+    html = _render()
+    open_app = _script_function(html, "openApp")
+    android = open_app[: open_app.index("if (IS_IOS)")]
+    desktop = open_app[open_app.index("if (IS_IOS)") :]
+    assert 'redirect_destination: "google_play_store"' in android
+    assert 'redirect_reason: "app_not_opened"' in android
+    assert 'redirect_destination: "google_play_store"' in desktop
+    assert 'redirect_reason: "app_not_installed"' in desktop
+
+
+def test_share_click_is_tracked_when_child_share_fails():
     html = _render()
     share_page = _script_function(html, "sharePage")
-    assert "IS_IOS && navigator.share" in share_page
-    assert share_page.index("navigator.share") < share_page.index(
-        "await createChildShare"
-    )
+    assert "if (child)" not in share_page
+    after_await = share_page[share_page.index("await createChildShare") :]
+    assert 'trackEvent("click_on_share_announcement"' in after_await
 
 
 def test_share_template_includes_analytics_bootstrap():
