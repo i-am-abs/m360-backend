@@ -99,7 +99,14 @@
       var encoded = base64(JSON.stringify({ event: event, properties: properties }));
       if (!encoded) return false;
       var host = (apiHost || 'https://api.mixpanel.com').replace(/\/+$/, '');
-      return nav.sendBeacon(host + '/track', 'data=' + encodeURIComponent(encoded)) === true;
+      var body = 'data=' + encodeURIComponent(encoded);
+      if (typeof global.Blob === 'function') {
+        return nav.sendBeacon(
+          host + '/track',
+          new global.Blob([body], { type: 'application/x-www-form-urlencoded' })
+        ) === true;
+      }
+      return nav.sendBeacon(host + '/track', body) === true;
     } catch (e) {
       return false;
     }

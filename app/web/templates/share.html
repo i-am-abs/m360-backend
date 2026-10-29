@@ -280,7 +280,6 @@
   }
 
   var appOpened = false;
-  var storeNavigationPending = false;
 
   function trackStoreRedirect(props) {
     try {
@@ -294,21 +293,18 @@
   }
 
   function goToStore(storeUrl, props) {
-    // This navigation is reported here, so the pagehide hook must not count it
-    // again as an unobserved browser_fallback_url landing.
-    storeNavigationPending = false;
     trackStoreRedirect(props);
     window.location = storeUrl;
   }
 
   function openApp(targetUrl, journey) {
+    appOpened = false;
     targetUrl = targetUrl || ("https://" + SHARE_HOST + FOLLOW_PATH);
     var storeUrl = storeUrlFor(targetUrl);
     if (IS_ANDROID) {
       // If the app actually opened, the page is hidden — cancel the store
       // fallback so the browser doesn't navigate to the Play Store in the
       // background (users saw the store page when returning to the tab).
-      storeNavigationPending = true;
       var fallback = setTimeout(function () {
         if (!document.hidden && !appOpened) {
           goToStore(storeUrl, {
@@ -330,18 +326,9 @@
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("pagehide", cancel, { once: true });
       window.addEventListener("blur", cancel, { once: true });
-      // Chrome may follow browser_fallback_url without letting the page observe
-      // the failed intent, so report the store landing from the unload hook.
-      window.addEventListener("pagehide", function () {
-        if (storeNavigationPending && !appOpened) {
-          trackStoreRedirect({
-            journey_id: journey || "",
-            platform: "mobile_web",
-            redirect_destination: "google_play_store",
-            redirect_reason: "app_not_installed"
-          });
-        }
-      }, { once: true });
+      // Chrome follows browser_fallback_url on its own when the intent fails;
+      // that navigation is not observable from page JS, so only the timer above
+      // can report the store fallback.
       var query = targetUrl.indexOf("?") >= 0 ? targetUrl.slice(targetUrl.indexOf("?")) : "";
       window.location = "intent://" + SHARE_HOST + FOLLOW_PATH + query +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
@@ -365,6 +352,7 @@
   }
 
   function onFollowClick() {
+    appOpened = false;
     var journey = newJourneyId();
     try {
       if (window.M360Analytics && typeof window.M360Analytics.track === "function") {
