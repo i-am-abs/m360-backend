@@ -74,6 +74,7 @@ def build_share_context(
         masjid_image_url: Optional[str] = None,
         area: Optional[str] = None,
         city: Optional[str] = None,
+        share_attribution: Optional[dict] = None,
 ) -> dict:
     message_id = str(message.get("id") or message.get("_id") or "")
     name = (masjid.get("name") or "").strip() or "This masjid"
@@ -161,6 +162,8 @@ def build_share_context(
     analytics_title = f"{name} announcement"
     analytics_sub_property_id = str(message.get("masjid_id") or "")
 
+    attribution = share_attribution or {}
+
     return {
         "message_id": message_id,
         "masjid_name": name,
@@ -192,4 +195,13 @@ def build_share_context(
         "mux_playback_id": mux_playback_id,
         "analytics_title": analytics_title,
         "analytics_sub_property_id": analytics_sub_property_id,
+        "video_id": message_id,
+        "share_id": str(attribution.get("share_id") or ""),
+        "root_share_id": str(attribution.get("root_share_id") or ""),
+        "parent_share_id": str(attribution.get("parent_share_id") or ""),
+        "utm_source": str(attribution.get("utm_source") or ""),
+        "utm_medium": str(attribution.get("utm_medium") or ""),
+        "utm_campaign": str(attribution.get("utm_campaign") or ""),
+        "mixpanel_token": settings.mixpanel_token or "",
+        "mixpanel_api_host": settings.mixpanel_api_host,
     }

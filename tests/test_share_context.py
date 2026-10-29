@@ -195,3 +195,31 @@ def test_follow_path_skips_non_url_safe_place_id():
         _settings(),
     )
     assert ctx["follow_path"] == "/m/6ad9092332a8a6788572f82f"
+
+
+def test_analytics_context_includes_video_and_ids():
+    from app.core.config import Settings
+    from app.web.share_context import build_share_context
+
+    msg = {
+        "id": "m1",
+        "text": "S",
+        "created_at": "2026-10-13T10:00:00+00:00",
+        "mux_playback_id": "pb1",
+    }
+    ctx = build_share_context(
+        msg,
+        {"name": "Masjid", "place_id": "ChIJx"},
+        Settings(mixpanel_token="mp-token"),
+        share_attribution={
+            "share_id": "s1",
+            "root_share_id": "s0",
+            "parent_share_id": "",
+            "utm_source": "whatsapp",
+        },
+    )
+    assert ctx["video_id"] == "m1"
+    assert ctx["share_id"] == "s1"
+    assert ctx["root_share_id"] == "s0"
+    assert ctx["utm_source"] == "whatsapp"
+    assert ctx["mixpanel_token"] == "mp-token"

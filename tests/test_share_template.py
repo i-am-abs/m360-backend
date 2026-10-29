@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from app.api.deps import (
     get_broadcast_feed_service,
     get_masjid_entity_service,
+    get_masjid_search_service,
+    get_share_service,
 )
 from app.core.config import Settings, get_settings
 from app.web.share import router
@@ -195,6 +197,30 @@ def _embed_client(message=None, masjid=None, error=None):
     return TestClient(app)
 
 
+class _SearchService:
+    def get_place_by_id(self, _place_id):
+        return {}
+
+
+def _share_client(message=None, masjid=None, share_svc=None):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        share_web_base_url="https://muslim360.in",
+        android_package_name="com.starkinnovations.m360",
+        mux_env_key="env-1",
+    )
+    app.dependency_overrides[get_broadcast_feed_service] = lambda: _FeedService(
+        message, None
+    )
+    app.dependency_overrides[get_masjid_entity_service] = lambda: _MasjidService(
+        masjid
+    )
+    app.dependency_overrides[get_masjid_search_service] = lambda: _SearchService()
+    app.dependency_overrides[get_share_service] = lambda: share_svc
+    return TestClient(app)
+
+
 def _video_message(**overrides):
     msg = {
         "id": "m1",
@@ -303,3 +329,12 @@ def test_embed_route_allows_in_app_playback_when_expired():
     )
     resp = client.get("/embed/m1?for_app=1")
     assert resp.status_code == 200
+
+
+def test_share_page_tolerates_unknown_share_id():
+    client = _share_client(
+        message=_video_message(), masjid={"name": "Masjid Al Noor"}, share_svc=None
+    )
+    resp = client.get("/s/m1?share=does-not-exist")
+    assert resp.status_code == 200
+    assert "Masjid Al Noor" in resp.text
