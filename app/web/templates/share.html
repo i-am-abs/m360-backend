@@ -169,12 +169,6 @@
   var DEEP_PATH = {{ deep_link_path | tojson }};
   var FOLLOW_PATH = {{ follow_path | tojson }};
   var PLAY_URL = {{ play_store_url | tojson }};
-  // Deferred deep link: the Play Store install referrer carries the follow
-  // target so the app can open the masjid PDP after a fresh install.
-  var FOLLOW_DEEPLINK = "https://" + SHARE_HOST + FOLLOW_PATH;
-  var STORE_REFERRER = "deeplink=" + encodeURIComponent(FOLLOW_DEEPLINK);
-  var STORE_URL = PLAY_URL + (PLAY_URL.indexOf("?") >= 0 ? "&" : "?") +
-    "referrer=" + encodeURIComponent(STORE_REFERRER);
   var APPSTORE_URL = {{ app_store_url | tojson }};
   var ANDROID_PKG = {{ android_package | tojson }};
   var HLS_URL = {{ (video_hls_url or "") | tojson }};
@@ -207,13 +201,42 @@
   var IS_ANDROID = /android/i.test(UA);
   var IS_IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 
-  function openApp() {
+  // Deferred deep link: the Play Store install referrer carries the exact
+  // per-click follow target so the journey survives a fresh install.
+  function storeUrlFor(targetUrl) {
+    var referrer = "deeplink=" + encodeURIComponent(targetUrl);
+    return PLAY_URL + (PLAY_URL.indexOf("?") >= 0 ? "&" : "?") +
+      "referrer=" + encodeURIComponent(referrer);
+  }
+
+  function newJourneyId() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return "j-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+
+  function analyticsBase() {
+    if (typeof M360_ANALYTICS_BASE === "undefined" || !M360_ANALYTICS_BASE) return null;
+    return M360_ANALYTICS_BASE;
+  }
+
+  function followUrl(journey) {
+    var params = ["j=" + encodeURIComponent(journey)];
+    var base = analyticsBase();
+    if (base && base.share_id) {
+      params.push("s=" + encodeURIComponent(base.share_id));
+    }
+    return "https://" + SHARE_HOST + FOLLOW_PATH + "?" + params.join("&");
+  }
+
+  function openApp(targetUrl) {
+    targetUrl = targetUrl || ("https://" + SHARE_HOST + FOLLOW_PATH);
+    var storeUrl = storeUrlFor(targetUrl);
     if (IS_ANDROID) {
       // If the app actually opened, the page is hidden — cancel the store
       // fallback so the browser doesn't navigate to the Play Store in the
       // background (users saw the store page when returning to the tab).
       var fallback = setTimeout(function () {
-        if (!document.hidden) window.location = STORE_URL;
+        if (!document.hidden) window.location = storeUrl;
       }, 1400);
       var cancel = function () { clearTimeout(fallback); };
       var onVisibility = function () {
@@ -225,9 +248,10 @@
       document.addEventListener("visibilitychange", onVisibility);
       window.addEventListener("pagehide", cancel, { once: true });
       window.addEventListener("blur", cancel, { once: true });
-      window.location = "intent://" + SHARE_HOST + FOLLOW_PATH +
+      var query = targetUrl.indexOf("?") >= 0 ? targetUrl.slice(targetUrl.indexOf("?")) : "";
+      window.location = "intent://" + SHARE_HOST + FOLLOW_PATH + query +
         "#Intent;scheme=https;package=" + ANDROID_PKG +
-        ";S.browser_fallback_url=" + encodeURIComponent(STORE_URL) + ";end";
+        ";S.browser_fallback_url=" + encodeURIComponent(storeUrl) + ";end";
       return;
     }
     if (IS_IOS) {
@@ -235,10 +259,23 @@
       var cancel = function () { clearTimeout(fallback); };
       window.addEventListener("pagehide", cancel, { once: true });
       document.addEventListener("visibilitychange", function () { if (document.hidden) cancel(); });
-      window.location = "https://" + SHARE_HOST + FOLLOW_PATH;
+      window.location = targetUrl;
       return;
     }
-    window.location = STORE_URL;
+    window.location = storeUrl;
+  }
+
+  function onFollowClick() {
+    var journey = newJourneyId();
+    try {
+      if (window.M360Analytics && typeof window.M360Analytics.track === "function") {
+        window.M360Analytics.track("click_on_view_masjid_cta", {
+          journey_id: journey,
+          cta_destination: "masjid_detail"
+        });
+      }
+    } catch (e) {}
+    openApp(followUrl(journey));
   }
 
   function sharePage() {
@@ -256,7 +293,7 @@
   }
 
   var followBtn = document.getElementById("followBtn");
-  if (followBtn) followBtn.addEventListener("click", openApp);
+  if (followBtn) followBtn.addEventListener("click", onFollowClick);
   document.getElementById("shareBtn").addEventListener("click", sharePage);
 
   // Chromium reports canPlayType("application/vnd.apple.mpegurl") === "maybe"
@@ -335,7 +372,9 @@
 <script>
   (function () {
     if (!window.M360Analytics) return;
-    var M360_ANALYTICS_BASE = {
+    // Exposed on window so the follow CTA can attach the share id to the
+    // per-click journey link (the listener runs after this bootstrap).
+    window.M360_ANALYTICS_BASE = {
       video_id: {{ video_id | tojson }},
       video_title: {{ analytics_title | tojson }},
       masjid_id: {{ masjid_place_id | tojson }},

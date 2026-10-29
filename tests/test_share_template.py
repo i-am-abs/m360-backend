@@ -126,6 +126,19 @@ def test_caption_renders_below_sender_row_above_ctas():
     assert html.index('class="caption"') < html.index('class="ctas"')
 
 
+def test_share_template_builds_journey_link():
+    html = _render()
+    assert "journey_id" in html
+    assert "click_on_view_masjid_cta" in html
+
+
+def test_share_template_exposes_analytics_base_for_follow_link():
+    html = _render()
+    assert "window.M360_ANALYTICS_BASE" in html
+    assert "storeUrlFor" in html
+    assert "onFollowClick" in html
+
+
 def test_share_cta_uses_muslim360_base_url():
     html = _render()
     line = next(l for l in html.splitlines() if "var PAGE_URL" in l)
