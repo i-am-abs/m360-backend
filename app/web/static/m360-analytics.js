@@ -71,7 +71,7 @@
     var mark = 0;
     var started = false;
 
-    video.addEventListener('playing', function () {
+    function fireStarted() {
       if (started) return;
       started = true;
       mark = 0;
@@ -79,7 +79,9 @@
         mux_playback_id: baseProps.mux_playback_id || '',
         video_duration_seconds: video.duration || null,
       }));
-    });
+    }
+
+    video.addEventListener('playing', fireStarted);
 
     video.addEventListener('timeupdate', function () {
       if (!started) return;
@@ -110,6 +112,10 @@
         sanitized_error_message: 'Playback failed',
       }));
     });
+
+    // The embed can autoplay before this script attaches; treat an
+    // already-playing video as started so no playback event is lost.
+    if (!video.paused && video.currentTime > 0) fireStarted();
   }
 
   var api = {

@@ -61,11 +61,12 @@ function stubMixpanel() {
   return calls;
 }
 
-function makeVideo(duration) {
+function makeVideo(duration, options) {
   const handlers = new Map();
-  return {
+  return Object.assign({
     currentTime: 0,
     duration: duration,
+    paused: true,
     error: null,
     addEventListener(name, handler) {
       if (!handlers.has(name)) handlers.set(name, []);
@@ -74,7 +75,7 @@ function makeVideo(duration) {
     emit(name) {
       (handlers.get(name) || []).slice().forEach((handler) => handler());
     },
-  };
+  }, options || {});
 }
 
 function percentEvents(calls) {
@@ -140,6 +141,46 @@ test('init keeps a provided anonymous visitor id', (t) => {
   const started = events(calls, 'video_playback_started');
   assert.equal(started.length, 1);
   assert.equal(started[0].props.anonymous_visitor_id, 'dev-1');
+});
+
+test('init without a provided anonymous visitor id registers the generated one', (t) => {
+  t.after(resetGlobals);
+  const analytics = loadFresh();
+  const calls = stubMixpanel();
+  global.localStorage = makeStorage({ m360_visitor_id: 'stored-id' });
+  analytics.init({ token: 'tok' });
+  assert.equal(calls.register.length, 1);
+  assert.equal(calls.register[0].anonymous_visitor_id, 'stored-id');
+});
+
+test('setupPlayer catches a video already playing at attach', (t) => {
+  t.after(resetGlobals);
+  const analytics = loadFresh();
+  const calls = stubMixpanel();
+  global.localStorage = makeStorage();
+  analytics.init({ token: 'tok' });
+
+  const video = makeVideo(100, { paused: false, currentTime: 1 });
+  analytics.setupPlayer(video, {});
+  assert.equal(events(calls, 'video_playback_started').length, 1);
+
+  video.emit('playing');
+  assert.equal(events(calls, 'video_playback_started').length, 1);
+});
+
+test('setupPlayer waits for playing when the video is paused at attach', (t) => {
+  t.after(resetGlobals);
+  const analytics = loadFresh();
+  const calls = stubMixpanel();
+  global.localStorage = makeStorage();
+  analytics.init({ token: 'tok' });
+
+  const video = makeVideo(100);
+  analytics.setupPlayer(video, {});
+  assert.equal(events(calls, 'video_playback_started').length, 0);
+
+  video.emit('playing');
+  assert.equal(events(calls, 'video_playback_started').length, 1);
 });
 
 test('setupPlayer fires video_playback_started once with duration', (t) => {
