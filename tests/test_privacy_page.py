@@ -8,6 +8,13 @@ def test_privacy_page_renders_policy():
     assert "sahil.createx@gmail.com" in html
 
 
+def test_privacy_page_mentions_mixpanel_analytics():
+    from app.web.templating import env
+
+    html = env.get_template("privacy.html").render()
+    assert "Mixpanel" in html
+
+
 def test_landing_footer_links_privacy():
     html = env.get_template("landing.html").render(
         play_store_url="https://play.google.com/x",
