@@ -92,6 +92,40 @@ def test_sharing_disabled_is_rejected():
     assert err.value.status_code == 409
 
 
+def test_unknown_parent_share_id_is_rejected():
+    svc = _service()
+    with pytest.raises(ApiException) as err:
+        svc.create_share(
+            message_id="m1",
+            parent_share_id="does-not-exist",
+            channel="web_native_share_sheet",
+            platform="mobile_web",
+        )
+    assert err.value.status_code == 404
+
+
+def test_expired_announcement_is_rejected():
+    svc = _service({**MESSAGE, "expires_at": "2000-01-01T00:00:00+00:00"})
+    with pytest.raises(ApiException) as err:
+        svc.create_share(
+            message_id="m1", channel="web_native_share_sheet", platform="mobile_web"
+        )
+    assert err.value.status_code == 409
+
+
+def test_get_share_returns_known_share():
+    svc = _service()
+    created = svc.create_share(
+        message_id="m1", channel="web_native_share_sheet", platform="mobile_web"
+    )
+    assert svc.get_share(created["share_id"])["share_id"] == created["share_id"]
+
+
+def test_get_share_returns_none_for_unknown_share():
+    svc = _service()
+    assert svc.get_share("does-not-exist") is None
+
+
 def test_utm_params_are_appended_to_the_url():
     svc = _service()
     out = svc.create_share(
