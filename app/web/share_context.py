@@ -184,6 +184,7 @@ def build_share_context(
         "masjid_place_id": str(masjid.get("place_id") or ""),
         "follow_path": f"/m/{_follow_id}" if _follow_id else "",
         "share_host": settings.share_host,
+        "share_origin": settings.share_web_base_url.rstrip("/"),
         "play_store_url": settings.play_store_url,
         "app_store_url": settings.app_store_url,
         "android_package": settings.android_package_name,
@@ -204,4 +205,81 @@ def build_share_context(
         "utm_campaign": str(attribution.get("utm_campaign") or ""),
         "mixpanel_token": settings.mixpanel_token or "",
         "mixpanel_api_host": settings.mixpanel_api_host,
+    }
+
+
+def _first_photo(masjid: dict) -> Optional[str]:
+    stored = masjid.get("photos") or []
+    if not stored:
+        stored = (masjid.get("google_place_data") or {}).get("photos") or []
+    for photo in stored:
+        if isinstance(photo, dict):
+            url = photo.get("url") or photo.get("name")
+            if url:
+                return str(url)
+    return None
+
+
+def build_masjid_share_context(
+    masjid: dict,
+    settings: Settings,
+    requested_id: str,
+) -> dict:
+    """Context for the public `/m/{id}` landing page.
+
+    Rendered when the link is opened from a browser (i.e. the app is not
+    installed), so it must carry Open Graph tags and a Play Store URL whose
+    `referrer` replays the masjid PDP after install (deferred deep link).
+    """
+    from urllib.parse import quote
+
+    name = (masjid.get("name") or "").strip() or "This masjid"
+    location = (masjid.get("address") or "").strip()
+    if not location:
+        location = ", ".join(
+            p for p in [
+                masjid.get("area"),
+                masjid.get("city"),
+                masjid.get("state"),
+            ]
+            if p and str(p).strip()
+        )
+    verified = bool((masjid.get("management") or {}).get("is_claimed"))
+
+    place_id = str(masjid.get("place_id") or requested_id)
+    photo = _first_photo(masjid)
+    default_avatar = (
+        f"{settings.share_web_base_url}/share-static/masjid-default.png"
+    )
+    avatar = _minify_places_photo(photo or default_avatar, 128)
+    og_image = photo or f"{settings.share_web_base_url}/share-static/og-default.png"
+
+    base = settings.share_web_base_url.rstrip("/")
+    deep_link_url = f"{base}/m/{requested_id}"
+    # Play decodes the referrer once; the app then reads `deeplink` and decodes
+    # it again, yielding the absolute /m URL on first launch.
+    referrer = quote(f"deeplink={quote(deep_link_url, safe='')}", safe="")
+    joiner = "&" if "?" in settings.play_store_url else "?"
+    play_store_referrer_url = (
+        f"{settings.play_store_url}{joiner}referrer={referrer}"
+    )
+
+    return {
+        "masjid_id": requested_id,
+        "masjid_name": name,
+        "masjid_location": location,
+        "masjid_verified": verified,
+        "masjid_avatar_url": avatar,
+        "og_image_url": og_image,
+        "og_description": location or f"Open {name} in Muslim 360",
+        "page_title": f"{name} | Muslim 360",
+        "canonical_url": f"{base}/m/{place_id}",
+        "deep_link_url": deep_link_url,
+        "share_host": settings.share_host,
+        "share_origin": base,
+        "play_store_referrer_url": play_store_referrer_url,
+        "play_store_url": settings.play_store_url,
+        "app_store_url": settings.app_store_url,
+        "android_package": settings.android_package_name,
+        "marketing_site_url": settings.marketing_site_url,
     }

@@ -166,6 +166,10 @@
 
 <script>
   var SHARE_HOST = {{ share_host | tojson }};
+  var SHARE_ORIGIN = {{ share_origin | tojson }};
+  var SHARE_SCHEME = SHARE_ORIGIN.indexOf("://") >= 0
+    ? SHARE_ORIGIN.split("://")[0]
+    : "https";
   var DEEP_PATH = {{ deep_link_path | tojson }};
   var FOLLOW_PATH = {{ follow_path | tojson }};
   var PLAY_URL = {{ play_store_url | tojson }};
@@ -276,7 +280,7 @@
       params.push("s=" + encodeURIComponent(SHARE_ID));
     }
     params.push("m=" + encodeURIComponent(MESSAGE_ID));
-    return "https://" + SHARE_HOST + FOLLOW_PATH + "?" + params.join("&");
+    return SHARE_ORIGIN + FOLLOW_PATH + "?" + params.join("&");
   }
 
   var appOpened = false;
@@ -331,7 +335,7 @@
       // can report the store fallback.
       var query = targetUrl.indexOf("?") >= 0 ? targetUrl.slice(targetUrl.indexOf("?")) : "";
       window.location = "intent://" + SHARE_HOST + FOLLOW_PATH + query +
-        "#Intent;scheme=https;package=" + ANDROID_PKG +
+        "#Intent;scheme=" + SHARE_SCHEME + ";package=" + ANDROID_PKG +
         ";S.browser_fallback_url=" + encodeURIComponent(storeUrl) + ";end";
       return;
     }
@@ -480,7 +484,7 @@
   }
 </script>
 </body>
-<script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+<script src="/share-static/mixpanel-loader.js"></script>
 <script src="/share-static/m360-analytics.js"></script>
 <script>
   (function () {
