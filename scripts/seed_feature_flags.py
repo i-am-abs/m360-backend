@@ -138,6 +138,72 @@ LOCATIONS = [
         "priority": 20,
         "enabled": True,
     },
+    {
+        "location_key": "IN-UP-Noida",
+        "country": "IN",
+        "state": "UP",
+        "city": "Noida",
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": [
+                "UP",
+                "Uttar Pradesh",
+                "UttarPradesh",
+                "Utter Pradesh",
+            ],
+            "city": [
+                "Noida",
+                "New Okhla",
+                "New Okhla Industrial Development Authority",
+                "Gautam Buddha Nagar",
+                "Gautam Buddh Nagar",
+                "Greater Noida",
+            ],
+        },
+        "bounds": {
+            "lat_min": 28.40,
+            "lat_max": 28.64,
+            "lng_min": 77.30,
+            "lng_max": 77.55,
+        },
+        "center": {"latitude": 28.5355, "longitude": 77.3910},
+        "radius_km": 18,
+        "features": dict(_LAUNCHED_FEATURES),
+        "priority": 20,
+        "enabled": True,
+    },
+    {
+        "location_key": "IN-UP-Bulandshahr",
+        "country": "IN",
+        "state": "UP",
+        "city": "Bulandshahr",
+        "aliases": {
+            "country": ["IN", "India"],
+            "state": [
+                "UP",
+                "Uttar Pradesh",
+                "UttarPradesh",
+                "Utter Pradesh",
+            ],
+            "city": [
+                "Bulandshahr",
+                "Bulandshahar",
+                "Buland Shahar",
+                "Bulandsahar",
+            ],
+        },
+        "bounds": {
+            "lat_min": 28.25,
+            "lat_max": 28.55,
+            "lng_min": 77.70,
+            "lng_max": 78.05,
+        },
+        "center": {"latitude": 28.4069, "longitude": 77.8498},
+        "radius_km": 22,
+        "features": dict(_LAUNCHED_FEATURES),
+        "priority": 20,
+        "enabled": True,
+    },
 ]
 
 # Superseded by the alias lists above; leaving them would reintroduce ambiguous
