@@ -65,10 +65,23 @@
     }
   }
 
+  // `time` is a Mixpanel-reserved property that sets the event timestamp and
+  // must stay numeric epoch seconds. Pair it with a readable, sortable ISO-8601
+  // value so the payload is legible without breaking timestamp handling.
+  function nowIso() {
+    try {
+      return new Date().toISOString();
+    } catch (e) {
+      return '';
+    }
+  }
+
   function track(event, props) {
     if (!client) return;
     try {
-      client.track(event, props || {});
+      client.track(event, Object.assign({}, props || {}, {
+        event_time_iso: nowIso(),
+      }));
     } catch (e) {}
   }
 
@@ -93,7 +106,10 @@
       if (!nav || typeof nav.sendBeacon !== 'function') return false;
       var properties = Object.assign({}, base, props || {}, {
         token: token,
+        // Reserved: numeric epoch seconds for Mixpanel's event timestamp.
         time: Math.floor(Date.now() / 1000),
+        // Readable companion so the event is legible in exports/Live View.
+        event_time_iso: nowIso(),
         distinct_id: base.anonymous_visitor_id || visitorId(),
       });
       var encoded = base64(JSON.stringify({ event: event, properties: properties }));

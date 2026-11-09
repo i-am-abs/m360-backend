@@ -15,7 +15,7 @@ from app.core.config import Settings, get_settings
 from app.core.enums.committee_designation import CommitteeDesignation
 from app.exceptions.base import ApiException
 from app.utils.broadcast import resolve_share_state
-from app.web.share_context import build_share_context
+from app.web.share_context import build_masjid_share_context, build_share_context
 from app.web.templating import env
 
 router = APIRouter(tags=["share"])
@@ -163,6 +163,34 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
     )
     payload = {"applinks": {"apps": [], "details": details}}
     return Response(content=json.dumps(payload), media_type="application/json")
+
+
+@router.get("/m/{masjid_id}", response_class=HTMLResponse)
+def masjid_page(
+    masjid_id: str,
+    settings: Settings = Depends(get_settings),
+    masjid_svc=Depends(get_masjid_entity_service),
+) -> HTMLResponse:
+    """Public masjid landing page for shared links.
+
+    Android App Links intercept `/m/*` when the app is installed. This page is
+    the browser fallback: it renders the OG preview and routes to the store
+    with a deferred deep-link referrer so the masjid PDP opens after install.
+    """
+    try:
+        masjid = (masjid_svc.get_masjid(masjid_id) or {}).get("masjid", {})
+    except Exception:
+        masjid = {}
+    if not masjid:
+        html = env.get_template("share_not_found.html").render(
+            marketing_site_url=settings.marketing_site_url
+        )
+        return HTMLResponse(html, status_code=404)
+    ctx = build_masjid_share_context(masjid, settings, masjid_id)
+    html = env.get_template("masjid_landing.html").render(**ctx)
+    resp = HTMLResponse(html)
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
 
 
 @router.get("/embed/{message_id}", response_class=HTMLResponse)
