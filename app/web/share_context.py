@@ -224,6 +224,7 @@ def build_masjid_share_context(
     masjid: dict,
     settings: Settings,
     requested_id: str,
+    photo_url: Optional[str] = None,
 ) -> dict:
     """Context for the public `/m/{id}` landing page.
 
@@ -247,12 +248,20 @@ def build_masjid_share_context(
     verified = bool((masjid.get("management") or {}).get("is_claimed"))
 
     place_id = str(masjid.get("place_id") or requested_id)
-    photo = _first_photo(masjid)
+    # Prefer a freshly fetched Places photo: stored photo references can expire,
+    # and crawlers then render no preview image at all.
+    photo = photo_url or _first_photo(masjid)
     default_avatar = (
         f"{settings.share_web_base_url}/share-static/masjid-default.png"
     )
     avatar = _minify_places_photo(photo or default_avatar, 128)
-    og_image = photo or f"{settings.share_web_base_url}/share-static/og-default.png"
+    # Crawlers (WhatsApp) fetch this; request a preview-sized variant instead
+    # of the original multi-megapixel Places image.
+    og_image = (
+        _minify_places_photo(photo, 630)
+        if photo
+        else f"{settings.share_web_base_url}/share-static/og-default.png"
+    )
 
     base = settings.share_web_base_url.rstrip("/")
     deep_link_url = f"{base}/m/{requested_id}"
