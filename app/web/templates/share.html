@@ -208,6 +208,24 @@
   var IS_ANDROID = /android/i.test(UA);
   var IS_IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 
+  // Verified Android App Links open the app before this page renders. When the
+  // page is shown anyway (an in-app WebView such as WhatsApp, or a link that
+  // failed verification), hand off to the installed app once. If the app is
+  // absent, browser_fallback_url reloads this page with app=0 so it never
+  // loops. The short delay lets video_landing_page_viewed reach Mixpanel first.
+  (function () {
+    if (!IS_ANDROID) return;
+    if (/[?&]app=0\b/.test(location.search)) return;
+    var fallback = location.href + (location.search ? "&" : "?") + "app=0";
+    var target = location.pathname + location.search;
+    var intentUrl = "intent://" + SHARE_HOST + target +
+      "#Intent;scheme=" + SHARE_SCHEME + ";package=" + ANDROID_PKG +
+      ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
+    setTimeout(function () {
+      try { window.location.href = intentUrl; } catch (e) {}
+    }, 900);
+  })();
+
   // Deferred deep link: the Play Store install referrer carries the exact
   // per-click follow target so the journey survives a fresh install.
   function storeUrlFor(targetUrl) {
