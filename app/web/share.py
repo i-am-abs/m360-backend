@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import json
 
+import httpx
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 
 from app.api.deps import (
     get_broadcast_feed_service,
@@ -15,7 +21,11 @@ from app.core.config import Settings, get_settings
 from app.core.enums.committee_designation import CommitteeDesignation
 from app.exceptions.base import ApiException
 from app.utils.broadcast import resolve_share_state
-from app.web.share_context import build_masjid_share_context, build_share_context
+from app.web.share_context import (
+    _minify_places_photo,
+    build_masjid_share_context,
+    build_share_context,
+)
 from app.web.templating import env
 
 router = APIRouter(tags=["share"])
@@ -165,18 +175,112 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
     return Response(content=json.dumps(payload), media_type="application/json")
 
 
-@router.get("/m/{masjid_id}", response_class=HTMLResponse)
-def masjid_page(
+def _resolve_masjid_photo(masjid_id, masjid_svc, search_svc, masjid=None):
+    """Best-effort Places photo, preferring a fresh (non-expired) reference."""
+    if masjid is None:
+        try:
+            masjid = (masjid_svc.get_masjid(masjid_id) or {}).get("masjid", {})
+        except Exception:
+            masjid = {}
+    place_id = str(masjid.get("place_id") or masjid_id)
+    try:
+        place = search_svc.get_place_by_id(place_id) or {}
+        photos = place.get("photos") or []
+        if photos and isinstance(photos[0], dict):
+            url = photos[0].get("url") or photos[0].get("name")
+            if url:
+                return str(url)
+    except Exception:
+        pass
+    stored = masjid.get("photos") or (
+        (masjid.get("google_place_data") or {}).get("photos") or []
+    )
+    for photo in stored:
+        if isinstance(photo, dict):
+            url = photo.get("url") or photo.get("name")
+            if url:
+                return str(url)
+    return None
+
+
+@router.get("/m/{masjid_id}/image")
+def masjid_image(
     masjid_id: str,
     settings: Settings = Depends(get_settings),
     masjid_svc=Depends(get_masjid_entity_service),
-) -> HTMLResponse:
-    """Public masjid landing page for shared links.
+    search_svc=Depends(get_masjid_search_service),
+):
+    """Serve a crawler-friendly preview image (small, direct, cacheable).
 
-    Android App Links intercept `/m/*` when the app is installed. This page is
-    the browser fallback: it renders the OG preview and routes to the store
-    with a deferred deep-link referrer so the masjid PDP opens after install.
+    WhatsApp/Messenger drop og:image when the source is multi-megabyte or needs
+    redirects to a CDN, so proxy a 630px variant through our own URL.
     """
+    default = (
+        f"{settings.share_web_base_url.rstrip('/')}/share-static/og-default.png"
+    )
+    photo = _resolve_masjid_photo(masjid_id, masjid_svc, search_svc)
+    if not photo:
+        return RedirectResponse(default, status_code=302)
+    url = _minify_places_photo(photo, 630)
+    try:
+        with httpx.Client(follow_redirects=True, timeout=10.0) as client:
+            upstream = client.get(url)
+        ctype = upstream.headers.get("content-type", "")
+        if upstream.status_code == 200 and ctype.startswith("image/"):
+            return Response(
+                content=upstream.content,
+                media_type=ctype,
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    except Exception:
+        pass
+    return RedirectResponse(default, status_code=302)
+
+
+_PREVIEW_BOT_TOKENS = (
+    "bot", "crawler", "spider", "facebookexternalhit", "whatsapp",
+    "telegram", "slack", "discord", "twitter", "linkedin", "pinterest",
+    "embedly", "preview", "skype", "vkshare", "w3c_validator",
+)
+
+
+def _is_preview_bot(user_agent: str) -> bool:
+    ua = (user_agent or "").lower()
+    return any(token in ua for token in _PREVIEW_BOT_TOKENS)
+
+
+def _ua_is_ios(user_agent: str) -> bool:
+    ua = (user_agent or "").lower()
+    return "iphone" in ua or "ipad" in ua or "ipod" in ua
+
+
+def _ua_is_android(user_agent: str) -> bool:
+    return "android" in (user_agent or "").lower()
+
+
+@router.get("/m/{masjid_id}", response_class=HTMLResponse)
+def masjid_page(
+    masjid_id: str,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    masjid_svc=Depends(get_masjid_entity_service),
+    search_svc=Depends(get_masjid_search_service),
+) -> HTMLResponse:
+    """Public masjid link target.
+
+    Device with the app: Android App Links / the intent handoff open the PDP,
+    so this document is never rendered. Without the app the user is sent
+    straight to the store instead of landing on a page. Crawlers still get the
+    OG document so WhatsApp can render the preview image.
+    """
+    ua = request.headers.get("user-agent", "")
+    if not _is_preview_bot(ua):
+        if _ua_is_ios(ua):
+            return RedirectResponse(settings.app_store_url, status_code=302)
+        # macOS may be an iPad in desktop mode and can still open the app, so
+        # leave it to the client-side handoff.
+        if not _ua_is_android(ua) and "macintosh" not in (ua or "").lower():
+            return RedirectResponse(settings.play_store_url, status_code=302)
     try:
         masjid = (masjid_svc.get_masjid(masjid_id) or {}).get("masjid", {})
     except Exception:
@@ -186,7 +290,16 @@ def masjid_page(
             marketing_site_url=settings.marketing_site_url
         )
         return HTMLResponse(html, status_code=404)
-    ctx = build_masjid_share_context(masjid, settings, masjid_id)
+    photo_url = _resolve_masjid_photo(
+        masjid_id, masjid_svc, search_svc, masjid=masjid
+    )
+    ctx = build_masjid_share_context(
+        masjid, settings, masjid_id, photo_url=photo_url
+    )
+    # Crawlers get a small, redirect-free image from our own endpoint.
+    ctx["og_image_url"] = (
+        f"{settings.share_web_base_url.rstrip('/')}/m/{masjid_id}/image"
+    )
     html = env.get_template("masjid_landing.html").render(**ctx)
     resp = HTMLResponse(html)
     resp.headers["Cache-Control"] = "public, max-age=300"
