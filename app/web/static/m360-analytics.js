@@ -2,7 +2,6 @@
   'use strict';
 
   var MARKS = [25, 50, 75];
-  var client = null;
   var base = {};
   var visitor = null;
   var token = null;
@@ -42,27 +41,26 @@
   function init(config) {
     token = (config && config.token) || null;
     apiHost = (config && config.apiHost) || 'https://api.mixpanel.com';
-    if (!token || typeof global.mixpanel === 'undefined') {
-      client = null;
-      return;
-    }
+    if (!token || typeof global.mixpanel === 'undefined') return;
     try {
-      global.mixpanel.init(token, {
+      var mp = global.mixpanel;
+      mp.init(token, {
         api_host: apiHost,
         persistence: 'localStorage',
         track_pageview: false,
         autotrack: false,
+        // Send each event as it happens. With the SDK's default batching,
+        // playback/CTA events stay queued and never appear in Live View.
+        batch_requests: false,
       });
-      client = global.mixpanel;
       base = config.base || {};
       if (!base.anonymous_visitor_id) base.anonymous_visitor_id = visitorId();
-      client.register(base);
-      if (typeof client.identify === 'function') {
-        client.identify(base.anonymous_visitor_id);
+      // These are queued by the loader stub and replayed once the SDK loads.
+      mp.register(base);
+      if (typeof mp.identify === 'function') {
+        mp.identify(base.anonymous_visitor_id);
       }
-    } catch (e) {
-      client = null;
-    }
+    } catch (e) {}
   }
 
   // `time` is a Mixpanel-reserved property that sets the event timestamp and
@@ -77,9 +75,13 @@
   }
 
   function track(event, props) {
-    if (!client) return;
+    if (!token) return;
     try {
-      client.track(event, Object.assign({}, props || {}, {
+      // Never cache this: the loader stub is replaced by the real SDK once it
+      // loads, so a cached reference would silently swallow later events.
+      var mp = global.mixpanel;
+      if (!mp || typeof mp.track !== 'function') return;
+      mp.track(event, Object.assign({}, props || {}, {
         event_time_iso: nowIso(),
       }));
     } catch (e) {}
