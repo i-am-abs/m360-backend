@@ -167,7 +167,8 @@ def apple_app_site_association(settings: Settings = Depends(get_settings)) -> Re
     # which breaks Apple's Universal Links validation. Emit an empty details list
     # until APPLE_TEAM_ID is configured.
     details = (
-        [{"appID": settings.apple_app_id, "paths": ["/s/*", "/m/*"]}]
+        # /m/ only: announcement (/s/) links must always open the web page.
+        [{"appID": settings.apple_app_id, "paths": ["/m/*"]}]
         if settings.apple_app_id
         else []
     )
