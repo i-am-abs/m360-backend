@@ -229,6 +229,59 @@ class MasjidEntityService:
             },
         }
 
+    def search_masjids(
+            self,
+            query: str,
+            page: int,
+            limit: int,
+            status: str = "all",
+            claimed: str = "all",
+    ) -> Dict[str, Any]:
+        return self._repo.search(query, page, limit, status=status, claimed=claimed)
+
+    def refresh_place_id(self, place_id: str) -> Dict[str, Any]:
+        place_data = self._places.get_place_by_id(place_id)
+        if not place_data:
+            raise ApiException(
+                "Place not found on Google Places",
+                status_code=HTTPStatus.NOT_FOUND,
+            )
+        return self._repo.upsert_from_google_places(place_data)
+
+    def import_city(self, city: str, max_results: int = 20) -> Dict[str, Any]:
+        city = (city or "").strip()
+        if not city:
+            return {"imported": 0, "updated": 0, "found": 0}
+        # `self._places` is a decorator stack (cached -> amenities -> local ->
+        # Google). Walk down to the Google service for a raw text search.
+        google = self._places
+        for _ in range(8):
+            if hasattr(google, "_text_search"):
+                break
+            google = getattr(google, "_inner", None)
+            if google is None:
+                break
+        if not hasattr(google, "_text_search"):
+            raise ApiException(
+                "Google Places search is not configured",
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+        data = google._text_search(f"mosque in {city}", max_results)
+        places = data.get("places") or []
+        imported = 0
+        updated = 0
+        for place in places:
+            pid = str(place.get("id") or place.get("place_id") or "")
+            if not pid:
+                continue
+            exists = self._repo.get_by_place_id(pid)
+            self._repo.upsert_from_google_places(place)
+            if exists:
+                updated += 1
+            else:
+                imported += 1
+        return {"imported": imported, "updated": updated, "found": len(places)}
+
     def list_committee_masjids(self, user_id: str) -> Dict[str, Any]:
         masjids = self._repo.find_by_committee_member(user_id)
         return {"masjids": masjids, "count": len(masjids)}

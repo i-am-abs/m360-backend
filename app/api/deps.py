@@ -115,7 +115,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)
             code=ErrorCode.AUTH_MISSING_TOKEN,
         )
     user = store.get_user_by_session(credentials.credentials)
-    if not user:
+    if not user or user.get("blocked_at"):
         raise ApiException(
             "Invalid or expired access token",
             status_code=HTTPStatus.UNAUTHORIZED.value,

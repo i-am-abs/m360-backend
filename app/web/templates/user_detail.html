@@ -80,6 +80,13 @@
                                 </button>
                             </form>
                         {% endif %}
+                        <form method="post" action="/admin/users/{{ user.user_id }}/revoke-sessions"
+                              onsubmit="return confirm('Revoke all sessions? The user is logged out on their next request.');">
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-200 transition">
+                                Revoke sessions
+                            </button>
+                        </form>
                     </div>
                 </div>
 
@@ -140,6 +147,91 @@
                         <div class="p-8 text-center">
                             <p class="text-sm text-gray-400">No claims</p>
                         </div>
+                    {% endif %}
+                </div>
+
+                <!-- Saved Masjids -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Saved Masjids ({{ saved_masjids|length }})</h3>
+                    </div>
+                    {% if saved_masjids %}
+                        <div class="divide-y divide-gray-100">
+                            {% for m in saved_masjids %}
+                                <div class="px-6 py-3">
+                                    <a href="/admin/masjids/{{ m.id }}" class="text-sm font-medium text-gray-900 hover:text-primary-600">{{ m.name }}</a>
+                                    {% if m.city %}<p class="text-xs text-gray-400">{{ m.city }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-6 text-center"><p class="text-sm text-gray-400">No saved masjids</p></div>
+                    {% endif %}
+                </div>
+
+                <!-- Followed Masjids -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Followed Masjids ({{ followed_masjids|length }})</h3>
+                    </div>
+                    {% if followed_masjids %}
+                        <div class="divide-y divide-gray-100">
+                            {% for m in followed_masjids %}
+                                <div class="px-6 py-3">
+                                    <a href="/admin/masjids/{{ m.id }}" class="text-sm font-medium text-gray-900 hover:text-primary-600">{{ m.name }}</a>
+                                    {% if m.city %}<p class="text-xs text-gray-400">{{ m.city }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-6 text-center"><p class="text-sm text-gray-400">No followed masjids</p></div>
+                    {% endif %}
+                </div>
+
+                <!-- Admin / committee registrations -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Masjid Roles ({{ admin_rows|length }})</h3>
+                    </div>
+                    {% if admin_rows %}
+                        <div class="divide-y divide-gray-100">
+                            {% for a in admin_rows %}
+                                <div class="px-6 py-3">
+                                    <p class="text-sm font-medium text-gray-900">{{ a.name or a.user_id }}</p>
+                                    <p class="text-xs text-gray-400">{{ a.designation or a.role or '—' }} · {{ a.status or '—' }}</p>
+                                    {% if a.masjid_place_id %}<p class="text-xs font-mono text-gray-300">{{ a.masjid_place_id }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-6 text-center"><p class="text-sm text-gray-400">No masjid roles</p></div>
+                    {% endif %}
+                </div>
+
+                <!-- Devices -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Push Devices</h3>
+                    </div>
+                    <div class="px-6 py-4 text-sm text-gray-700">{{ fcm_devices }} registered device{{ '' if fcm_devices == 1 else 's' }}</div>
+                </div>
+
+                <!-- Recent admin actions -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Recent Admin Actions</h3>
+                    </div>
+                    {% if recent_audit %}
+                        <div class="divide-y divide-gray-100">
+                            {% for a in recent_audit %}
+                                <div class="px-6 py-3">
+                                    <p class="text-sm text-gray-700">{{ a.action }}</p>
+                                    <p class="text-xs text-gray-400">{{ (a.created_at or '')[:19] }} · {{ a.user_id or '—' }}</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-6 text-center"><p class="text-sm text-gray-400">No recorded actions</p></div>
                     {% endif %}
                 </div>
             </div>

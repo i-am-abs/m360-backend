@@ -171,8 +171,11 @@ class JsonFileUserStore(UserRepository):
     def unblock_user(self, user_id: str) -> None:
         pass
 
-    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+    def list_users(self, skip: int, limit: int, q: str = "") -> Dict[str, Any]:
         return {"users": [], "total": 0}
+
+    def revoke_sessions_for_user(self, user_id: str) -> int:
+        return 0
 
     def search_users(self, query: str) -> List[Dict[str, Any]]:
         return []

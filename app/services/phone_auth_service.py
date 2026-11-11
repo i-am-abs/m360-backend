@@ -103,6 +103,12 @@ class PhoneAuthService:
 
     def provision_user(self, formatted_phone: str) -> Dict[str, Any]:
         user = self._store.ensure_user(formatted_phone)
+        if user.get("blocked_at"):
+            raise ApiException(
+                "This account is blocked. Please contact support.",
+                status_code=HTTPStatus.FORBIDDEN.value,
+                code=ErrorCode.AUTH_INVALID_TOKEN,
+            )
         user["phone_number"] = formatted_phone
         return user
 

@@ -86,6 +86,17 @@ class MasjidEntityRepository(ABC):
     def search_by_city(self, city: str, limit: int, page: int) -> dict:
         pass
 
+    @abstractmethod
+    def search(
+            self,
+            query: str,
+            page: int,
+            limit: int,
+            status: str = "all",
+            claimed: str = "all",
+    ) -> dict:
+        pass
+
     def search_local_by_text(self, query: str, limit: int) -> List[dict]:
         pass
 

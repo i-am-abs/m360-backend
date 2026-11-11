@@ -254,6 +254,50 @@ class MongoMasjidRepository(MasjidEntityRepository):
             },
         }
 
+    def search(
+            self,
+            query: str,
+            page: int,
+            limit: int,
+            status: str = "all",
+            claimed: str = "all",
+    ) -> dict:
+        page = max(1, page)
+        limit = max(1, limit)
+        conditions: List[Dict[str, Any]] = []
+        q = (query or "").strip()
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            conditions.append({"$or": [
+                {"name": rx}, {"city": rx}, {"place_id": rx}, {"address": rx},
+            ]})
+        if status and status != "all":
+            conditions.append({"meta.status": status})
+        if claimed == "claimed":
+            conditions.append({"management.is_claimed": True})
+        elif claimed == "unclaimed":
+            conditions.append({"$or": [
+                {"management.is_claimed": False},
+                {"management.is_claimed": {"$exists": False}},
+            ]})
+        query_doc = {"$and": conditions} if conditions else {}
+        total = self._masjids.count_documents(query_doc)
+        docs = list(
+            self._masjids.find(query_doc)
+            .sort("meta.created_at", -1)
+            .skip((page - 1) * limit)
+            .limit(limit)
+        )
+        return {
+            "masjids": [self._as_dict(doc) for doc in docs],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": max(1, ceil(total / limit)) if total else 1,
+            },
+        }
+
     @staticmethod
     def _local_source_query() -> Dict[str, Any]:
         return {

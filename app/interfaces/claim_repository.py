@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 
 class ClaimRepository(ABC):
@@ -18,7 +18,10 @@ class ClaimRepository(ABC):
         pass
 
     @abstractmethod
-    def list_claims(self, status: Optional[str], page: int, limit: int) -> dict:
+    def list_claims(
+            self, status: Optional[str], page: int, limit: int, q: str = "",
+            masjid_ids: Optional[List[str]] = None,
+    ) -> dict:
         pass
 
     @abstractmethod

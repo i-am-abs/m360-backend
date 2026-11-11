@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -112,6 +113,74 @@ class MongoBroadcastFeedRepository(BroadcastFeedRepository):
             "messages": messages,
             "pagination": {"has_more": has_more, "next_cursor": next_cursor},
         }
+
+    def list_messages(
+            self,
+            page: int = 1,
+            limit: int = 20,
+            q: str = "",
+            masjid_id: str = "",
+            message_type: str = "all",
+            sharing: str = "all",
+            include_expired: bool = False,
+    ) -> dict:
+        page = max(1, page)
+        limit = max(1, limit)
+        now_iso = self._now_iso()
+        conditions: List[Dict[str, Any]] = []
+        if (masjid_id or "").strip():
+            conditions.append({"masjid_id": masjid_id.strip()})
+        q = (q or "").strip()
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            text_or = [
+                {"text": rx}, {"masjid_id": rx}, {"sender.name": rx},
+            ]
+            try:
+                text_or.append({"_id": ObjectId(q)})
+            except Exception:
+                pass
+            conditions.append({"$or": text_or})
+        if message_type and message_type != "all":
+            conditions.append({"message_type": message_type})
+        if sharing == "enabled":
+            conditions.append({"allow_sharing": {"$ne": False}})
+        elif sharing == "disabled":
+            conditions.append({"allow_sharing": False})
+        if not include_expired:
+            conditions.append({
+                "$or": [{"expires_at": None}, {"expires_at": {"$gt": now_iso}}]
+            })
+        query: Dict[str, Any] = {"$and": conditions} if conditions else {}
+        total = self._messages.count_documents(query)
+        docs = list(
+            self._messages.find(query)
+            .sort("created_at", -1)
+            .skip((page - 1) * limit)
+            .limit(limit)
+        )
+        return {
+            "messages": [self._as_dict(doc) for doc in docs],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": max(1, (total + limit - 1) // limit) if total else 1,
+            },
+        }
+
+    def set_allow_sharing(self, message_id: str, enabled: bool) -> Optional[dict]:
+        try:
+            self._messages.update_one(
+                {"_id": ObjectId(message_id)},
+                {"$set": {
+                    "allow_sharing": bool(enabled),
+                    "updated_at": self._now_iso(),
+                }},
+            )
+        except Exception:
+            return None
+        return self.get_message(message_id)
 
     def get_message(self, message_id: str) -> Optional[dict]:
         try:
