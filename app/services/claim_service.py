@@ -153,8 +153,23 @@ class ClaimService:
                 )
         return {"claim": {"id": claim_id, "status": "rejected", "reviewer_note": note}}
 
-    def list_claims(self, status: Optional[str], page: int, limit: int) -> Dict[str, Any]:
-        result = self._claim_repo.list_claims(status, page, limit)
+    def list_claims(
+            self, status: Optional[str], page: int, limit: int, q: str = ""
+    ) -> Dict[str, Any]:
+        masjid_ids = []
+        if (q or "").strip():
+            try:
+                matches = self._masjid_repo.search_by_city(q.strip(), 50, 1)
+                for m in matches.get("masjids", []):
+                    if m.get("id"):
+                        masjid_ids.append(str(m["id"]))
+                    if m.get("place_id"):
+                        masjid_ids.append(str(m["place_id"]))
+            except Exception:
+                masjid_ids = []
+        result = self._claim_repo.list_claims(
+            status, page, limit, q=q, masjid_ids=masjid_ids or None
+        )
         claims = result.get("claims", result.get("items", []))
         enriched = []
         for claim in claims:

@@ -568,6 +568,8 @@ def bootstrap(app: FastAPI, settings: Settings) -> None:
         broadcast_feed_repo = MongoBroadcastFeedRepository(db)
         follower_repo = MongoFollowerRepository(db)
         donation_repo = MongoDonationRepository(db)
+        app.state.broadcast_feed_repo = broadcast_feed_repo
+        app.state.donation_repo = donation_repo
 
         app.state.fcm_service = FcmService(
             user_store=app.state.user_store,

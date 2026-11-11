@@ -130,3 +130,8 @@ class DonationService:
 
     def get_user_donations(self, user_id: str, page: int, limit: int) -> Dict[str, Any]:
         return self._donation_repo.get_user_donations(user_id, page, limit)
+
+    def list_donations(
+            self, page: int, limit: int, q: str = "", status: str = "all"
+    ) -> Dict[str, Any]:
+        return self._donation_repo.list_donations(page, limit, q=q, status=status)

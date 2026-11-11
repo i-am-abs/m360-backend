@@ -46,7 +46,11 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
+    def list_users(self, skip: int, limit: int, q: str = "") -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def revoke_sessions_for_user(self, user_id: str) -> int:
         pass
 
     @abstractmethod

@@ -48,3 +48,9 @@ class DonationRepository(ABC):
     @abstractmethod
     def get_user_donations(self, user_id: str, page: int, limit: int) -> dict:
         pass
+
+    @abstractmethod
+    def list_donations(
+            self, page: int, limit: int, q: str = "", status: str = "all"
+    ) -> dict:
+        pass

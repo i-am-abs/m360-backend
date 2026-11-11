@@ -137,6 +137,39 @@ class MongoDonationRepository(DonationRepository):
             },
         }
 
+    def list_donations(
+            self, page: int, limit: int, q: str = "", status: str = "all"
+    ) -> dict:
+        import re
+        page = max(1, page)
+        limit = max(1, limit)
+        query: Dict[str, Any] = {}
+        if status and status != "all":
+            query["payment_status"] = status
+        q = (q or "").strip()
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            query["$or"] = [
+                {"donor.name": rx}, {"donor.user_id": rx},
+                {"transaction_id": rx}, {"campaign_id": rx}, {"masjid_id": rx},
+            ]
+        total = self._donations.count_documents(query)
+        docs = list(
+            self._donations.find(query)
+            .sort("created_at", -1)
+            .skip((page - 1) * limit)
+            .limit(limit)
+        )
+        return {
+            "donations": [self._as_dict(doc) for doc in docs],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "pages": max(1, ceil(total / limit)) if total else 1,
+            },
+        }
+
     @staticmethod
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()

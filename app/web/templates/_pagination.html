@@ -1,0 +1,16 @@
+{% if total_pages > 1 %}
+    <div class="border-t border-gray-100 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-gray-500">Page {{ page }} of {{ total_pages }}{% if total is defined and total %} · {{ total }} total{% endif %}</p>
+            <div class="flex gap-1">
+                {% for p in range(1, total_pages + 1) %}
+                    <a href="{{ base_url }}?page={{ p }}{{ extra_query or '' }}" hx-boost="true"
+                       class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition
+                       {% if p == page %}bg-primary-600 text-white shadow-sm{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                        {{ p }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}

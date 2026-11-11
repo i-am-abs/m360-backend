@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -257,11 +258,22 @@ class MongoUserStore(UserRepository):
             {"$set": {"blocked_at": None}},
         )
 
-    def list_users(self, skip: int, limit: int) -> Dict[str, Any]:
-        cursor = self._users.find({}).sort("created_at", -1).skip(skip).limit(limit)
+    def list_users(self, skip: int, limit: int, q: str = "") -> Dict[str, Any]:
+        query: Dict[str, Any] = {}
+        q = (q or "").strip()
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            query = {"$or": [{"phone_number": rx}, {"user_id": rx}]}
+        cursor = (
+            self._users.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        )
         users = [self._as_user_dict(doc) for doc in cursor]
-        total = self._users.count_documents({})
+        total = self._users.count_documents(query)
         return {"users": users, "total": total}
+
+    def revoke_sessions_for_user(self, user_id: str) -> int:
+        result = self._sessions.delete_many({"user_id": user_id})
+        return int(result.deleted_count)
 
     def search_users(self, query: str) -> List[Dict[str, Any]]:
         docs = self._users.find({

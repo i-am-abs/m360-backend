@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import List, Any, Dict, Optional
 
 from bson import ObjectId
 from math import ceil
@@ -48,11 +48,22 @@ class MongoClaimRepository(ClaimRepository):
         doc = self._claims.find_one({"user_id": user_id, "masjid_id": masjid_id})
         return self._as_dict(doc) if doc else None
 
-    def list_claims(self, status: Optional[str], page: int, limit: int) -> dict:
+    def list_claims(
+            self, status: Optional[str], page: int, limit: int, q: str = "",
+            masjid_ids: Optional[List[str]] = None,
+    ) -> dict:
+        import re
         skip = (page - 1) * limit
         query: Dict[str, Any] = {}
         if status and status != "all":
             query["status"] = status
+        q = (q or "").strip()
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            ors = [{"user_id": rx}, {"masjid_id": rx}, {"claimed_role": rx}]
+            if masjid_ids:
+                ors.append({"masjid_id": {"$in": list(masjid_ids)}})
+            query["$or"] = ors
         total = self._claims.count_documents(query)
         docs = list(self._claims.find(query).sort("created_at", -1).skip(skip).limit(limit))
         return {

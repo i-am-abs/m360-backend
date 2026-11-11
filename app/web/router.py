@@ -21,6 +21,23 @@ def _noop_flashed(with_categories=False):
     return []
 
 
+def _write_audit(request: Request, session: AdminSession, action: str,
+                 resource_type: str, resource_id: str, details: dict) -> None:
+    store = getattr(request.app.state, "audit_store", None)
+    if store is None:
+        return
+    try:
+        store.write({
+            "action": action,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "user_id": session.email,
+            "details": details,
+        })
+    except Exception:
+        pass
+
+
 def _flash_from_query(request: Request):
     success = request.query_params.get("success")
     error = request.query_params.get("error")
@@ -213,26 +230,154 @@ def users(
         request: Request,
         session: AdminSession = Depends(admin_required),
         page: int = 1,
+        q: str = "",
 ):
     per_page = 20
     user_store = getattr(request.app.state, "user_store", None)
-
+    current_page = max(1, page)
     users_list = []
     total_pages = 1
-    current_page = page
-
+    total = 0
     if user_store:
         try:
-            result = user_store.list_users(skip=(page - 1) * per_page, limit=per_page)
+            result = user_store.list_users(
+                skip=(current_page - 1) * per_page,
+                limit=per_page,
+                q=q,
+            )
             users_list = result.get("users", [])
             total = result.get("total", 0)
             total_pages = max(1, (total + per_page - 1) // per_page)
         except Exception:
             pass
-
     return templates.get_template("users.html").render(
         admin=session, active_tab="users", users=users_list,
-        page=current_page, total_pages=total_pages,
+        page=current_page, total_pages=total_pages, total=total, q=q,
+    )
+
+
+@router.get("/announcements", response_class=HTMLResponse)
+def announcements(
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        page: int = 1,
+        q: str = "",
+        masjid_id: str = "",
+        message_type: str = "all",
+        sharing: str = "all",
+):
+    repo = getattr(request.app.state, "broadcast_feed_repo", None)
+    messages = []
+    total_pages = 1
+    total = 0
+    current_page = max(1, page)
+    if repo:
+        try:
+            data = repo.list_messages(
+                page=current_page,
+                limit=20,
+                q=q,
+                masjid_id=masjid_id,
+                message_type=message_type,
+                sharing=sharing,
+            )
+            messages = data.get("messages", [])
+            pagination = data.get("pagination", {})
+            total_pages = pagination.get("pages", 1)
+            total = pagination.get("total", len(messages))
+        except Exception:
+            pass
+    names = {}
+    db = getattr(request.app.state, "mongo_client", None)
+    if db and messages:
+        try:
+            from bson import ObjectId
+            database = db.get_database(get_settings().mongodb_database)
+            ids = [str(m.get("masjid_id")) for m in messages if m.get("masjid_id")]
+            oids = [ObjectId(i) for i in ids if ObjectId.is_valid(i)]
+            places = [i for i in ids if not ObjectId.is_valid(i)]
+            ors = []
+            if oids:
+                ors.append({"_id": {"$in": oids}})
+            if places:
+                ors.append({"place_id": {"$in": places}})
+            if ors:
+                for doc in database["masjids"].find(
+                    {"$or": ors}, {"name": 1, "place_id": 1}
+                ):
+                    names[str(doc["_id"])] = doc.get("name", "")
+                    if doc.get("place_id"):
+                        names[doc["place_id"]] = doc.get("name", "")
+        except Exception:
+            names = {}
+    for message in messages:
+        message["masjid_name"] = names.get(str(message.get("masjid_id")), "")
+    return templates.get_template("announcements.html").render(
+        admin=session, active_tab="announcements",
+        messages=messages, page=current_page, total_pages=total_pages,
+        total=total, q=q, masjid_id=masjid_id,
+        message_type=message_type, sharing=sharing,
+        flash=_flash_from_query(request),
+    )
+
+
+@router.post("/announcements/{message_id}/remove")
+def admin_remove_announcement(
+        request: Request,
+        message_id: str,
+        session: AdminSession = Depends(admin_required),
+):
+    repo = getattr(request.app.state, "broadcast_feed_repo", None)
+    if repo is None:
+        return RedirectResponse(
+            url="/admin/announcements?error=Service+unavailable", status_code=303
+        )
+    try:
+        message = repo.get_message(message_id) or {}
+        removed = repo.delete_message(message_id)
+        if removed:
+            _write_audit(
+                request, session, "announcement_removed", "broadcast_message",
+                message_id, {"masjid_id": message.get("masjid_id")},
+            )
+            return RedirectResponse(
+                url="/admin/announcements?success=Announcement+removed",
+                status_code=303,
+            )
+    except Exception:
+        pass
+    return RedirectResponse(
+        url="/admin/announcements?error=Remove+failed", status_code=303
+    )
+
+
+@router.post("/announcements/{message_id}/sharing")
+def admin_toggle_announcement_sharing(
+        request: Request,
+        message_id: str,
+        session: AdminSession = Depends(admin_required),
+        enabled: str = Form("false"),
+):
+    repo = getattr(request.app.state, "broadcast_feed_repo", None)
+    if repo is None:
+        return RedirectResponse(
+            url="/admin/announcements?error=Service+unavailable", status_code=303
+        )
+    value = (enabled or "").lower() == "true"
+    try:
+        updated = repo.set_allow_sharing(message_id, value)
+        if updated is not None:
+            _write_audit(
+                request, session, "announcement_sharing_updated",
+                "broadcast_message", message_id, {"allow_sharing": value},
+            )
+            return RedirectResponse(
+                url="/admin/announcements?success=Sharing+updated", status_code=303
+            )
+    except Exception:
+        pass
+    return RedirectResponse(
+        url="/admin/announcements?error=Update+failed", status_code=303
     )
 
 
@@ -242,43 +387,35 @@ def masjids(
         session: AdminSession = Depends(admin_required),
         page: int = 1,
         q: str = "",
+        status: str = "all",
+        claimed: str = "all",
 ):
     svc = getattr(request.app.state, "masjid_entity_service", None)
-    db = getattr(request.app.state, "mongo_client", None)
     masjids_list = []
     total_pages = 1
-    current_page = page
-    if q.strip() and db:
+    total = 0
+    current_page = max(1, page)
+    if svc:
         try:
-            from app.core.config import get_settings
-            settings = get_settings()
-            database = db.get_database(settings.mongodb_database)
-            regex = {"$regex": q.strip(), "$options": "i"}
-            docs = list(database["masjids"].find(
-                {"$or": [{"name": regex}, {"city": regex}, {"place_id": regex}]},
-            ).skip((page - 1) * 20).limit(20).sort("meta.created_at", -1))
-            total = database["masjids"].count_documents(
-                {"$or": [{"name": regex}, {"city": regex}, {"place_id": regex}]})
-            masjids_list = []
-            from app.repositories.mongo_masjid_repository import MongoMasjidRepository
-            for d in docs:
-                masjids_list.append(MongoMasjidRepository._as_dict(d))
-            total_pages = max(1, (total + 19) // 20)
-        except Exception:
-            pass
-    elif svc:
-        try:
-            result = svc.get_masjid_list(page=page, limit=20)
+            result = svc.search_masjids(
+                query=q,
+                page=current_page,
+                limit=20,
+                status=status,
+                claimed=claimed,
+            )
             masjids_list = result.get("masjids", [])
             pagination = result.get("pagination", {})
             total_pages = pagination.get("pages", 1)
+            total = pagination.get("total", len(masjids_list))
         except Exception:
             pass
     flash = _flash_from_query(request)
     return templates.get_template("masjids.html").render(
         admin=session, active_tab="masjids",
         masjids=masjids_list, page=current_page,
-        total_pages=total_pages, q=q, flash=flash,
+        total_pages=total_pages, total=total,
+        q=q, status=status, claimed=claimed, flash=flash,
     )
 
 
@@ -370,17 +507,10 @@ def claims(
         try:
             claims_data = svc.list_claims(
                 status=None if status == "all" else status,
-                page=page,
+                page=max(1, page),
                 limit=20,
+                q=q,
             )
-            if q.strip():
-                ql = q.strip().lower()
-                filtered = []
-                for c in claims_data.get("claims", []):
-                    if ql in c.get("masjid_name", "").lower() or ql in c.get("user_id", "").lower() or ql in c.get(
-                            "masjid_city", "").lower():
-                        filtered.append(c)
-                claims_data["claims"] = filtered
             for claim in claims_data.get("claims", []):
                 if user_store and claim.get("user_id"):
                     try:
@@ -489,6 +619,45 @@ def approve_claim(
     return RedirectResponse(url="/admin/claims", status_code=303)
 
 
+@router.get("/masjids/import", response_class=HTMLResponse)
+def import_masjids_form(
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+):
+    return templates.get_template("masjid_import.html").render(
+        admin=session, active_tab="masjids", flash=_flash_from_query(request),
+    )
+
+
+@router.post("/masjids/import")
+def import_masjids(
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        city: str = Form(""),
+        max_results: str = Form("20"),
+):
+    svc = getattr(request.app.state, "masjid_entity_service", None)
+    if svc is None:
+        return RedirectResponse(
+            url="/admin/masjids/import?error=Service+unavailable", status_code=303
+        )
+    try:
+        limit = max(1, min(50, int(max_results or "20")))
+        result = svc.import_city(city, max_results=limit)
+        msg = (
+            f"Imported {result.get('imported', 0)}, "
+            f"updated {result.get('updated', 0)} "
+            f"(found {result.get('found', 0)})"
+        )
+        return RedirectResponse(
+            url=f"/admin/masjids?success={quote_plus(msg)}", status_code=303
+        )
+    except Exception:
+        return RedirectResponse(
+            url="/admin/masjids/import?error=Import+failed", status_code=303
+        )
+
+
 @router.get("/masjids/{masjid_id}", response_class=HTMLResponse)
 def masjid_detail(
         request: Request,
@@ -508,6 +677,37 @@ def masjid_detail(
         return templates.get_template("masjid_detail.html").render(
             admin=session, masjid=None, not_found=True,
         )
+    duplicates = []
+    db = getattr(request.app.state, "mongo_client", None)
+    if db and masjid:
+        try:
+            database = db.get_database(get_settings().mongodb_database)
+            name = (masjid.get("name") or "").strip()
+            city = (masjid.get("city") or "").strip()
+            if name:
+                query: dict = {
+                    "name": {"$regex": "^" + re.escape(name) + "$", "$options": "i"},
+                }
+                if city:
+                    query["city"] = {
+                        "$regex": "^" + re.escape(city) + "$", "$options": "i"
+                    }
+                from bson import ObjectId as _Oid
+                current_id = str(masjid.get("id") or "")
+                if _Oid.is_valid(current_id):
+                    query["_id"] = {"$ne": _Oid(current_id)}
+                for doc in database["masjids"].find(
+                    query, {"name": 1, "city": 1, "place_id": 1, "meta.status": 1}
+                ).limit(5):
+                    duplicates.append({
+                        "id": str(doc["_id"]),
+                        "name": doc.get("name", ""),
+                        "city": doc.get("city", ""),
+                        "place_id": doc.get("place_id", ""),
+                        "status": (doc.get("meta") or {}).get("status", "active"),
+                    })
+        except Exception:
+            duplicates = []
     claims = []
     if claim_svc and masjid:
         try:
@@ -518,7 +718,8 @@ def masjid_detail(
             pass
     flash = _flash_from_query(request)
     return templates.get_template("masjid_detail.html").render(
-        admin=session, masjid=masjid, not_found=False, flash=flash, claims=claims,
+        admin=session, masjid=masjid, not_found=False, flash=flash,
+        claims=claims, duplicates=duplicates,
     )
 
 
@@ -603,6 +804,52 @@ def admin_update_masjid(
         return RedirectResponse(url=f"/admin/masjids/{masjid_id}?success=Basic+information+updated", status_code=303)
     except Exception:
         return RedirectResponse(url=f"/admin/masjids/{masjid_id}?error=Failed+to+update", status_code=303)
+
+
+@router.post("/masjids/{masjid_id}/refresh-google")
+def admin_refresh_masjid(
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+):
+    svc = getattr(request.app.state, "masjid_entity_service", None)
+    if svc is None:
+        return RedirectResponse(
+            url=f"/admin/masjids/{masjid_id}?error=Service+unavailable",
+            status_code=303,
+        )
+    try:
+        masjid = (svc.get_masjid(masjid_id) or {}).get("masjid", {})
+        place_id = str(masjid.get("place_id") or masjid_id)
+        svc.refresh_place_id(place_id)
+        return RedirectResponse(
+            url=f"/admin/masjids/{masjid_id}?success=Refreshed+from+Google",
+            status_code=303,
+        )
+    except Exception:
+        return RedirectResponse(
+            url=f"/admin/masjids/{masjid_id}?error=Refresh+failed",
+            status_code=303,
+        )
+
+
+@router.post("/masjids/{masjid_id}/status")
+def admin_set_masjid_status(
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        status: str = Form("active"),
+):
+    value = "active" if status == "active" else "inactive"
+    ok = _admin_update_masjid(request, masjid_id, {"meta.status": value})
+    if ok:
+        return RedirectResponse(
+            url=f"/admin/masjids/{masjid_id}?success=Status+updated",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/admin/masjids/{masjid_id}?error=Failed+to+update", status_code=303
+    )
 
 
 @router.post("/masjids/{masjid_id}/update-announcements")
@@ -824,9 +1071,31 @@ def reject_claim(
 
 
 @router.get("/donations", response_class=HTMLResponse)
-def donations(request: Request, session: AdminSession = Depends(admin_required)):
+def donations(
+        request: Request,
+        session: AdminSession = Depends(admin_required),
+        page: int = 1,
+        q: str = "",
+        status: str = "all",
+):
+    svc = getattr(request.app.state, "donation_service", None)
+    data = {"donations": [], "pagination": {"page": 1, "pages": 1, "total": 0}}
+    if svc:
+        try:
+            data = svc.list_donations(
+                page=max(1, page), limit=20, q=q, status=status
+            )
+        except Exception:
+            pass
+    pagination = data.get("pagination", {})
     return templates.get_template("donations.html").render(
-        admin=session, active_tab="donations", donations=[], page=1, total_pages=1
+        admin=session, active_tab="donations",
+        donations=data.get("donations", []),
+        page=pagination.get("page", 1),
+        total_pages=pagination.get("pages", 1),
+        total=pagination.get("total", 0),
+        q=q, status=status,
+        flash=_flash_from_query(request),
     )
 
 
@@ -840,6 +1109,7 @@ def block_user(
     if user_store:
         try:
             user_store.block_user(user_id)
+            _write_audit(request, session, "user_blocked", "user", user_id, {})
         except Exception:
             pass
     return RedirectResponse(url="/admin/users", status_code=303)
@@ -855,9 +1125,33 @@ def unblock_user(
     if user_store:
         try:
             user_store.unblock_user(user_id)
+            _write_audit(request, session, "user_unblocked", "user", user_id, {})
         except Exception:
             pass
     return RedirectResponse(url="/admin/users", status_code=303)
+
+
+@router.post("/users/{user_id}/revoke-sessions")
+def revoke_user_sessions(
+        request: Request,
+        user_id: str,
+        session: AdminSession = Depends(admin_required),
+):
+    user_store = getattr(request.app.state, "user_store", None)
+    count = 0
+    if user_store:
+        try:
+            count = user_store.revoke_sessions_for_user(user_id)
+        except Exception:
+            pass
+    _write_audit(
+        request, session, "user_sessions_revoked", "user", user_id,
+        {"revoked": count},
+    )
+    return RedirectResponse(
+        url=f"/admin/users/{user_id}?success=Sessions+revoked+({count})",
+        status_code=303,
+    )
 
 
 @router.get("/users/search", response_class=HTMLResponse)
@@ -901,9 +1195,15 @@ def user_detail(
     masjids = []
     claims = []
     sessions_count = 0
+    saved_masjids = []
+    followed_masjids = []
+    admin_rows = []
+    fcm_devices = 0
+    recent_audit = []
     if db and user_data:
         try:
             from app.core.config import get_settings
+            from bson import ObjectId
             settings = get_settings()
             database = db.get_database(settings.mongodb_database)
             # Committee memberships
@@ -930,10 +1230,63 @@ def user_detail(
                 })
             # Sessions
             sessions_count = database["sessions"].count_documents({"user_id": user_id})
+            # Saved masjids (favorites are keyed by canonical phone)
+            fav_ids = []
+            if user_store:
+                try:
+                    fav_ids = list(user_store.list_favorites(user_data.get("phone_number", "")) or [])
+                except Exception:
+                    fav_ids = []
+            follow_docs = list(database["masjid_follows"].find(
+                {"user_id": user_id}, {"masjid_id": 1},
+            ))
+            follow_ids = [str(d.get("masjid_id")) for d in follow_docs if d.get("masjid_id")]
+            ids = list(dict.fromkeys([str(i) for i in fav_ids] + follow_ids))
+            oids = [ObjectId(i) for i in ids if ObjectId.is_valid(i)]
+            places = [i for i in ids if not ObjectId.is_valid(i)]
+            ors = []
+            if oids:
+                ors.append({"_id": {"$in": oids}})
+            if places:
+                ors.append({"place_id": {"$in": places}})
+            name_map = {}
+            if ors:
+                for d in database["masjids"].find(
+                    {"$or": ors}, {"name": 1, "city": 1, "place_id": 1}
+                ):
+                    info = {"name": d.get("name", ""), "city": d.get("city", "")}
+                    name_map[str(d["_id"])] = info
+                    if d.get("place_id"):
+                        name_map[str(d["place_id"])] = info
+
+            def _item(key):
+                info = name_map.get(str(key)) or {}
+                return {
+                    "id": str(key),
+                    "name": info.get("name") or str(key),
+                    "city": info.get("city", ""),
+                }
+
+            saved_masjids = [_item(i) for i in fav_ids]
+            followed_masjids = [_item(i) for i in follow_ids]
+            fcm_devices = database["fcm_tokens"].count_documents({"user_id": user_id})
+            recent_audit = list(database["audit_logs"].find(
+                {"resource_id": user_id}
+            ).sort("created_at", -1).limit(10))
         except Exception:
             pass
+
+    admin_store = getattr(request.app.state, "admin_store", None)
+    if admin_store and user_data:
+        try:
+            admin_rows = admin_store.list_by_user_id(user_id) or []
+        except Exception:
+            admin_rows = []
 
     return templates.get_template("user_detail.html").render(
         admin=session, user=user_data, masjids=masjids,
         claims=claims, sessions_count=sessions_count,
+        saved_masjids=saved_masjids, followed_masjids=followed_masjids,
+        admin_rows=admin_rows, fcm_devices=fcm_devices,
+        recent_audit=recent_audit, flash=_flash_from_query(request),
     )
