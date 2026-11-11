@@ -292,6 +292,7 @@ def create_masjid(
         request: Request,
         session: AdminSession = Depends(admin_required),
         name: str = Form(...),
+        announcements_enabled: str = Form(""),
         name_arabic: str = Form(""),
         address: str = Form(""),
         city: str = Form(""),
@@ -335,6 +336,7 @@ def create_masjid(
             "timings": {},
             "contact": {},
             "management": {"is_claimed": False, "committee": []},
+            "has_announcements_enabled": (announcements_enabled or "").lower() == "true",
             "meta": {
                 "status": "active",
                 "source": "admin",
@@ -601,6 +603,29 @@ def admin_update_masjid(
         return RedirectResponse(url=f"/admin/masjids/{masjid_id}?success=Basic+information+updated", status_code=303)
     except Exception:
         return RedirectResponse(url=f"/admin/masjids/{masjid_id}?error=Failed+to+update", status_code=303)
+
+
+@router.post("/masjids/{masjid_id}/update-announcements")
+def admin_update_announcements(
+        request: Request,
+        masjid_id: str,
+        session: AdminSession = Depends(admin_required),
+        enabled: str = Form(""),
+):
+    ok = _admin_update_masjid(
+        request,
+        masjid_id,
+        {"has_announcements_enabled": (enabled or "").lower() == "true"},
+    )
+    if ok:
+        return RedirectResponse(
+            url=f"/admin/masjids/{masjid_id}?success=Announcements+updated",
+            status_code=303,
+        )
+    return RedirectResponse(
+        url=f"/admin/masjids/{masjid_id}?error=Failed+to+update",
+        status_code=303,
+    )
 
 
 @router.post("/masjids/{masjid_id}/update-facilities")

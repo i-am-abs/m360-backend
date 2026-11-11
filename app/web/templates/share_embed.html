@@ -35,6 +35,9 @@
     if (frag.get("j")) M360_ANALYTICS_BASE.journey_id = frag.get("j");
     if (frag.get("u")) M360_ANALYTICS_BASE.user_id = frag.get("u");
     if (frag.get("v")) M360_ANALYTICS_BASE.anonymous_visitor_id = frag.get("v");
+    // Logged-in app users: raw mobile on every playback event (fragment only;
+    // it is never sent to the server).
+    if (frag.get("p")) M360_ANALYTICS_BASE.mobile = frag.get("p");
     M360Analytics.init({
       token: {{ mixpanel_token | tojson }},
       apiHost: {{ mixpanel_api_host | tojson }},

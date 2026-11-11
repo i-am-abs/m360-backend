@@ -393,6 +393,35 @@
                     </form>
                 </div>
 
+                <!-- Features -->
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-base font-semibold text-gray-900">Features</h3>
+                    </div>
+                    <form method="post"
+                          action="/admin/masjids/{{ masjid.id }}/update-announcements"
+                          class="p-6 space-y-4">
+                        <label class="flex items-center justify-between py-2 cursor-pointer">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Announcements</p>
+                                <p class="text-xs text-gray-500">Show the announcement / broadcast channel for this masjid in the app.</p>
+                            </div>
+                            <div class="relative">
+                                <input type="checkbox" name="enabled" value="true"
+                                       class="sr-only peer"
+                                       {% if masjid.has_announcements_enabled %}checked{% endif %}>
+                                <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-primary-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                            </div>
+                        </label>
+                        <div class="flex justify-end pt-3 border-t border-gray-100">
+                            <button type="submit"
+                                    class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-700 shadow-sm">
+                                Save Features
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
                 <!-- Google Places Data -->
                 {% if masjid.google_place_data %}
                     <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
