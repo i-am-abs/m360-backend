@@ -288,8 +288,6 @@ LOCATIONS = [
     },
 ]
 
-# Superseded by the alias lists above; leaving them would reintroduce ambiguous
-# duplicate regions for the same city.
 OBSOLETE_LOCATION_KEYS = [
     "IN-Delhi-Delhi",
     "IN-Haryana-Faridabad",
